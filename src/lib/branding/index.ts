@@ -1,18 +1,18 @@
 import type { CompanySettings } from "@/types/branding";
+import prisma from "@/lib/prisma";
 
 /**
  * Single source of truth for company branding.
  *
- * Phase 1: static/mock config. Phase 2: this function becomes an async
- * read from the `CompanySettings` table via Prisma. Consumers should call
- * `getCompanySettings()` rather than importing the constant directly, so
- * the eventual switch to async DB access is a one-line change here.
+ * Reads the single CompanySettings row from the database. If none exists yet
+ * (fresh DB before seed), falls back to sensible defaults so the UI never
+ * breaks. When multi-tenancy arrives, this gains a tenant argument.
  */
-const MOCK_COMPANY_SETTINGS: CompanySettings = {
+const FALLBACK_SETTINGS: CompanySettings = {
   companyName: "DriveNow Rent Car",
-  logoUrl: null, // falls back to the text/icon Logo component
+  logoUrl: null,
   whatsappNumber: "18095551234",
-  primaryColor: null, // null => use theme default
+  primaryColor: null,
   contactEmail: "reservas@drivenow.com",
   socialLinks: {
     instagram: "https://instagram.com",
@@ -20,6 +20,24 @@ const MOCK_COMPANY_SETTINGS: CompanySettings = {
   },
 };
 
-export function getCompanySettings(): CompanySettings {
-  return MOCK_COMPANY_SETTINGS;
+export async function getCompanySettings(): Promise<CompanySettings> {
+  try {
+    const row = await prisma.companySettings.findFirst({
+      orderBy: { createdAt: "asc" },
+    });
+    if (!row) return FALLBACK_SETTINGS;
+
+    return {
+      companyName: row.companyName,
+      logoUrl: row.logoUrl,
+      whatsappNumber: row.whatsappNumber,
+      primaryColor: row.primaryColor,
+      contactEmail: row.contactEmail,
+      // Social links are not modeled in the DB yet; keep defaults for now.
+      socialLinks: FALLBACK_SETTINGS.socialLinks,
+    };
+  } catch (error) {
+    console.error("getCompanySettings failed, using fallback:", error);
+    return FALLBACK_SETTINGS;
+  }
 }

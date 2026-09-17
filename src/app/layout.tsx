@@ -14,15 +14,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const settings = getCompanySettings();
-
-export const metadata: Metadata = {
-  title: {
-    default: settings.companyName,
-    template: `%s | ${settings.companyName}`,
-  },
-  description: `Renta el vehículo perfecto con ${settings.companyName}.`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getCompanySettings();
+  return {
+    title: {
+      default: settings.companyName,
+      template: `%s | ${settings.companyName}`,
+    },
+    description: `Renta el vehículo perfecto con ${settings.companyName}.`,
+  };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

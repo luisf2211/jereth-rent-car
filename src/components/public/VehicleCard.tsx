@@ -10,7 +10,6 @@ import Button from "@mui/material/Button";
 import SettingsSuggestRoundedIcon from "@mui/icons-material/SettingsSuggestRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import type { Vehicle } from "@/types/vehicle";
-import { getCompanySettings } from "@/lib/branding";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
 import {
   formatDailyPrice,
@@ -20,14 +19,14 @@ import {
 
 interface VehicleCardProps {
   vehicle: Vehicle;
+  whatsappNumber: string;
 }
 
 /**
  * Reusable vehicle card for the public catalog and featured section.
  * Server Component: no interactivity beyond links.
  */
-export default function VehicleCard({ vehicle }: VehicleCardProps) {
-  const { whatsappNumber } = getCompanySettings();
+export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProps) {
   const title = vehicleTitle(vehicle);
   const message = `Hola, estoy interesado en rentar el ${title}. ¿Está disponible?`;
 

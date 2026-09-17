@@ -5,15 +5,19 @@ import Box from "@mui/material/Box";
 import SectionTitle from "@/components/ui/SectionTitle";
 import EmptyState from "@/components/ui/EmptyState";
 import VehicleCard from "@/components/public/VehicleCard";
-import { getVehicles } from "@/features/vehicles/mock";
+import { getVehicles } from "@/features/vehicles/data";
+import { getCompanySettings } from "@/lib/branding";
 
 export const metadata: Metadata = {
   title: "Vehículos",
   description: "Explora nuestra flota de vehículos disponibles para renta.",
 };
 
-export default function VehiclesPage() {
-  const vehicles = getVehicles();
+export default async function VehiclesPage() {
+  const [vehicles, { whatsappNumber }] = await Promise.all([
+    getVehicles(),
+    getCompanySettings(),
+  ]);
 
   return (
     <Container sx={{ py: { xs: 5, md: 7 } }}>
@@ -31,7 +35,7 @@ export default function VehiclesPage() {
           <Grid container spacing={{ xs: 2.5, md: 3 }}>
             {vehicles.map((vehicle) => (
               <Grid key={vehicle.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                <VehicleCard vehicle={vehicle} />
+                <VehicleCard vehicle={vehicle} whatsappNumber={whatsappNumber} />
               </Grid>
             ))}
           </Grid>

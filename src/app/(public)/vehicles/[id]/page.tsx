@@ -12,7 +12,7 @@ import SettingsSuggestRoundedIcon from "@mui/icons-material/SettingsSuggestRound
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
-import { getVehicleById } from "@/features/vehicles/mock";
+import { getVehicleById } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
 import {
   formatDailyPrice,
@@ -24,19 +24,20 @@ export async function generateMetadata({
   params,
 }: PageProps<"/vehicles/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const vehicle = getVehicleById(id);
+  const vehicle = await getVehicleById(id);
   return { title: vehicle ? vehicleTitle(vehicle) : "Vehículo" };
 }
 
 export default async function VehicleDetailPage({ params }: PageProps<"/vehicles/[id]">) {
   const { id } = await params;
-  const vehicle = getVehicleById(id);
+  const [vehicle, { whatsappNumber }] = await Promise.all([
+    getVehicleById(id),
+    getCompanySettings(),
+  ]);
 
   if (!vehicle) {
     notFound();
   }
-
-  const { whatsappNumber } = getCompanySettings();
   const title = vehicleTitle(vehicle);
   const message = `Hola, estoy interesado en rentar el ${title}. ¿Está disponible?`;
 

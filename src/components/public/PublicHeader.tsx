@@ -17,11 +17,8 @@ import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Logo from "@/components/ui/Logo";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
+import { useBranding } from "@/components/branding/BrandingProvider";
 import { PUBLIC_NAV_LINKS } from "./nav-links";
-
-interface PublicHeaderProps {
-  whatsappNumber: string;
-}
 
 /**
  * Public site header.
@@ -29,7 +26,8 @@ interface PublicHeaderProps {
  * Mobile: logo + menu button opening a Drawer.
  * Client component because it manages the drawer open state.
  */
-export default function PublicHeader({ whatsappNumber }: PublicHeaderProps) {
+export default function PublicHeader() {
+  const { companyName, logoUrl, whatsappNumber } = useBranding();
   const [open, setOpen] = React.useState(false);
   const ctaMessage = "Hola, quiero información para rentar un vehículo.";
 
@@ -38,7 +36,7 @@ export default function PublicHeader({ whatsappNumber }: PublicHeaderProps) {
       <Container>
         <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 64, md: 72 } }}>
           <Box component={NextLink} href="/" sx={{ display: "flex", alignItems: "center" }}>
-            <Logo />
+            <Logo companyName={companyName} logoUrl={logoUrl} />
           </Box>
 
           {/* Desktop navigation */}
@@ -78,7 +76,7 @@ export default function PublicHeader({ whatsappNumber }: PublicHeaderProps) {
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
         <Box sx={{ width: 280, p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-            <Logo size="small" />
+            <Logo companyName={companyName} logoUrl={logoUrl} size="small" />
             <IconButton aria-label="Cerrar menú" onClick={() => setOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>

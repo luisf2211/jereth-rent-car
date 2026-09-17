@@ -2,9 +2,10 @@ import * as React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
-import { getCompanySettings } from "@/lib/branding";
 
 interface LogoProps {
+  companyName: string;
+  logoUrl?: string | null;
   /** Render on a dark surface (e.g. footer). */
   variant?: "default" | "onDark";
   size?: "small" | "medium";
@@ -12,11 +13,15 @@ interface LogoProps {
 
 /**
  * Brand logo. Uses the configured logoUrl when present, otherwise falls back
- * to an icon + company name. Reads from the central branding source so it
- * stays correct once branding comes from the database.
+ * to an icon + company name. Branding is passed in by the caller (from
+ * getCompanySettings or the branding context) so this stays a pure component.
  */
-export default function Logo({ variant = "default", size = "medium" }: LogoProps) {
-  const { companyName, logoUrl } = getCompanySettings();
+export default function Logo({
+  companyName,
+  logoUrl,
+  variant = "default",
+  size = "medium",
+}: LogoProps) {
   const onDark = variant === "onDark";
   const fontSize = size === "small" ? "1.05rem" : "1.25rem";
 

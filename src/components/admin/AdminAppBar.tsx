@@ -18,10 +18,13 @@ import Divider from "@mui/material/Divider";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import { logoutAction } from "@/features/auth/actions";
 import { ADMIN_DRAWER_WIDTH, ADMIN_NAV_ITEMS } from "./nav-items";
 
 interface AdminAppBarProps {
   onMenuClick: () => void;
+  userName: string;
+  userEmail: string;
 }
 
 /** Human-readable labels for breadcrumb segments not covered by nav items. */
@@ -48,10 +51,11 @@ function buildBreadcrumbs(pathname: string) {
  * Top app bar for the backoffice: menu toggle (mobile/tablet), breadcrumbs
  * and an account menu. Offset to the right of the permanent sidebar on desktop.
  */
-export default function AdminAppBar({ onMenuClick }: AdminAppBarProps) {
+export default function AdminAppBar({ onMenuClick, userName, userEmail }: AdminAppBarProps) {
   const pathname = usePathname();
   const crumbs = buildBreadcrumbs(pathname);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const avatarInitial = (userName || userEmail || "?").charAt(0).toUpperCase();
 
   return (
     <AppBar
@@ -98,7 +102,7 @@ export default function AdminAppBar({ onMenuClick }: AdminAppBarProps) {
           size="small"
         >
           <Avatar sx={{ width: 34, height: 34, bgcolor: "primary.main", fontSize: "0.95rem" }}>
-            A
+            {avatarInitial}
           </Avatar>
         </IconButton>
 
@@ -110,9 +114,11 @@ export default function AdminAppBar({ onMenuClick }: AdminAppBarProps) {
           transformOrigin={{ vertical: "top", horizontal: "right" }}
         >
           <Box sx={{ px: 2, py: 1 }}>
-            <Typography variant="subtitle2">Administrador</Typography>
-            <Typography variant="body2" color="text.secondary">
-              admin@drivenow.com
+            <Typography variant="subtitle2" noWrap>
+              {userName || "Usuario"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {userEmail}
             </Typography>
           </Box>
           <Divider />
@@ -122,7 +128,12 @@ export default function AdminAppBar({ onMenuClick }: AdminAppBarProps) {
             </ListItemIcon>
             Ver sitio público
           </MenuItem>
-          <MenuItem onClick={() => setAnchorEl(null)} disabled>
+          <MenuItem
+            onClick={() => {
+              setAnchorEl(null);
+              void logoutAction();
+            }}
+          >
             <ListItemIcon>
               <LogoutRoundedIcon fontSize="small" />
             </ListItemIcon>

@@ -13,8 +13,8 @@ const HERO_IMAGE =
 /**
  * Landing hero: large photo, headline, secondary text and primary CTA.
  */
-export default function HeroSection() {
-  const { whatsappNumber } = getCompanySettings();
+export default async function HeroSection() {
+  const { whatsappNumber } = await getCompanySettings();
   const message = "Hola, quiero rentar un vehículo. ¿Me pueden ayudar?";
 
   return (

@@ -1,6 +1,9 @@
 import * as React from "react";
 import type { Metadata } from "next";
 import ResponsiveAdminLayout from "@/components/admin/ResponsiveAdminLayout";
+import { BrandingProvider } from "@/components/branding/BrandingProvider";
+import { getCompanySettings } from "@/lib/branding";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
 export const metadata: Metadata = {
   title: {
@@ -10,9 +13,17 @@ export const metadata: Metadata = {
 };
 
 /**
- * Backoffice layout. In Phase 2 this is where the auth guard for /admin/*
- * (redirect unauthenticated users) will live, before rendering the shell.
+ * Backoffice layout. Route protection is enforced by the middleware; here we
+ * load branding + the current user for the shell.
  */
-export default function AdminLayout({ children }: LayoutProps<"/admin">) {
-  return <ResponsiveAdminLayout>{children}</ResponsiveAdminLayout>;
+export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
+  const [settings, user] = await Promise.all([getCompanySettings(), getCurrentUser()]);
+
+  return (
+    <BrandingProvider settings={settings}>
+      <ResponsiveAdminLayout userName={user?.name ?? ""} userEmail={user?.email ?? ""}>
+        {children}
+      </ResponsiveAdminLayout>
+    </BrandingProvider>
+  );
 }

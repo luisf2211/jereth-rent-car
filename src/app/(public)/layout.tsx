@@ -2,22 +2,25 @@ import * as React from "react";
 import Box from "@mui/material/Box";
 import PublicHeader from "@/components/public/PublicHeader";
 import PublicFooter from "@/components/public/PublicFooter";
+import { BrandingProvider } from "@/components/branding/BrandingProvider";
 import { getCompanySettings } from "@/lib/branding";
 
 /**
  * Layout for the customer-facing portal.
- * Header + page content + footer. Reads branding from the central source.
+ * Fetches branding once and provides it to client components below.
  */
-export default function PublicLayout({ children }: LayoutProps<"/">) {
-  const { whatsappNumber } = getCompanySettings();
+export default async function PublicLayout({ children }: LayoutProps<"/">) {
+  const settings = await getCompanySettings();
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <PublicHeader whatsappNumber={whatsappNumber} />
-      <Box component="main" sx={{ flexGrow: 1 }}>
-        {children}
+    <BrandingProvider settings={settings}>
+      <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+        <PublicHeader />
+        <Box component="main" sx={{ flexGrow: 1 }}>
+          {children}
+        </Box>
+        <PublicFooter settings={settings} />
       </Box>
-      <PublicFooter />
-    </Box>
+    </BrandingProvider>
   );
 }

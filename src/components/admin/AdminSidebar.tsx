@@ -11,6 +11,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Logo from "@/components/ui/Logo";
+import { useBranding } from "@/components/branding/BrandingProvider";
 import { ADMIN_NAV_ITEMS } from "./nav-items";
 
 interface AdminSidebarProps {
@@ -29,12 +30,13 @@ function isActive(pathname: string, href: string): boolean {
  */
 export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { companyName, logoUrl } = useBranding();
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Toolbar sx={{ px: 2.5 }}>
         <Box component={NextLink} href="/admin" sx={{ display: "flex", alignItems: "center" }}>
-          <Logo size="small" />
+          <Logo companyName={companyName} logoUrl={logoUrl} size="small" />
         </Box>
       </Toolbar>
       <List sx={{ px: 1.5, flexGrow: 1 }}>

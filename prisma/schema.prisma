@@ -1,0 +1,95 @@
+// Prisma schema for the Rent Car platform.
+// Prisma 7: rust-free `prisma-client` generator, generated into the source
+// tree, connection URL configured in prisma.config.ts (not here).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Auth / RBAC -----------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  roleId       String
+  role         Role     @relation(fields: [roleId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([roleId])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Permission {
+  id        String           @id @default(cuid())
+  // Stable string key, e.g. "users.view" (matches lib/permissions).
+  key       String           @unique
+  roles     RolePermission[]
+  createdAt DateTime         @default(now())
+}
+
+// Explicit many-to-many between Role and Permission.
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now())
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+// --- Branding --------------------------------------------------------------
+
+// Single-row table for now. When multi-tenancy arrives this grows a tenant key.
+model CompanySettings {
+  id             String   @id @default(cuid())
+  companyName    String
+  logoUrl        String?
+  whatsappNumber String
+  primaryColor   String?
+  contactEmail   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// --- Catalog ---------------------------------------------------------------
+
+enum Transmission {
+  automatic
+  manual
+}
+
+model Vehicle {
+  id           String       @id @default(cuid())
+  brand        String
+  model        String
+  year         Int
+  transmission Transmission
+  passengers   Int
+  dailyPrice   Int // USD per day
+  imageUrl     String
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([isActive])
+}

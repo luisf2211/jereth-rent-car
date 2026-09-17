@@ -16,7 +16,15 @@ import { ADMIN_DRAWER_WIDTH } from "./nav-items";
  *
  * Client component because it owns the mobile drawer open state.
  */
-export default function ResponsiveAdminLayout({ children }: { children: React.ReactNode }) {
+export default function ResponsiveAdminLayout({
+  children,
+  userName,
+  userEmail,
+}: {
+  children: React.ReactNode;
+  userName: string;
+  userEmail: string;
+}) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const drawerStyles = {
@@ -31,7 +39,7 @@ export default function ResponsiveAdminLayout({ children }: { children: React.Re
 
   return (
     <Box sx={{ display: "flex", minHeight: "100dvh", bgcolor: "grey.50" }}>
-      <AdminAppBar onMenuClick={() => setMobileOpen(true)} />
+      <AdminAppBar onMenuClick={() => setMobileOpen(true)} userName={userName} userEmail={userEmail} />
 
       {/* Navigation drawers */}
       <Box

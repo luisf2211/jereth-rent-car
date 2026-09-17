@@ -8,8 +8,8 @@ import { getCompanySettings } from "@/lib/branding";
 /**
  * Closing call-to-action band.
  */
-export default function FinalCtaSection() {
-  const { whatsappNumber } = getCompanySettings();
+export default async function FinalCtaSection() {
+  const { whatsappNumber } = await getCompanySettings();
   const message = "Hola, quiero reservar un vehículo. ¿Me ayudan?";
 
   return (

@@ -12,7 +12,7 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
 import Logo from "@/components/ui/Logo";
-import { getCompanySettings } from "@/lib/branding";
+import type { CompanySettings } from "@/types/branding";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { PUBLIC_NAV_LINKS } from "./nav-links";
 
@@ -20,8 +20,8 @@ import { PUBLIC_NAV_LINKS } from "./nav-links";
  * Public footer with logo, links, contact and social media.
  * Rendered on a dark surface for contrast. Server Component.
  */
-export default function PublicFooter() {
-  const { companyName, whatsappNumber, contactEmail, socialLinks } = getCompanySettings();
+export default function PublicFooter({ settings }: { settings: CompanySettings }) {
+  const { companyName, logoUrl, whatsappNumber, contactEmail, socialLinks } = settings;
   const whatsappUrl = buildWhatsAppUrl(whatsappNumber, "Hola, quiero información sobre alquiler de vehículos.");
   const year = new Date().getFullYear();
 
@@ -30,7 +30,7 @@ export default function PublicFooter() {
       <Container sx={{ py: { xs: 5, md: 7 } }}>
         <Grid container spacing={4}>
           <Grid size={{ xs: 12, md: 5 }}>
-            <Logo variant="onDark" />
+            <Logo companyName={companyName} logoUrl={logoUrl} variant="onDark" />
             <Typography variant="body2" sx={{ mt: 2, color: "grey.400", maxWidth: 360 }}>
               Renta el vehículo perfecto para tu próximo viaje. Atención rápida y cercana por WhatsApp.
             </Typography>
