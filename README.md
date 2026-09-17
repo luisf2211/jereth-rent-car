@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# jereth-rent-car
 
-## Getting Started
+Plataforma web de Rent Car (MVP). Portal cliente + backoffice administrativo, construida con Next.js, TypeScript y Material UI.
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router) + TypeScript + React
+- Material UI (MUI) + MUI Icons
+- React Hook Form + Zod (validación)
+- PostgreSQL + Prisma (Fase 2)
+
+## Requisitos
+
+- Node.js 18.18+ (recomendado 20+)
+
+## Desarrollo
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> Las imágenes de vehículos y del hero provienen de Unsplash, por lo que se requiere conexión a internet para visualizarlas.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+- `npm run dev` — servidor de desarrollo
+- `npm run build` — build de producción
+- `npm run start` — sirve el build de producción
 
-To learn more about Next.js, take a look at the following resources:
+## Estructura
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  app/
+    (public)/        Portal cliente (landing, catálogo, detalle)
+    (admin)/         Backoffice (dashboard, usuarios, roles, branding)
+  components/
+    ui/              Componentes reutilizables (Logo, WhatsAppButton, etc.)
+    public/          Componentes del portal cliente
+    admin/           Layout y navegación del backoffice
+  features/          Lógica por dominio (vehicles: mock + helpers)
+  lib/               branding, permissions, whatsapp
+  theme/             Theme MUI centralizado (palette, tema, adaptadores)
+  types/             Tipos de dominio
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estado
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Fase 1 completa:** UI del portal cliente y backoffice con datos mock, theme centralizado y navegación responsive. La conexión con PostgreSQL/Prisma llega en la Fase 2.
