@@ -8,6 +8,8 @@ import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFil
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import PageHeader from "@/components/ui/PageHeader";
+import { countVehicles } from "@/features/vehicles/admin-data";
+import { countUsers } from "@/features/users/data";
 
 interface StatCard {
   label: string;
@@ -17,35 +19,37 @@ interface StatCard {
   href?: string;
 }
 
-const CARDS: StatCard[] = [
-  {
-    label: "Vehículos",
-    value: "6",
-    hint: "En catálogo (mock)",
-    icon: <DirectionsCarFilledRoundedIcon />,
-    href: "/vehicles",
-  },
-  {
-    label: "Usuarios",
-    value: "—",
-    hint: "Gestiona el equipo",
-    icon: <PeopleRoundedIcon />,
-    href: "/admin/users",
-  },
-  {
-    label: "Reservas",
-    value: "—",
-    hint: "Próximamente",
-    icon: <EventAvailableRoundedIcon />,
-  },
-];
+export default async function DashboardPage() {
+  const [vehicleCount, userCount] = await Promise.all([countVehicles(), countUsers()]);
 
-export default function DashboardPage() {
+  const cards: StatCard[] = [
+    {
+      label: "Vehículos",
+      value: String(vehicleCount),
+      hint: "En el catálogo",
+      icon: <DirectionsCarFilledRoundedIcon />,
+      href: "/admin/vehicles",
+    },
+    {
+      label: "Usuarios",
+      value: String(userCount),
+      hint: "Gestiona el equipo",
+      icon: <PeopleRoundedIcon />,
+      href: "/admin/users",
+    },
+    {
+      label: "Reservas",
+      value: "—",
+      hint: "Próximamente",
+      icon: <EventAvailableRoundedIcon />,
+    },
+  ];
+
   return (
     <>
       <PageHeader title="Bienvenido" description="Resumen general de tu plataforma de renta." />
       <Grid container spacing={{ xs: 2, md: 3 }}>
-        {CARDS.map((card) => {
+        {cards.map((card) => {
           const content = (
             <Box sx={{ p: 3 }}>
               <Box

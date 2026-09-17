@@ -30,6 +30,7 @@ interface AdminAppBarProps {
 /** Human-readable labels for breadcrumb segments not covered by nav items. */
 const SEGMENT_LABELS: Record<string, string> = {
   admin: "Dashboard",
+  vehicles: "Vehículos",
   users: "Usuarios",
   roles: "Roles",
   settings: "Configuración",

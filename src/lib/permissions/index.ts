@@ -15,6 +15,10 @@ export const PERMISSIONS = [
   "roles.manage",
   "branding.view",
   "branding.edit",
+  "vehicles.view",
+  "vehicles.create",
+  "vehicles.edit",
+  "vehicles.disable",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

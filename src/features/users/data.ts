@@ -38,6 +38,10 @@ export async function getUser(id: string): Promise<UserListItem | null> {
   };
 }
 
+export async function countUsers(): Promise<number> {
+  return prisma.user.count();
+}
+
 /** Roles for the select input. */
 export async function listRoleOptions(): Promise<RoleOption[]> {
   const roles = await prisma.role.findMany({

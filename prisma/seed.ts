@@ -18,6 +18,10 @@ const PERMISSION_KEYS = [
   "roles.manage",
   "branding.view",
   "branding.edit",
+  "vehicles.view",
+  "vehicles.create",
+  "vehicles.edit",
+  "vehicles.disable",
 ] as const;
 
 const VEHICLES = [
