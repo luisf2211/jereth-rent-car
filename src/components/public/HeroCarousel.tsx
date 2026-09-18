@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -25,9 +26,10 @@ interface Props {
 }
 
 /**
- * Hero carousel of vehicles (Turo-style). One vehicle at a time with a large
- * photo; selecting it opens a WhatsApp quote for that vehicle. Autoplays,
- * pauses on hover, supports prev/next + dots. Client component.
+ * Hero carousel of vehicles (Turo-style). One vehicle at a time: a large clean
+ * photo on top and, below it, an organized info block (category, title, specs,
+ * price and the "Rentar" action). Autoplays, pauses on hover, supports
+ * prev/next + dots. Client component.
  */
 export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
   const [index, setIndex] = React.useState(0);
@@ -58,23 +60,26 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
     <Box
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      sx={{ position: "relative" }}
+      sx={{
+        position: "relative",
+        borderRadius: 3,
+        overflow: "hidden",
+        border: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
+      }}
     >
-      <Box
-        sx={{
-          position: "relative",
-          borderRadius: 3,
-          overflow: "hidden",
-          aspectRatio: { xs: "16 / 11", md: "3 / 2" },
-          bgcolor: "grey.900",
-        }}
-      >
-        {/* Clicking the photo/info opens the vehicle detail. */}
+      {/* Photo (clickable → detail) */}
+      <Box sx={{ position: "relative" }}>
         <Box
           component={NextLink}
           href={detailHref}
           aria-label={`Ver ${vehicleTitle(v)}`}
-          sx={{ position: "absolute", inset: 0, display: "block", textDecoration: "none" }}
+          sx={{
+            display: "block",
+            aspectRatio: { xs: "16 / 10", md: "16 / 9" },
+            bgcolor: "grey.900",
+          }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -83,71 +88,6 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
             alt={vehicleTitle(v)}
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              background: "linear-gradient(to top, rgba(10,10,10,0.82) 0%, rgba(10,10,10,0.15) 45%, transparent 70%)",
-            }}
-          />
-        </Box>
-
-        {/* Vehicle info + action (over the link, WhatsApp button not part of it) */}
-        <Box
-          sx={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            p: { xs: 2, md: 3.5 },
-            color: "common.white",
-            pointerEvents: "none",
-          }}
-        >
-          <Box
-            component={NextLink}
-            href={detailHref}
-            sx={{ display: "block", textDecoration: "none", color: "inherit", pointerEvents: "auto" }}
-          >
-            <Typography
-              variant="overline"
-              sx={{ color: "grey.300", letterSpacing: "0.15em", display: { xs: "none", sm: "block" } }}
-            >
-              {categoryLabel(v.category)}
-            </Typography>
-            <Typography sx={{ fontWeight: 800, fontSize: { xs: "1.15rem", md: "1.5rem" }, mb: 0.5 }}>
-              {vehicleTitle(v)}
-            </Typography>
-            {/* Full specs only on larger screens; on mobile keep it to price. */}
-            <Typography variant="body2" sx={{ color: "grey.300", mb: { xs: 1.25, md: 2 }, display: { xs: "none", sm: "block" } }}>
-              {v.passengers} pasajeros · {transmissionLabel(v.transmission)} · desde{" "}
-              <Box component="span" sx={{ fontWeight: 700, color: "common.white" }}>
-                {formatDailyPrice(v.dailyPrice)}
-              </Box>{" "}
-              / día
-            </Typography>
-            <Typography variant="body2" sx={{ color: "grey.200", mb: 1.25, display: { xs: "block", sm: "none" } }}>
-              desde{" "}
-              <Box component="span" sx={{ fontWeight: 800, color: "common.white" }}>
-                {formatDailyPrice(v.dailyPrice)}
-              </Box>{" "}
-              / día
-            </Typography>
-          </Box>
-          <Button
-            component="a"
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="contained"
-            startIcon={<WhatsAppIcon />}
-            data-wa-source="hero"
-            data-wa-context={vehicleTitle(v)}
-            disabled={!href}
-            sx={{ pointerEvents: "auto" }}
-          >
-            Rentar
-          </Button>
         </Box>
 
         {/* Prev / next */}
@@ -185,9 +125,68 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
         )}
       </Box>
 
+      {/* Info block below the photo */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        sx={{
+          p: { xs: 2, md: 2.5 },
+          gap: { xs: 1.5, sm: 2 },
+          justifyContent: "space-between",
+          alignItems: { xs: "stretch", sm: "flex-end" },
+        }}
+      >
+        <Box
+          component={NextLink}
+          href={detailHref}
+          sx={{ minWidth: 0, textDecoration: "none", color: "inherit" }}
+        >
+          <Typography
+            variant="overline"
+            sx={{ color: "text.secondary", letterSpacing: "0.14em", lineHeight: 1.6 }}
+          >
+            {categoryLabel(v.category)}
+          </Typography>
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: { xs: "1.2rem", md: "1.4rem" },
+              lineHeight: 1.2,
+              mb: 0.75,
+            }}
+          >
+            {vehicleTitle(v)}
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            {v.passengers} pasajeros · {transmissionLabel(v.transmission)}
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.primary", mt: 0.25 }}>
+            desde{" "}
+            <Box component="span" sx={{ fontWeight: 800 }}>
+              {formatDailyPrice(v.dailyPrice)}
+            </Box>{" "}
+            / día
+          </Typography>
+        </Box>
+
+        <Button
+          component="a"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="contained"
+          startIcon={<WhatsAppIcon />}
+          data-wa-source="hero"
+          data-wa-context={vehicleTitle(v)}
+          disabled={!href}
+          sx={{ flexShrink: 0, alignSelf: { xs: "stretch", sm: "flex-end" } }}
+        >
+          Rentar
+        </Button>
+      </Stack>
+
       {/* Dots */}
       {count > 1 && (
-        <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mt: 2 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", gap: 1, pb: 2 }}>
           {vehicles.map((veh, i) => (
             <Box
               key={veh.id}
