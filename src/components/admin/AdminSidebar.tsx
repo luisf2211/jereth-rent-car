@@ -36,7 +36,7 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Toolbar sx={{ px: 2.5 }}>
         <Box component={NextLink} href="/admin" sx={{ display: "flex", alignItems: "center" }}>
-          <Logo companyName={companyName} logoUrl={logoUrl} size="small" />
+          <Logo companyName={companyName} logoUrl={logoUrl} display="name" />
         </Box>
       </Toolbar>
       <List sx={{ px: 1.5, flexGrow: 1 }}>

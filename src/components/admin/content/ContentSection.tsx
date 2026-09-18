@@ -1,0 +1,237 @@
+"use client";
+
+import * as React from "react";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Grid from "@mui/material/Grid";
+import TextField from "@mui/material/TextField";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
+import Alert from "@mui/material/Alert";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import EmptyState from "@/components/ui/EmptyState";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import type { ActionResult } from "@/lib/actions/result";
+
+export interface FieldDef {
+  name: string;
+  label: string;
+  type: "text" | "number" | "switch";
+  multiline?: boolean;
+  defaultValue?: string | number | boolean;
+  half?: boolean;
+}
+
+interface Row {
+  id: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+interface Props<T extends Row> {
+  items: T[];
+  fields: FieldDef[];
+  emptyLabel: string;
+  addLabel: string;
+  primaryText: (item: T) => string;
+  secondaryText?: (item: T) => string | undefined;
+  onSave: (id: string | null, values: Record<string, unknown>) => Promise<ActionResult>;
+  onDelete: (id: string) => Promise<ActionResult>;
+  onResult: (message: string, error?: boolean) => void;
+}
+
+function initialValues(fields: FieldDef[], item?: Row): Record<string, unknown> {
+  const values: Record<string, unknown> = {};
+  const record = item as Record<string, unknown> | undefined;
+  for (const f of fields) {
+    if (record && record[f.name] !== undefined && record[f.name] !== null) {
+      values[f.name] = record[f.name];
+    } else if (f.defaultValue !== undefined) {
+      values[f.name] = f.defaultValue;
+    } else {
+      values[f.name] = f.type === "switch" ? false : f.type === "number" ? 0 : "";
+    }
+  }
+  return values;
+}
+
+/**
+ * Generic list + modal editor for a content type. Add/edit happen in a Dialog;
+ * delete uses a confirm dialog. Client-side validation is intentionally light
+ * — the server action re-validates with Zod and returns field errors.
+ */
+export default function ContentSection<T extends Row>({
+  items,
+  fields,
+  emptyLabel,
+  addLabel,
+  primaryText,
+  secondaryText,
+  onSave,
+  onDelete,
+  onResult,
+}: Props<T>) {
+  const [open, setOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<T | null>(null);
+  const [values, setValues] = React.useState<Record<string, unknown>>({});
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<T | null>(null);
+
+  const openNew = () => {
+    setEditing(null);
+    setValues(initialValues(fields));
+    setFieldErrors({});
+    setFormError(null);
+    setOpen(true);
+  };
+  const openEdit = (item: T) => {
+    setEditing(item);
+    setValues(initialValues(fields, item));
+    setFieldErrors({});
+    setFormError(null);
+    setOpen(true);
+  };
+
+  const setField = (name: string, value: unknown) =>
+    setValues((v) => ({ ...v, [name]: value }));
+
+  const submit = async () => {
+    setSaving(true);
+    setFormError(null);
+    setFieldErrors({});
+    const res = await onSave(editing?.id ?? null, values);
+    setSaving(false);
+    if (res.ok) {
+      setOpen(false);
+      onResult(res.message ?? "Guardado.");
+    } else {
+      setFieldErrors(res.fieldErrors ?? {});
+      setFormError(res.message);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const res = await onDelete(deleteTarget.id);
+    setDeleteTarget(null);
+    onResult(res.message ?? "", !res.ok);
+  };
+
+  return (
+    <>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={openNew}>
+          {addLabel}
+        </Button>
+      </Box>
+
+      {items.length === 0 ? (
+        <EmptyState title={emptyLabel} />
+      ) : (
+        <Stack spacing={1.5}>
+          {items.map((item) => (
+            <Card key={item.id}>
+              <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        {primaryText(item)}
+                      </Typography>
+                      {!item.isActive && <Chip label="Oculto" size="small" variant="outlined" />}
+                    </Box>
+                    {secondaryText?.(item) && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        {secondaryText(item)}
+                      </Typography>
+                    )}
+                  </Box>
+                  <IconButton aria-label="Editar" onClick={() => openEdit(item)}>
+                    <EditRoundedIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton aria-label="Eliminar" onClick={() => setDeleteTarget(item)}>
+                    <DeleteOutlineRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      )}
+
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{editing ? "Editar" : "Agregar"}</DialogTitle>
+        <DialogContent>
+          {formError && (
+            <Alert severity="error" sx={{ mb: 2, mt: 1 }}>
+              {formError}
+            </Alert>
+          )}
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            {fields.map((f) => (
+              <Grid key={f.name} size={{ xs: 12, sm: f.half ? 6 : 12 }}>
+                {f.type === "switch" ? (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(values[f.name])}
+                        onChange={(e) => setField(f.name, e.target.checked)}
+                      />
+                    }
+                    label={f.label}
+                  />
+                ) : (
+                  <TextField
+                    fullWidth
+                    type={f.type === "number" ? "number" : "text"}
+                    label={f.label}
+                    multiline={f.multiline}
+                    minRows={f.multiline ? 3 : undefined}
+                    value={values[f.name] ?? ""}
+                    onChange={(e) =>
+                      setField(f.name, f.type === "number" ? e.target.value : e.target.value)
+                    }
+                    error={Boolean(fieldErrors[f.name])}
+                    helperText={fieldErrors[f.name]}
+                  />
+                )}
+              </Grid>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button color="secondary" onClick={() => setOpen(false)} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button variant="contained" onClick={submit} disabled={saving}>
+            {saving ? "Guardando..." : "Guardar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Eliminar"
+        description="Esta acción no se puede deshacer. ¿Continuar?"
+        confirmLabel="Eliminar"
+        confirmColor="error"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </>
+  );
+}

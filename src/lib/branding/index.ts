@@ -4,20 +4,22 @@ import prisma from "@/lib/prisma";
 /**
  * Single source of truth for company branding.
  *
- * Reads the single CompanySettings row from the database. If none exists yet
- * (fresh DB before seed), falls back to sensible defaults so the UI never
- * breaks. When multi-tenancy arrives, this gains a tenant argument.
+ * Reads the single CompanySettings row from the database. Contact/social/
+ * location fields that the owner hasn't filled in stay null, and the public
+ * UI simply doesn't render them (we never show invented data).
  */
 const FALLBACK_SETTINGS: CompanySettings = {
-  companyName: "DriveNow Rent Car",
+  companyName: "Jereth Rent Car",
   logoUrl: null,
-  whatsappNumber: "18095551234",
+  whatsappNumber: "",
   primaryColor: null,
-  contactEmail: "reservas@drivenow.com",
-  socialLinks: {
-    instagram: "https://instagram.com",
-    facebook: "https://facebook.com",
-  },
+  contactEmail: "",
+  phone: null,
+  address: null,
+  googleMapsUrl: null,
+  aboutText: null,
+  logoScale: 1,
+  socialLinks: {},
 };
 
 export async function getCompanySettings(): Promise<CompanySettings> {
@@ -33,8 +35,15 @@ export async function getCompanySettings(): Promise<CompanySettings> {
       whatsappNumber: row.whatsappNumber,
       primaryColor: row.primaryColor,
       contactEmail: row.contactEmail,
-      // Social links are not modeled in the DB yet; keep defaults for now.
-      socialLinks: FALLBACK_SETTINGS.socialLinks,
+      phone: row.phone,
+      address: row.address,
+      googleMapsUrl: row.googleMapsUrl,
+      aboutText: row.aboutText,
+      logoScale: row.logoScale ?? 1,
+      socialLinks: {
+        instagram: row.instagramUrl ?? undefined,
+        facebook: row.facebookUrl ?? undefined,
+      },
     };
   } catch (error) {
     console.error("getCompanySettings failed, using fallback:", error);

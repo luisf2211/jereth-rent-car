@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
 import VehicleForm from "@/components/admin/vehicles/VehicleForm";
 import { getVehicleForAdmin } from "@/features/vehicles/admin-data";
-import { vehicleTitle } from "@/features/vehicles/format";
+import { vehicleTitleWithYear } from "@/features/vehicles/format";
 
 export const metadata: Metadata = { title: "Editar vehículo" };
 
@@ -17,7 +17,7 @@ export default async function EditVehiclePage({ params }: PageProps<"/admin/vehi
 
   return (
     <>
-      <PageHeader title="Editar vehículo" description={vehicleTitle(vehicle)} />
+      <PageHeader title="Editar vehículo" description={vehicleTitleWithYear(vehicle)} />
       <VehicleForm vehicle={vehicle} />
     </>
   );

@@ -5,33 +5,31 @@ import LinkBehavior from "./LinkBehavior";
 /**
  * Centralized MUI theme.
  *
- * Visual philosophy: clean, airy, Airbnb-inspired. Soft rounded corners,
- * very subtle shadows, generous spacing, no gradients or heavy effects.
- *
- * `buildTheme` takes an optional primary color so branding can eventually
- * drive the theme from configuration without restructuring anything.
+ * Visual philosophy: modern, editorial, premium rent-car. Generous spacing,
+ * confident typography, very subtle shadows, black/white dominant with magenta
+ * as a deliberate accent (never filler). `buildTheme` accepts an optional
+ * primary color so branding can drive it from configuration later.
  */
 export function buildTheme(primaryColor?: string) {
   return createTheme({
     palette: createBrandPalette(primaryColor),
     shape: {
-      borderRadius: 12,
+      borderRadius: 14,
     },
     typography: {
       fontFamily: "var(--font-geist-sans), system-ui, -apple-system, Arial, sans-serif",
-      h1: { fontWeight: 700, letterSpacing: "-0.02em" },
-      h2: { fontWeight: 700, letterSpacing: "-0.02em" },
-      h3: { fontWeight: 700, letterSpacing: "-0.01em" },
-      h4: { fontWeight: 600, letterSpacing: "-0.01em" },
-      h5: { fontWeight: 600 },
-      h6: { fontWeight: 600 },
+      h1: { fontWeight: 800, letterSpacing: "-0.035em", lineHeight: 1.05 },
+      h2: { fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1 },
+      h3: { fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.15 },
+      h4: { fontWeight: 700, letterSpacing: "-0.02em" },
+      h5: { fontWeight: 700, letterSpacing: "-0.01em" },
+      h6: { fontWeight: 700 },
+      subtitle1: { color: brandColors.textSecondary, lineHeight: 1.6 },
       button: { fontWeight: 600, textTransform: "none" },
-      subtitle1: { color: brandColors.textSecondary },
     },
     components: {
       MuiButtonBase: {
         defaultProps: {
-          // Use Next.js Link for client-side navigation on any button/link base.
           LinkComponent: LinkBehavior,
         },
       },
@@ -45,15 +43,28 @@ export function buildTheme(primaryColor?: string) {
         styleOverrides: {
           root: {
             borderRadius: 999,
-            paddingInline: 20,
-            minHeight: 44, // comfortable touch target
+            paddingInline: 22,
+            minHeight: 46,
+            transition: "transform 120ms ease, background-color 120ms ease, box-shadow 120ms ease",
           },
           sizeLarge: {
-            minHeight: 52,
-            paddingInline: 28,
-            fontSize: "1rem",
+            minHeight: 54,
+            paddingInline: 30,
+            fontSize: "1.02rem",
           },
         },
+        variants: [
+          {
+            props: { variant: "contained", color: "primary" },
+            style: {
+              boxShadow: "0 6px 18px rgba(230,0,122,0.28)",
+              "&:hover": {
+                boxShadow: "0 8px 22px rgba(230,0,122,0.34)",
+                transform: "translateY(-1px)",
+              },
+            },
+          },
+        ],
       },
       MuiIconButton: {
         styleOverrides: {
@@ -65,26 +76,25 @@ export function buildTheme(primaryColor?: string) {
         styleOverrides: {
           root: {
             border: `1px solid ${brandColors.border}`,
-            borderRadius: 16,
+            borderRadius: 18,
           },
         },
       },
       MuiPaper: {
         styleOverrides: {
-          rounded: { borderRadius: 16 },
+          rounded: { borderRadius: 18 },
         },
       },
       MuiTextField: {
         defaultProps: { fullWidth: true },
       },
+      MuiChip: {
+        styleOverrides: {
+          root: { fontWeight: 600 },
+        },
+      },
       MuiAppBar: {
         defaultProps: { elevation: 0, color: "inherit" },
-        styleOverrides: {
-          root: {
-            backgroundColor: brandColors.white,
-            borderBottom: `1px solid ${brandColors.border}`,
-          },
-        },
       },
       MuiContainer: {
         defaultProps: { maxWidth: "lg" },

@@ -60,6 +60,8 @@ model RolePermission {
 // --- Branding --------------------------------------------------------------
 
 // Single-row table for now. When multi-tenancy arrives this grows a tenant key.
+// Holds brand + contact info shown across the public site. Fields the owner
+// hasn't filled in stay null and their UI simply doesn't render (no filler).
 model CompanySettings {
   id             String   @id @default(cuid())
   companyName    String
@@ -67,6 +69,17 @@ model CompanySettings {
   whatsappNumber String
   primaryColor   String?
   contactEmail   String
+  // Contact / social (editable from backoffice; optional)
+  phone          String?
+  instagramUrl   String?
+  facebookUrl    String?
+  // Location (only shown if an official address is set)
+  address        String?
+  googleMapsUrl  String?
+  // Short "about" text for the Nosotros section (owner-written; optional)
+  aboutText      String?
+  // Logo display scale (1.0 = default). Lets the owner enlarge/shrink the logo.
+  logoScale      Float    @default(1)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -78,18 +91,99 @@ enum Transmission {
   manual
 }
 
+enum VehicleCategory {
+  economico
+  compacto
+  sedan
+  suv
+  suv_grande
+  premium
+}
+
 model Vehicle {
-  id           String       @id @default(cuid())
+  id           String          @id @default(cuid())
   brand        String
   model        String
   year         Int
+  category     VehicleCategory @default(economico)
+  // When true, public listings show "<brand> <model> o similar".
+  orSimilar    Boolean         @default(true)
   transmission Transmission
   passengers   Int
   dailyPrice   Int // USD per day
-  imageUrl     String
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  imageUrl     String // cover photo (used in cards)
+  // Additional real photos for the detail gallery/carousel.
+  images       String[]        @default([])
+  // Short owner-written description (optional).
+  description  String?
+  // Amenities / facilities, e.g. "Aire acondicionado", "Bluetooth".
+  features     String[]        @default([])
+  // Optional custom WhatsApp message for this vehicle. Supports {vehicle}
+  // which is replaced by the vehicle title. Empty = use the default message.
+  whatsappMessage String?
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([isActive])
+  @@index([category])
+}
+
+// --- Editable site content (managed from the backoffice) -------------------
+
+// Requirements to rent (licencia, edad, etc.). Owner-written.
+model Requirement {
+  id        String   @id @default(cuid())
+  text      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+// Delivery / pickup locations (e.g. SDQ airport, Santo Domingo).
+model DeliveryLocation {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  // Highlighted locations (e.g. the airport) render more prominently.
+  highlighted Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+// Frequently asked questions. Owner-written; easy to edit later.
+model FaqItem {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+// Customer reviews. Prepared for real Google reviews; never seeded with fakes.
+model Review {
+  id         String   @id @default(cuid())
+  authorName String
+  rating     Int // 1-5
+  comment    String
+  reviewDate DateTime?
+  avatarUrl  String?
+  source     String   @default("google") // provenance label
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }

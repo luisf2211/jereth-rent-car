@@ -18,7 +18,12 @@ import Alert from "@mui/material/Alert";
 import { vehicleSchema } from "@/lib/validations/vehicle";
 import { createVehicle, updateVehicle } from "@/features/vehicles/actions";
 import type { VehicleAdminItem } from "@/features/vehicles/admin-data";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import { CATEGORY_ORDER, categoryLabel } from "@/features/vehicles/format";
 import VehicleImageUploader from "./VehicleImageUploader";
+import VehicleGalleryUploader from "./VehicleGalleryUploader";
+import FeaturesEditor from "./FeaturesEditor";
 
 interface VehicleFormProps {
   vehicle?: VehicleAdminItem;
@@ -28,10 +33,16 @@ type FormValues = {
   brand: string;
   model: string;
   year: number;
+  category: "economico" | "compacto" | "sedan" | "suv" | "suv_grande" | "premium";
+  orSimilar: boolean;
   transmission: "automatic" | "manual";
   passengers: number;
   dailyPrice: number;
   imageUrl: string;
+  images: string[];
+  description: string;
+  features: string[];
+  whatsappMessage: string;
   isActive: boolean;
 };
 
@@ -55,10 +66,16 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
       brand: vehicle?.brand ?? "",
       model: vehicle?.model ?? "",
       year: vehicle?.year ?? new Date().getFullYear(),
+      category: vehicle?.category ?? "economico",
+      orSimilar: vehicle?.orSimilar ?? true,
       transmission: vehicle?.transmission ?? "automatic",
       passengers: vehicle?.passengers ?? 5,
       dailyPrice: vehicle?.dailyPrice ?? 35,
       imageUrl: vehicle?.imageUrl ?? "",
+      images: vehicle?.images ?? [],
+      description: vehicle?.description ?? "",
+      features: vehicle?.features ?? [],
+      whatsappMessage: vehicle?.whatsappMessage ?? "",
       isActive: vehicle?.isActive ?? true,
     },
   });
@@ -90,6 +107,9 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
         )}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+              Foto de portada
+            </Typography>
             <Controller
               name="imageUrl"
               control={control}
@@ -170,6 +190,41 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
               )}
             />
           </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Controller
+              name="category"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Categoría"
+                  error={Boolean(errors.category)}
+                  helperText={errors.category?.message}
+                >
+                  {CATEGORY_ORDER.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {categoryLabel(c)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Controller
+              name="orSimilar"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  sx={{ mt: 1 }}
+                  control={<Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
+                  label='Mostrar "o similar" en el sitio'
+                />
+              )}
+            />
+          </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <Controller
               name="dailyPrice"
@@ -185,6 +240,69 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
                     input: { startAdornment: <InputAdornment position="start">US$</InputAdornment> },
                   }}
                 />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+              Descripción y facilidades
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Descripción breve (opcional)"
+                  multiline
+                  minRows={3}
+                  error={Boolean(errors.description)}
+                  helperText={errors.description?.message ?? "Un párrafo corto sobre el vehículo"}
+                />
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <Controller
+              name="features"
+              control={control}
+              render={({ field }) => (
+                <FeaturesEditor value={field.value} onChange={field.onChange} />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <Controller
+              name="whatsappMessage"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Mensaje de WhatsApp (opcional)"
+                  multiline
+                  minRows={2}
+                  error={Boolean(errors.whatsappMessage)}
+                  helperText={
+                    errors.whatsappMessage?.message ??
+                    "Mensaje que se envía al consultar por este vehículo. Usa {vehicle} para insertar el nombre. Si lo dejas vacío se usa el mensaje por defecto."
+                  }
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <Divider sx={{ my: 1 }} />
+            <Controller
+              name="images"
+              control={control}
+              render={({ field }) => (
+                <VehicleGalleryUploader value={field.value} onChange={field.onChange} />
               )}
             />
           </Grid>

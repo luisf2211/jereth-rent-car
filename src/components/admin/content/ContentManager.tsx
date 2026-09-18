@@ -1,0 +1,167 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
+import type {
+  AdminRequirement,
+  AdminDeliveryLocation,
+  AdminFaq,
+  AdminReview,
+} from "@/features/content/data";
+import {
+  saveRequirement,
+  deleteRequirement,
+  saveDeliveryLocation,
+  deleteDeliveryLocation,
+  saveFaq,
+  deleteFaq,
+  saveReview,
+  deleteReview,
+} from "@/features/content/actions";
+import ContentSection, { type FieldDef } from "./ContentSection";
+
+interface Props {
+  requirements: AdminRequirement[];
+  deliveryLocations: AdminDeliveryLocation[];
+  faqs: AdminFaq[];
+  reviews: AdminReview[];
+}
+
+/**
+ * Single-screen content manager with tabs. Each tab is a list of records with
+ * add/edit (modal) and delete. No separate pages — everything happens here.
+ */
+export default function ContentManager({ requirements, deliveryLocations, faqs, reviews }: Props) {
+  const router = useRouter();
+  const [tab, setTab] = React.useState(0);
+  const [snack, setSnack] = React.useState<{ msg: string; error?: boolean } | null>(null);
+
+  const notify = (msg: string, error?: boolean) => {
+    setSnack({ msg, error });
+    if (!error) router.refresh();
+  };
+
+  const requirementFields: FieldDef[] = [
+    { name: "text", label: "Requisito", type: "text", multiline: true },
+    { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
+    { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
+  ];
+
+  const deliveryFields: FieldDef[] = [
+    { name: "name", label: "Nombre del lugar", type: "text" },
+    { name: "description", label: "Descripción (opcional)", type: "text", multiline: true },
+    { name: "highlighted", label: "Destacado (ej. aeropuerto)", type: "switch", defaultValue: false, half: true },
+    { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
+    { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true },
+  ];
+
+  const faqFields: FieldDef[] = [
+    { name: "question", label: "Pregunta", type: "text" },
+    { name: "answer", label: "Respuesta", type: "text", multiline: true },
+    { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
+    { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
+  ];
+
+  const reviewFields: FieldDef[] = [
+    { name: "authorName", label: "Nombre del cliente", type: "text", half: true },
+    { name: "rating", label: "Rating (1-5)", type: "number", defaultValue: 5, half: true },
+    { name: "comment", label: "Comentario", type: "text", multiline: true },
+    { name: "avatarUrl", label: "Foto/avatar URL (opcional)", type: "text" },
+    { name: "source", label: "Origen", type: "text", defaultValue: "google", half: true },
+    { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
+    { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true },
+  ];
+
+  return (
+    <>
+      <Card sx={{ mb: 2 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ px: 1 }}
+        >
+          <Tab label="Requisitos" />
+          <Tab label="Lugares de entrega" />
+          <Tab label="FAQ" />
+          <Tab label="Reseñas" />
+        </Tabs>
+      </Card>
+
+      <Box hidden={tab !== 0}>
+        <ContentSection<AdminRequirement>
+          items={requirements}
+          fields={requirementFields}
+          emptyLabel="Aún no hay requisitos. Agrega el primero."
+          addLabel="Nuevo requisito"
+          primaryText={(r) => r.text}
+          onSave={(id, values) => saveRequirement(id, values)}
+          onDelete={(id) => deleteRequirement(id)}
+          onResult={notify}
+        />
+      </Box>
+
+      <Box hidden={tab !== 1}>
+        <ContentSection<AdminDeliveryLocation>
+          items={deliveryLocations}
+          fields={deliveryFields}
+          emptyLabel="Aún no hay lugares de entrega."
+          addLabel="Nuevo lugar"
+          primaryText={(d) => d.name}
+          secondaryText={(d) => d.description ?? undefined}
+          onSave={(id, values) => saveDeliveryLocation(id, values)}
+          onDelete={(id) => deleteDeliveryLocation(id)}
+          onResult={notify}
+        />
+      </Box>
+
+      <Box hidden={tab !== 2}>
+        <ContentSection<AdminFaq>
+          items={faqs}
+          fields={faqFields}
+          emptyLabel="Aún no hay preguntas frecuentes."
+          addLabel="Nueva pregunta"
+          primaryText={(f) => f.question}
+          secondaryText={(f) => f.answer}
+          onSave={(id, values) => saveFaq(id, values)}
+          onDelete={(id) => deleteFaq(id)}
+          onResult={notify}
+        />
+      </Box>
+
+      <Box hidden={tab !== 3}>
+        <ContentSection<AdminReview>
+          items={reviews}
+          fields={reviewFields}
+          emptyLabel="Aún no hay reseñas. Agrega reseñas reales de tus clientes."
+          addLabel="Nueva reseña"
+          primaryText={(r) => `${r.authorName} · ${r.rating}★`}
+          secondaryText={(r) => r.comment}
+          onSave={(id, values) => saveReview(id, values)}
+          onDelete={(id) => deleteReview(id)}
+          onResult={notify}
+        />
+      </Box>
+
+      <Snackbar
+        open={Boolean(snack)}
+        autoHideDuration={4000}
+        onClose={() => setSnack(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        {snack ? (
+          <Alert severity={snack.error ? "error" : "success"} variant="filled" onClose={() => setSnack(null)}>
+            {snack.msg}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
+    </>
+  );
+}

@@ -14,6 +14,9 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
+import Divider from "@mui/material/Divider";
+import Typography from "@mui/material/Typography";
+import Slider from "@mui/material/Slider";
 import { brandingSchema } from "@/lib/validations/branding";
 import { updateBranding } from "@/features/branding/actions";
 import type { BrandingFormData } from "@/features/branding/data";
@@ -23,8 +26,15 @@ type FormValues = {
   companyName: string;
   contactEmail: string;
   whatsappNumber: string;
+  phone: string;
   logoUrl: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  googleMapsUrl: string;
+  address: string;
+  aboutText: string;
   primaryColor: string;
+  logoScale: number;
 };
 
 /**
@@ -121,6 +131,21 @@ export default function BrandingForm({ initial }: { initial: BrandingFormData })
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Controller
+                name="phone"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Teléfono (opcional)"
+                    placeholder="+1 809 000 0000"
+                    error={Boolean(errors.phone)}
+                    helperText={errors.phone?.message}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
                 name="primaryColor"
                 control={control}
                 render={({ field }) => (
@@ -161,6 +186,116 @@ export default function BrandingForm({ initial }: { initial: BrandingFormData })
                     value={field.value}
                     onChange={field.onChange}
                     error={errors.logoUrl?.message}
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 8 }}>
+              <Controller
+                name="logoScale"
+                control={control}
+                render={({ field }) => (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Tamaño del logo en el footer: {Math.round((field.value ?? 1) * 100)}%
+                    </Typography>
+                    <Slider
+                      value={field.value ?? 1}
+                      onChange={(_, v) => field.onChange(v as number)}
+                      min={0.8}
+                      max={3}
+                      step={0.1}
+                      marks={[
+                        { value: 1, label: "1x" },
+                        { value: 2, label: "2x" },
+                        { value: 3, label: "3x" },
+                      ]}
+                      valueLabelDisplay="auto"
+                      valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
+                    />
+                  </Box>
+                )}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <Divider sx={{ my: 1 }} />
+              <Typography variant="subtitle2" color="text.secondary">
+                Redes y ubicación
+              </Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
+                name="instagramUrl"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Instagram (opcional)"
+                    placeholder="https://instagram.com/..."
+                    error={Boolean(errors.instagramUrl)}
+                    helperText={errors.instagramUrl?.message}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
+                name="facebookUrl"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Facebook (opcional)"
+                    placeholder="https://facebook.com/..."
+                    error={Boolean(errors.facebookUrl)}
+                    helperText={errors.facebookUrl?.message}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
+                name="address"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Dirección (opcional)"
+                    error={Boolean(errors.address)}
+                    helperText={errors.address?.message}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
+                name="googleMapsUrl"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Google Maps URL (opcional)"
+                    placeholder="https://maps.google.com/..."
+                    error={Boolean(errors.googleMapsUrl)}
+                    helperText={errors.googleMapsUrl?.message ?? "Solo se muestra si la agregas"}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Controller
+                name="aboutText"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Sobre Jereth Rent Car (opcional)"
+                    multiline
+                    minRows={3}
+                    error={Boolean(errors.aboutText)}
+                    helperText={errors.aboutText?.message ?? "Texto corto para la sección Nosotros"}
                   />
                 )}
               />

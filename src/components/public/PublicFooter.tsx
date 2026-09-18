@@ -21,7 +21,7 @@ import { PUBLIC_NAV_LINKS } from "./nav-links";
  * Rendered on a dark surface for contrast. Server Component.
  */
 export default function PublicFooter({ settings }: { settings: CompanySettings }) {
-  const { companyName, logoUrl, whatsappNumber, contactEmail, socialLinks } = settings;
+  const { companyName, logoUrl, logoScale, whatsappNumber, contactEmail, socialLinks } = settings;
   const whatsappUrl = buildWhatsAppUrl(whatsappNumber, "Hola, quiero información sobre alquiler de vehículos.");
   const year = new Date().getFullYear();
 
@@ -30,7 +30,14 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
       <Container sx={{ py: { xs: 5, md: 7 } }}>
         <Grid container spacing={4}>
           <Grid size={{ xs: 12, md: 5 }}>
-            <Logo companyName={companyName} logoUrl={logoUrl} variant="onDark" />
+            <Logo
+              companyName={companyName}
+              logoUrl={logoUrl}
+              variant="onDark"
+              display="logo"
+              scale={logoScale}
+              baseHeight={110}
+            />
             <Typography variant="body2" sx={{ mt: 2, color: "grey.400", maxWidth: 360 }}>
               Renta el vehículo perfecto para tu próximo viaje. Atención rápida y cercana por WhatsApp.
             </Typography>
@@ -55,7 +62,7 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
             </Stack>
           </Grid>
 
-          <Grid size={{ xs: 6, md: 4 }} id="contacto">
+          <Grid size={{ xs: 6, md: 4 }}>
             <Typography variant="subtitle2" sx={{ color: "common.white", mb: 1.5 }}>
               Contacto
             </Typography>

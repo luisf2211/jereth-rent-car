@@ -14,10 +14,16 @@ function toVehicle(row: PrismaVehicle): Vehicle {
     brand: row.brand,
     model: row.model,
     year: row.year,
+    category: row.category,
+    orSimilar: row.orSimilar,
     transmission: row.transmission,
     passengers: row.passengers,
     dailyPrice: row.dailyPrice,
     imageUrl: row.imageUrl,
+    images: row.images,
+    description: row.description,
+    features: row.features,
+    whatsappMessage: row.whatsappMessage,
     isActive: row.isActive,
   };
 }

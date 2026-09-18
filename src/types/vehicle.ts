@@ -7,14 +7,28 @@
  */
 export type Transmission = "automatic" | "manual";
 
+export type VehicleCategory =
+  | "economico"
+  | "compacto"
+  | "sedan"
+  | "suv"
+  | "suv_grande"
+  | "premium";
+
 export interface Vehicle {
   id: string;
   brand: string;
   model: string;
   year: number;
+  category: VehicleCategory;
+  orSimilar: boolean;
   transmission: Transmission;
   passengers: number;
   dailyPrice: number; // in USD
-  imageUrl: string;
+  imageUrl: string; // cover
+  images: string[]; // gallery
+  description: string | null;
+  features: string[];
+  whatsappMessage: string | null;
   isActive: boolean;
 }

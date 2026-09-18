@@ -26,7 +26,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { VehicleAdminItem } from "@/features/vehicles/admin-data";
 import { toggleVehicleActive } from "@/features/vehicles/actions";
-import { formatDailyPrice, transmissionLabel, vehicleTitle } from "@/features/vehicles/format";
+import { formatDailyPrice, transmissionLabel, vehicleTitleWithYear, categoryLabel } from "@/features/vehicles/format";
 
 interface Props {
   vehicles: VehicleAdminItem[];
@@ -74,7 +74,7 @@ export default function VehiclesAdminList({ vehicles }: Props) {
   };
 
   const askToggle = (v: VehicleAdminItem) => {
-    setConfirmTarget({ id: v.id, title: vehicleTitle(v), nextActive: !v.isActive });
+    setConfirmTarget({ id: v.id, title: vehicleTitleWithYear(v), nextActive: !v.isActive });
     closeMenu();
   };
 
@@ -111,7 +111,14 @@ export default function VehiclesAdminList({ vehicles }: Props) {
       headerName: "Vehículo",
       flex: 1.2,
       minWidth: 180,
-      renderCell: (params) => vehicleTitle(params.row),
+      renderCell: (params) => vehicleTitleWithYear(params.row),
+    },
+    {
+      field: "category",
+      headerName: "Categoría",
+      flex: 0.7,
+      minWidth: 120,
+      renderCell: (params) => categoryLabel(params.row.category),
     },
     {
       field: "transmission",
@@ -174,7 +181,7 @@ export default function VehiclesAdminList({ vehicles }: Props) {
                   <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
-                        {vehicleTitle(v)}
+                        {vehicleTitleWithYear(v)}
                       </Typography>
                       <IconButton aria-label="Acciones" size="small" onClick={(e) => openMenu(e, v)}>
                         <MoreVertRoundedIcon />

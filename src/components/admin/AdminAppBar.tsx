@@ -31,6 +31,7 @@ interface AdminAppBarProps {
 const SEGMENT_LABELS: Record<string, string> = {
   admin: "Dashboard",
   vehicles: "Vehículos",
+  content: "Contenido",
   users: "Usuarios",
   roles: "Roles",
   settings: "Configuración",
@@ -65,6 +66,9 @@ export default function AdminAppBar({ onMenuClick, userName, userEmail }: AdminA
         width: { md: `calc(100% - ${ADMIN_DRAWER_WIDTH}px)` },
         ml: { md: `${ADMIN_DRAWER_WIDTH}px` },
         zIndex: (theme) => theme.zIndex.drawer - 1,
+        bgcolor: "background.paper",
+        borderBottom: "1px solid",
+        borderColor: "divider",
       }}
     >
       <Toolbar sx={{ gap: 1 }}>

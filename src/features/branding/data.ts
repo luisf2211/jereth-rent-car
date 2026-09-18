@@ -4,16 +4,30 @@ export interface BrandingFormData {
   companyName: string;
   contactEmail: string;
   whatsappNumber: string;
+  phone: string;
   logoUrl: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  googleMapsUrl: string;
+  address: string;
+  aboutText: string;
   primaryColor: string;
+  logoScale: number;
 }
 
 const EMPTY: BrandingFormData = {
   companyName: "",
   contactEmail: "",
   whatsappNumber: "",
+  phone: "",
   logoUrl: "",
+  instagramUrl: "",
+  facebookUrl: "",
+  googleMapsUrl: "",
+  address: "",
+  aboutText: "",
   primaryColor: "",
+  logoScale: 1,
 };
 
 /** Editable branding fields for the admin form. */
@@ -24,7 +38,14 @@ export async function getBrandingFormData(): Promise<BrandingFormData> {
     companyName: row.companyName,
     contactEmail: row.contactEmail,
     whatsappNumber: row.whatsappNumber,
+    phone: row.phone ?? "",
     logoUrl: row.logoUrl ?? "",
+    instagramUrl: row.instagramUrl ?? "",
+    facebookUrl: row.facebookUrl ?? "",
+    googleMapsUrl: row.googleMapsUrl ?? "",
+    address: row.address ?? "",
+    aboutText: row.aboutText ?? "",
     primaryColor: row.primaryColor ?? "",
+    logoScale: row.logoScale ?? 1,
   };
 }

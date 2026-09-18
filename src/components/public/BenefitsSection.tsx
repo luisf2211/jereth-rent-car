@@ -38,35 +38,34 @@ const BENEFITS: Benefit[] = [
 ];
 
 /**
- * Four key benefits with MUI icons.
+ * Four key benefits. Clean icon-led layout, no heavy boxes — the icon sits in
+ * a soft tinted square, text left-aligned for a calmer rhythm.
  */
 export default function BenefitsSection() {
   return (
-    <Box id="nosotros" sx={{ py: { xs: 6, md: 9 }, bgcolor: "grey.50" }}>
+    <Box id="beneficios" sx={{ py: { xs: 7, md: 11 } }}>
       <Container>
-        <Grid container spacing={{ xs: 3, md: 4 }}>
+        <Grid container spacing={{ xs: 4, md: 5 }}>
           {BENEFITS.map((benefit) => (
             <Grid key={benefit.title} size={{ xs: 12, sm: 6, md: 3 }}>
-              <Box sx={{ textAlign: { xs: "left", md: "center" } }}>
-                <Box
-                  sx={{
-                    display: "inline-flex",
-                    p: 1.5,
-                    borderRadius: "50%",
-                    bgcolor: "primary.main",
-                    color: "primary.contrastText",
-                    mb: 2,
-                  }}
-                >
-                  {benefit.icon}
-                </Box>
-                <Typography variant="h6" component="h3" sx={{ mb: 0.5 }}>
-                  {benefit.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {benefit.description}
-                </Typography>
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  p: 1.4,
+                  borderRadius: 3,
+                  bgcolor: "rgba(230,0,122,0.08)",
+                  color: "primary.main",
+                  mb: 2,
+                }}
+              >
+                {benefit.icon}
               </Box>
+              <Typography variant="h6" component="h3" sx={{ mb: 0.75 }}>
+                {benefit.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                {benefit.description}
+              </Typography>
             </Grid>
           ))}
         </Grid>

@@ -1,6 +1,7 @@
 import * as React from "react";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
@@ -15,6 +16,7 @@ export interface AdminNavItem {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin", icon: <DashboardRoundedIcon /> },
   { label: "Vehículos", href: "/admin/vehicles", icon: <DirectionsCarFilledRoundedIcon /> },
+  { label: "Contenido", href: "/admin/content", icon: <ArticleRoundedIcon /> },
   { label: "Usuarios", href: "/admin/users", icon: <PeopleRoundedIcon /> },
   { label: "Roles", href: "/admin/roles", icon: <AdminPanelSettingsRoundedIcon /> },
   { label: "Branding", href: "/admin/settings/branding", icon: <PaletteRoundedIcon /> },

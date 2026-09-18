@@ -50,13 +50,21 @@ export async function updateBranding(input: unknown): Promise<ActionResult> {
     return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
-  const { companyName, contactEmail, whatsappNumber, logoUrl, primaryColor } = parsed.data;
+  const d = parsed.data;
+  const orNull = (v: string | undefined) => (v && v.length > 0 ? v : null);
   const data = {
-    companyName,
-    contactEmail,
-    whatsappNumber,
-    logoUrl: logoUrl ? logoUrl : null,
-    primaryColor: primaryColor ? primaryColor : null,
+    companyName: d.companyName,
+    contactEmail: d.contactEmail ?? "",
+    whatsappNumber: d.whatsappNumber ?? "",
+    phone: orNull(d.phone),
+    logoUrl: orNull(d.logoUrl),
+    instagramUrl: orNull(d.instagramUrl),
+    facebookUrl: orNull(d.facebookUrl),
+    googleMapsUrl: orNull(d.googleMapsUrl),
+    address: orNull(d.address),
+    aboutText: orNull(d.aboutText),
+    primaryColor: orNull(d.primaryColor),
+    logoScale: d.logoScale ?? 1,
   };
 
   try {

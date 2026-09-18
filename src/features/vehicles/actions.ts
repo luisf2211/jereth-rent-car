@@ -34,8 +34,13 @@ export async function createVehicle(input: unknown): Promise<ActionResult> {
     return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
+  const data = {
+    ...parsed.data,
+    description: parsed.data.description || null,
+    whatsappMessage: parsed.data.whatsappMessage || null,
+  };
   try {
-    await prisma.vehicle.create({ data: parsed.data });
+    await prisma.vehicle.create({ data });
   } catch (error) {
     console.error("createVehicle failed:", error);
     return { ok: false, message: "No se pudo crear el vehículo." };
@@ -57,8 +62,13 @@ export async function updateVehicle(id: string, input: unknown): Promise<ActionR
     return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
+  const data = {
+    ...parsed.data,
+    description: parsed.data.description || null,
+    whatsappMessage: parsed.data.whatsappMessage || null,
+  };
   try {
-    await prisma.vehicle.update({ where: { id }, data: parsed.data });
+    await prisma.vehicle.update({ where: { id }, data });
   } catch (error) {
     console.error("updateVehicle failed:", error);
     return { ok: false, message: "No se pudo actualizar el vehículo." };

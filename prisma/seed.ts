@@ -22,15 +22,17 @@ const PERMISSION_KEYS = [
   "vehicles.create",
   "vehicles.edit",
   "vehicles.disable",
+  "content.view",
+  "content.edit",
 ] as const;
 
 const VEHICLES = [
-  { id: "toyota-corolla-2023", brand: "Toyota", model: "Corolla", year: 2023, transmission: "automatic" as const, passengers: 5, dailyPrice: 35, imageUrl: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?auto=format&fit=crop&w=1200&q=80" },
-  { id: "honda-crv-2022", brand: "Honda", model: "CR-V", year: 2022, transmission: "automatic" as const, passengers: 5, dailyPrice: 52, imageUrl: "https://images.unsplash.com/photo-1568844293986-8d0400bd4745?auto=format&fit=crop&w=1200&q=80" },
-  { id: "hyundai-tucson-2023", brand: "Hyundai", model: "Tucson", year: 2023, transmission: "automatic" as const, passengers: 5, dailyPrice: 48, imageUrl: "https://images.unsplash.com/photo-1633867751309-1e2e57b9c26f?auto=format&fit=crop&w=1200&q=80" },
-  { id: "kia-rio-2022", brand: "Kia", model: "Rio", year: 2022, transmission: "manual" as const, passengers: 5, dailyPrice: 28, imageUrl: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80" },
-  { id: "toyota-rav4-2023", brand: "Toyota", model: "RAV4", year: 2023, transmission: "automatic" as const, passengers: 5, dailyPrice: 58, imageUrl: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1200&q=80" },
-  { id: "nissan-versa-2022", brand: "Nissan", model: "Versa", year: 2022, transmission: "automatic" as const, passengers: 5, dailyPrice: 30, imageUrl: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=1200&q=80" },
+  { id: "toyota-corolla-2023", brand: "Toyota", model: "Corolla", year: 2023, category: "sedan" as const, transmission: "automatic" as const, passengers: 5, dailyPrice: 35, imageUrl: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?auto=format&fit=crop&w=1200&q=80" },
+  { id: "honda-crv-2022", brand: "Honda", model: "CR-V", year: 2022, category: "suv" as const, transmission: "automatic" as const, passengers: 5, dailyPrice: 52, imageUrl: "https://images.unsplash.com/photo-1568844293986-8d0400bd4745?auto=format&fit=crop&w=1200&q=80" },
+  { id: "hyundai-tucson-2023", brand: "Hyundai", model: "Tucson", year: 2023, category: "suv" as const, transmission: "automatic" as const, passengers: 5, dailyPrice: 48, imageUrl: "https://images.unsplash.com/photo-1633867751309-1e2e57b9c26f?auto=format&fit=crop&w=1200&q=80" },
+  { id: "kia-rio-2022", brand: "Kia", model: "Rio", year: 2022, category: "economico" as const, transmission: "manual" as const, passengers: 5, dailyPrice: 28, imageUrl: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80" },
+  { id: "toyota-rav4-2023", brand: "Toyota", model: "RAV4", year: 2023, category: "suv" as const, transmission: "automatic" as const, passengers: 5, dailyPrice: 58, imageUrl: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1200&q=80" },
+  { id: "nissan-versa-2022", brand: "Nissan", model: "Versa", year: 2022, category: "compacto" as const, transmission: "automatic" as const, passengers: 5, dailyPrice: 30, imageUrl: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=1200&q=80" },
 ];
 
 async function main() {
@@ -78,19 +80,27 @@ async function main() {
   });
   console.log(`✅ Admin user: ${admin.email} (password: Admin123!)`);
 
-  // Company settings (single row)
+  // Company settings (single row). Placeholders only — real contact info is
+  // filled in by the owner from the backoffice (we never invent it).
   const existingSettings = await prisma.companySettings.findFirst();
   if (!existingSettings) {
     await prisma.companySettings.create({
       data: {
-        companyName: "DriveNow Rent Car",
+        companyName: "Jereth Rent Car",
         logoUrl: null,
-        whatsappNumber: "18095551234",
+        whatsappNumber: "",
         primaryColor: null,
-        contactEmail: "reservas@drivenow.com",
+        contactEmail: "",
       },
     });
     console.log("✅ CompanySettings created");
+  } else if (existingSettings.companyName === "DriveNow Rent Car") {
+    // Migrate the old placeholder name to Jereth without touching other fields.
+    await prisma.companySettings.update({
+      where: { id: existingSettings.id },
+      data: { companyName: "Jereth Rent Car" },
+    });
+    console.log("✅ CompanySettings renamed to Jereth Rent Car");
   } else {
     console.log("• CompanySettings already present, skipping");
   }

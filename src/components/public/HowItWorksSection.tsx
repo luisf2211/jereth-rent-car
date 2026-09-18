@@ -17,38 +17,34 @@ const STEPS = [
  */
 export default function HowItWorksSection() {
   return (
-    <Box id="faq" sx={{ py: { xs: 6, md: 9 } }}>
+    <Box id="como-funciona" sx={{ py: { xs: 6, md: 9 } }}>
       <Container>
         <SectionTitle
           title="Cómo funciona"
           subtitle="Rentar con nosotros es simple. En cuatro pasos estás en camino."
           align="center"
         />
-        <Grid container spacing={{ xs: 3, md: 4 }} sx={{ mt: 1 }}>
+        <Grid container spacing={{ xs: 4, md: 4 }} sx={{ mt: 1 }}>
           {STEPS.map((step, index) => (
             <Grid key={step.title} size={{ xs: 12, sm: 6, md: 3 }}>
-              <Box>
-                <Box
+              <Box sx={{ position: "relative" }}>
+                <Typography
+                  aria-hidden
                   sx={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: "50%",
-                    border: "2px solid",
-                    borderColor: "primary.main",
-                    color: "primary.main",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 700,
-                    mb: 2,
+                    fontSize: "3.5rem",
+                    fontWeight: 800,
+                    lineHeight: 1,
+                    color: "rgba(230,0,122,0.14)",
+                    letterSpacing: "-0.04em",
+                    mb: 1,
                   }}
                 >
-                  {index + 1}
-                </Box>
-                <Typography variant="h6" component="h3" sx={{ mb: 0.5 }}>
+                  {String(index + 1).padStart(2, "0")}
+                </Typography>
+                <Typography variant="h6" component="h3" sx={{ mb: 0.75 }}>
                   {step.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
                   {step.description}
                 </Typography>
               </Box>
