@@ -7,6 +7,7 @@
 export interface CompanySettings {
   companyName: string;
   logoUrl: string | null;
+  footerLogoUrl: string | null;
   whatsappNumber: string; // digits only, international format e.g. "18095551234"
   primaryColor: string | null;
   contactEmail: string;

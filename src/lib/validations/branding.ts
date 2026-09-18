@@ -18,6 +18,7 @@ export const brandingSchema = z.object({
     .or(z.literal("")),
   phone: z.string().trim().max(30).optional().or(z.literal("")),
   logoUrl: optionalUrl,
+  footerLogoUrl: optionalUrl,
   instagramUrl: optionalUrl,
   facebookUrl: optionalUrl,
   googleMapsUrl: optionalUrl,

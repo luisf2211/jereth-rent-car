@@ -3,54 +3,135 @@ import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
+import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
+import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
+import LuggageRoundedIcon from "@mui/icons-material/LuggageRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 
 const STEPS = [
-  { title: "Escríbenos", description: "Contáctanos por WhatsApp y cuéntanos qué necesitas." },
-  { title: "Elige tu vehículo", description: "Te ayudamos a elegir el vehículo ideal para tu viaje." },
-  { title: "Confirma tu reserva", description: "Acordamos fechas, entrega y condiciones de forma simple." },
-  { title: "Disfruta tu viaje", description: "Recibe tu vehículo y disfruta la carretera con tranquilidad." },
+  {
+    icon: ChatRoundedIcon,
+    title: "Escríbenos",
+    description: "Contáctanos por WhatsApp y cuéntanos qué necesitas.",
+  },
+  {
+    icon: DirectionsCarFilledRoundedIcon,
+    title: "Elige tu vehículo",
+    description: "Te ayudamos a elegir el vehículo ideal para tu viaje.",
+  },
+  {
+    icon: EventAvailableRoundedIcon,
+    title: "Confirma tu reserva",
+    description: "Acordamos fechas, entrega y condiciones de forma simple.",
+  },
+  {
+    icon: LuggageRoundedIcon,
+    title: "Disfruta tu viaje",
+    description: "Recibe tu vehículo y disfruta la carretera con tranquilidad.",
+  },
 ];
 
 /**
- * "How it works" — four numbered steps.
+ * "How it works" — four ordered steps shown as icon badges connected by a
+ * subtle guide line on desktop, so the flow reads left-to-right.
  */
 export default function HowItWorksSection() {
   return (
-    <Box id="como-funciona" sx={{ py: { xs: 6, md: 9 } }}>
+    <Box id="como-funciona" sx={{ py: { xs: 6, md: 9 }, bgcolor: "grey.50" }}>
       <Container>
         <SectionTitle
           title="Cómo funciona"
           subtitle="Rentar con nosotros es simple. En cuatro pasos estás en camino."
           align="center"
         />
-        <Grid container spacing={{ xs: 4, md: 4 }} sx={{ mt: 1 }}>
-          {STEPS.map((step, index) => (
-            <Grid key={step.title} size={{ xs: 12, sm: 6, md: 3 }}>
-              <Box sx={{ position: "relative" }}>
-                <Typography
-                  aria-hidden
-                  sx={{
-                    fontSize: "3.5rem",
-                    fontWeight: 800,
-                    lineHeight: 1,
-                    color: "rgba(230,0,122,0.14)",
-                    letterSpacing: "-0.04em",
-                    mb: 1,
-                  }}
-                >
-                  {String(index + 1).padStart(2, "0")}
-                </Typography>
-                <Typography variant="h6" component="h3" sx={{ mb: 0.75 }}>
-                  {step.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                  {step.description}
-                </Typography>
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
+
+        <Box sx={{ position: "relative", mt: { xs: 4, md: 6 } }}>
+          {/* Connecting guide line (desktop only), sits behind the badges. */}
+          <Box
+            aria-hidden
+            sx={{
+              display: { xs: "none", md: "block" },
+              position: "absolute",
+              top: 32,
+              left: "12.5%",
+              right: "12.5%",
+              height: "2px",
+              bgcolor: "divider",
+            }}
+          />
+
+          <Grid container spacing={{ xs: 4, md: 3 }}>
+            {STEPS.map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <Grid key={step.title} size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Box
+                    sx={{
+                      position: "relative",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      px: 1,
+                    }}
+                  >
+                    {/* Icon badge */}
+                    <Box
+                      sx={{
+                        position: "relative",
+                        width: 64,
+                        height: 64,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        bgcolor: "common.white",
+                        color: "primary.main",
+                        border: "2px solid",
+                        borderColor: "primary.main",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+                      }}
+                    >
+                      <Icon sx={{ fontSize: 30 }} />
+                      {/* Step number chip */}
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: -6,
+                          right: -6,
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          bgcolor: "primary.main",
+                          color: "primary.contrastText",
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {index + 1}
+                      </Box>
+                    </Box>
+
+                    <Typography variant="h6" component="h3" sx={{ mt: 2.5, mb: 0.75 }}>
+                      {step.title}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ lineHeight: 1.6, maxWidth: 240 }}
+                    >
+                      {step.description}
+                    </Typography>
+                  </Box>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
       </Container>
     </Box>
   );

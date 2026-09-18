@@ -10,7 +10,6 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import type {
   AdminRequirement,
-  AdminDeliveryLocation,
   AdminFaq,
   AdminReview,
   AdminTextItem,
@@ -18,8 +17,6 @@ import type {
 import {
   saveRequirement,
   deleteRequirement,
-  saveDeliveryLocation,
-  deleteDeliveryLocation,
   saveFaq,
   deleteFaq,
   saveReview,
@@ -33,7 +30,6 @@ import ContentSection, { type FieldDef } from "./ContentSection";
 
 interface Props {
   requirements: AdminRequirement[];
-  deliveryLocations: AdminDeliveryLocation[];
   faqs: AdminFaq[];
   reviews: AdminReview[];
   inclusions: AdminTextItem[];
@@ -46,7 +42,6 @@ interface Props {
  */
 export default function ContentManager({
   requirements,
-  deliveryLocations,
   faqs,
   reviews,
   inclusions,
@@ -65,14 +60,6 @@ export default function ContentManager({
     { name: "text", label: "Requisito", type: "text", multiline: true },
     { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
     { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
-  ];
-
-  const deliveryFields: FieldDef[] = [
-    { name: "name", label: "Nombre del lugar", type: "text" },
-    { name: "description", label: "Descripción (opcional)", type: "text", multiline: true },
-    { name: "highlighted", label: "Destacado (ej. aeropuerto)", type: "switch", defaultValue: false, half: true },
-    { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
-    { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true },
   ];
 
   const faqFields: FieldDef[] = [
@@ -110,7 +97,6 @@ export default function ContentManager({
         >
           <Tab label="Requisitos" />
           <Tab label="Qué incluye" />
-          <Tab label="Lugares de entrega" />
           <Tab label="Políticas" />
           <Tab label="FAQ" />
           <Tab label="Reseñas" />
@@ -144,20 +130,6 @@ export default function ContentManager({
       </Box>
 
       <Box hidden={tab !== 2}>
-        <ContentSection<AdminDeliveryLocation>
-          items={deliveryLocations}
-          fields={deliveryFields}
-          emptyLabel="Aún no hay lugares de entrega."
-          addLabel="Nuevo lugar"
-          primaryText={(d) => d.name}
-          secondaryText={(d) => d.description ?? undefined}
-          onSave={(id, values) => saveDeliveryLocation(id, values)}
-          onDelete={(id) => deleteDeliveryLocation(id)}
-          onResult={notify}
-        />
-      </Box>
-
-      <Box hidden={tab !== 3}>
         <ContentSection<AdminTextItem>
           items={policies}
           fields={textFields}
@@ -170,7 +142,7 @@ export default function ContentManager({
         />
       </Box>
 
-      <Box hidden={tab !== 4}>
+      <Box hidden={tab !== 3}>
         <ContentSection<AdminFaq>
           items={faqs}
           fields={faqFields}
@@ -184,7 +156,7 @@ export default function ContentManager({
         />
       </Box>
 
-      <Box hidden={tab !== 5}>
+      <Box hidden={tab !== 4}>
         <ContentSection<AdminReview>
           items={reviews}
           fields={reviewFields}

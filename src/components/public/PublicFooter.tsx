@@ -21,7 +21,10 @@ import { PUBLIC_NAV_LINKS } from "./nav-links";
  * Rendered on a dark surface for contrast. Server Component.
  */
 export default function PublicFooter({ settings }: { settings: CompanySettings }) {
-  const { companyName, logoUrl, logoScale, whatsappNumber, contactEmail, socialLinks } = settings;
+  const { companyName, logoUrl, footerLogoUrl, logoScale, whatsappNumber, contactEmail, socialLinks } = settings;
+  // Footer uses its own logo when set; otherwise falls back to the navbar logo,
+  // then to the text wordmark (handled inside <Logo>).
+  const footerLogo = footerLogoUrl || logoUrl;
   const whatsappUrl = buildWhatsAppUrl(whatsappNumber, "Hola, quiero información sobre alquiler de vehículos.");
   const year = new Date().getFullYear();
 
@@ -32,7 +35,7 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
           <Grid size={{ xs: 12, md: 5 }}>
             <Logo
               companyName={companyName}
-              logoUrl={logoUrl}
+              logoUrl={footerLogo}
               variant="onDark"
               display="logo"
               scale={logoScale}

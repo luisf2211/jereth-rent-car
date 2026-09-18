@@ -33,7 +33,7 @@ function isActive(pathname: string, href: string): boolean {
  */
 export default function AdminSidebar({ onNavigate, permissions }: AdminSidebarProps) {
   const pathname = usePathname();
-  const { companyName, logoUrl } = useBranding();
+  const { companyName } = useBranding();
   const permSet = React.useMemo(() => new Set(permissions), [permissions]);
   const visibleItems = ADMIN_NAV_ITEMS.filter(
     (item) => !item.permission || permSet.has(item.permission)
@@ -43,7 +43,9 @@ export default function AdminSidebar({ onNavigate, permissions }: AdminSidebarPr
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Toolbar sx={{ px: 2.5 }}>
         <Box component={NextLink} href="/admin" sx={{ display: "flex", alignItems: "center" }}>
-          <Logo companyName={companyName} logoUrl={logoUrl} display="name" />
+          {/* Backoffice always shows the company name as a wordmark, never the
+              uploaded logo (those are for the public site). */}
+          <Logo companyName={companyName} logoUrl={null} display="name" />
         </Box>
       </Toolbar>
       <List sx={{ px: 1.5, flexGrow: 1 }}>

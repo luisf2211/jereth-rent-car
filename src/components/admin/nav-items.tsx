@@ -2,6 +2,7 @@ import * as React from "react";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
@@ -21,6 +22,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin", icon: <DashboardRoundedIcon /> },
   { label: "Vehículos", href: "/admin/vehicles", icon: <DirectionsCarFilledRoundedIcon />, permission: "vehicles.view" },
   { label: "Contenido", href: "/admin/content", icon: <ArticleRoundedIcon />, permission: "content.view" },
+  { label: "Lugares de entrega", href: "/admin/delivery", icon: <PlaceRoundedIcon />, permission: "delivery.view" },
   { label: "Usuarios", href: "/admin/users", icon: <PeopleRoundedIcon />, permission: "users.view" },
   { label: "Roles", href: "/admin/roles", icon: <AdminPanelSettingsRoundedIcon />, permission: "roles.view" },
   { label: "Branding", href: "/admin/settings/branding", icon: <PaletteRoundedIcon />, permission: "branding.view" },

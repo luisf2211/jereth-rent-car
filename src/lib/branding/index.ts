@@ -11,6 +11,7 @@ import prisma from "@/lib/prisma";
 const FALLBACK_SETTINGS: CompanySettings = {
   companyName: "Jereth Rent Car",
   logoUrl: null,
+  footerLogoUrl: null,
   whatsappNumber: "",
   primaryColor: null,
   contactEmail: "",
@@ -33,6 +34,7 @@ export async function getCompanySettings(): Promise<CompanySettings> {
     return {
       companyName: row.companyName,
       logoUrl: row.logoUrl,
+      footerLogoUrl: row.footerLogoUrl,
       whatsappNumber: row.whatsappNumber,
       primaryColor: row.primaryColor,
       contactEmail: row.contactEmail,

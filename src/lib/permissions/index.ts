@@ -21,6 +21,8 @@ export const PERMISSIONS = [
   "vehicles.disable",
   "content.view",
   "content.edit",
+  "delivery.view",
+  "delivery.edit",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -74,7 +76,17 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     viewPermission: "content.view",
     permissions: [
       { key: "content.view", label: "Ver contenido" },
-      { key: "content.edit", label: "Editar contenido (requisitos, FAQ, reseñas, entrega)" },
+      { key: "content.edit", label: "Editar contenido (requisitos, FAQ, reseñas, políticas)" },
+    ],
+  },
+  {
+    key: "delivery",
+    label: "Lugares de entrega",
+    href: "/admin/delivery",
+    viewPermission: "delivery.view",
+    permissions: [
+      { key: "delivery.view", label: "Ver lugares de entrega" },
+      { key: "delivery.edit", label: "Editar lugares de entrega" },
     ],
   },
   {

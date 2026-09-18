@@ -65,7 +65,10 @@ model RolePermission {
 model CompanySettings {
   id             String   @id @default(cuid())
   companyName    String
+  // Logo shown in the navbar (falls back to the text wordmark when null).
   logoUrl        String?
+  // Logo shown in the footer (falls back to logoUrl, then the wordmark).
+  footerLogoUrl  String?
   whatsappNumber String
   primaryColor   String?
   contactEmail   String
@@ -161,6 +164,11 @@ model DeliveryLocation {
   id          String   @id @default(cuid())
   name        String
   description String?
+  // Extra fee (USD) added to the rental total when this location is chosen
+  // for pickup or return. 0 = free.
+  deliveryFee Int      @default(0)
+  // Optional Google Maps URL to show the exact spot (e.g. airport terminal).
+  mapUrl      String?
   // Highlighted locations (e.g. the airport) render more prominently.
   highlighted Boolean  @default(false)
   sortOrder   Int      @default(0)

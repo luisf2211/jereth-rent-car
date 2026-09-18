@@ -24,6 +24,8 @@ const PERMISSION_KEYS = [
   "vehicles.disable",
   "content.view",
   "content.edit",
+  "delivery.view",
+  "delivery.edit",
 ] as const;
 
 const VEHICLES = [

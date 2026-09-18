@@ -10,15 +10,6 @@ export const requirementSchema = z.object({
 /** Simple text item (inclusiones / políticas) — mismo shape que requisito. */
 export const simpleTextSchema = requirementSchema;
 
-/** Lugar de entrega. */
-export const deliveryLocationSchema = z.object({
-  name: z.string().trim().min(2, "El nombre es obligatorio").max(120),
-  description: z.string().trim().max(400).optional().or(z.literal("")),
-  highlighted: z.boolean(),
-  sortOrder: z.coerce.number().int().min(0).max(999),
-  isActive: z.boolean(),
-});
-
 /** Pregunta frecuente. */
 export const faqSchema = z.object({
   question: z.string().trim().min(4, "La pregunta es obligatoria").max(200),
@@ -39,6 +30,5 @@ export const reviewSchema = z.object({
 });
 
 export type RequirementInput = z.infer<typeof requirementSchema>;
-export type DeliveryLocationInput = z.infer<typeof deliveryLocationSchema>;
 export type FaqInput = z.infer<typeof faqSchema>;
 export type ReviewInput = z.infer<typeof reviewSchema>;

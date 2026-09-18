@@ -6,7 +6,6 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { hasPermission } from "@/lib/permissions";
 import {
   listRequirementsAdmin,
-  listDeliveryLocationsAdmin,
   listFaqsAdmin,
   listReviewsAdmin,
   listInclusionsAdmin,
@@ -19,9 +18,8 @@ export default async function ContentPage() {
   const user = await getCurrentUser();
   if (!hasPermission(user, "content.view")) return <AccessDenied />;
 
-  const [requirements, deliveryLocations, faqs, reviews, inclusions, policies] = await Promise.all([
+  const [requirements, faqs, reviews, inclusions, policies] = await Promise.all([
     listRequirementsAdmin(),
-    listDeliveryLocationsAdmin(),
     listFaqsAdmin(),
     listReviewsAdmin(),
     listInclusionsAdmin(),
@@ -32,11 +30,10 @@ export default async function ContentPage() {
     <>
       <PageHeader
         title="Contenido del sitio"
-        description="Gestiona requisitos, lugares de entrega, preguntas frecuentes y reseñas. Solo se muestra en el sitio lo que agregues aquí."
+        description="Gestiona requisitos, qué incluye la renta, políticas, preguntas frecuentes y reseñas. Solo se muestra en el sitio lo que agregues aquí."
       />
       <ContentManager
         requirements={requirements}
-        deliveryLocations={deliveryLocations}
         faqs={faqs}
         reviews={reviews}
         inclusions={inclusions}

@@ -6,6 +6,7 @@ export interface BrandingFormData {
   whatsappNumber: string;
   phone: string;
   logoUrl: string;
+  footerLogoUrl: string;
   instagramUrl: string;
   facebookUrl: string;
   googleMapsUrl: string;
@@ -22,6 +23,7 @@ const EMPTY: BrandingFormData = {
   whatsappNumber: "",
   phone: "",
   logoUrl: "",
+  footerLogoUrl: "",
   instagramUrl: "",
   facebookUrl: "",
   googleMapsUrl: "",
@@ -42,6 +44,7 @@ export async function getBrandingFormData(): Promise<BrandingFormData> {
     whatsappNumber: row.whatsappNumber,
     phone: row.phone ?? "",
     logoUrl: row.logoUrl ?? "",
+    footerLogoUrl: row.footerLogoUrl ?? "",
     instagramUrl: row.instagramUrl ?? "",
     facebookUrl: row.facebookUrl ?? "",
     googleMapsUrl: row.googleMapsUrl ?? "",

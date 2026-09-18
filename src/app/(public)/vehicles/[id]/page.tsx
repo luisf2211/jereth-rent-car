@@ -30,15 +30,16 @@ import VehicleDescription from "@/components/public/vehicle-detail/VehicleDescri
 import DetailReviews from "@/components/public/vehicle-detail/DetailReviews";
 import { getVehicleById, getSimilarVehicles } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
+import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import {
   getRequirements,
-  getDeliveryLocations,
   getPolicies,
   getInclusions,
   getReviews,
 } from "@/features/content/data";
 import {
   categoryLabel,
+  formatDailyPrice,
   fuelLabel,
   transmissionLabel,
   vehicleTitle,
@@ -235,14 +236,34 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                       <Box sx={{ color: "primary.main", display: "flex", mt: 0.25 }}>
                         {loc.highlighted ? <FlightLandRoundedIcon fontSize="small" /> : <PlaceRoundedIcon fontSize="small" />}
                       </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {loc.name}
-                        </Typography>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {loc.name}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={loc.deliveryFee > 0 ? `+${formatDailyPrice(loc.deliveryFee)}` : "Gratis"}
+                            color={loc.deliveryFee > 0 ? "default" : "success"}
+                          />
+                        </Box>
                         {loc.description && (
                           <Typography variant="body2" color="text.secondary">
                             {loc.description}
                           </Typography>
+                        )}
+                        {loc.mapUrl && (
+                          <Link
+                            href={loc.mapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            underline="hover"
+                            variant="body2"
+                            sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, mt: 0.25 }}
+                          >
+                            <PlaceRoundedIcon sx={{ fontSize: 16 }} /> Ver en el mapa
+                          </Link>
                         )}
                       </Box>
                     </Box>
@@ -287,7 +308,11 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
               vehicleTitle={title}
               dailyPrice={vehicle.dailyPrice}
               whatsappNumber={settings.whatsappNumber}
-              locations={deliveryLocations.map((l) => l.name)}
+              locations={deliveryLocations.map((l) => ({
+                id: l.id,
+                name: l.name,
+                deliveryFee: l.deliveryFee,
+              }))}
             />
           </Grid>
         </Grid>

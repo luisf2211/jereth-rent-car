@@ -58,6 +58,7 @@ export async function updateBranding(input: unknown): Promise<ActionResult> {
     whatsappNumber: d.whatsappNumber ?? "",
     phone: orNull(d.phone),
     logoUrl: orNull(d.logoUrl),
+    footerLogoUrl: orNull(d.footerLogoUrl),
     instagramUrl: orNull(d.instagramUrl),
     facebookUrl: orNull(d.facebookUrl),
     googleMapsUrl: orNull(d.googleMapsUrl),

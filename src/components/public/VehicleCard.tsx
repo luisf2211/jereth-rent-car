@@ -12,6 +12,7 @@ import {
   formatDailyPrice,
   transmissionLabel,
   vehicleTitle,
+  vehicleTitleWithYearSimilar,
   vehicleWhatsAppMessage,
 } from "@/features/vehicles/format";
 
@@ -26,6 +27,7 @@ interface VehicleCardProps {
  */
 export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProps) {
   const title = vehicleTitle(vehicle);
+  const displayTitle = vehicleTitleWithYearSimilar(vehicle);
   const message = vehicleWhatsAppMessage(vehicle);
 
   return (
@@ -65,7 +67,7 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
 
       <Box sx={{ p: 2.5, display: "flex", flexDirection: "column", flexGrow: 1 }}>
         <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 700, mb: 1 }}>
-          {title}
+          {displayTitle}
         </Typography>
 
         <Box sx={{ display: "flex", gap: 2, color: "text.secondary", mb: 2 }}>

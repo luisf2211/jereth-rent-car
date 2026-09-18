@@ -10,7 +10,7 @@ import FlightLandRoundedIcon from "@mui/icons-material/FlightLandRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
-import { getDeliveryLocations } from "@/features/content/data";
+import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import { getCompanySettings } from "@/lib/branding";
 
 /**

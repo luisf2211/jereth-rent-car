@@ -11,13 +11,6 @@ export interface RequirementItem {
   text: string;
 }
 
-export interface DeliveryLocationItem {
-  id: string;
-  name: string;
-  description: string | null;
-  highlighted: boolean;
-}
-
 export interface FaqEntry {
   id: string;
   question: string;
@@ -74,14 +67,6 @@ export interface AdminRequirement {
   sortOrder: number;
   isActive: boolean;
 }
-export interface AdminDeliveryLocation {
-  id: string;
-  name: string;
-  description: string | null;
-  highlighted: boolean;
-  sortOrder: number;
-  isActive: boolean;
-}
 export interface AdminFaq {
   id: string;
   question: string;
@@ -122,18 +107,6 @@ export async function listPoliciesAdmin(): Promise<AdminTextItem[]> {
   return rows.map((r) => ({ id: r.id, text: r.text, sortOrder: r.sortOrder, isActive: r.isActive }));
 }
 
-export async function listDeliveryLocationsAdmin(): Promise<AdminDeliveryLocation[]> {
-  const rows = await prisma.deliveryLocation.findMany({ orderBy: { sortOrder: "asc" } });
-  return rows.map((d) => ({
-    id: d.id,
-    name: d.name,
-    description: d.description,
-    highlighted: d.highlighted,
-    sortOrder: d.sortOrder,
-    isActive: d.isActive,
-  }));
-}
-
 export async function listFaqsAdmin(): Promise<AdminFaq[]> {
   const rows = await prisma.faqItem.findMany({ orderBy: { sortOrder: "asc" } });
   return rows.map((f) => ({
@@ -156,19 +129,6 @@ export async function listReviewsAdmin(): Promise<AdminReview[]> {
     source: r.source,
     sortOrder: r.sortOrder,
     isActive: r.isActive,
-  }));
-}
-
-export async function getDeliveryLocations(): Promise<DeliveryLocationItem[]> {
-  const rows = await prisma.deliveryLocation.findMany({
-    where: { isActive: true },
-    orderBy: [{ highlighted: "desc" }, { sortOrder: "asc" }],
-  });
-  return rows.map((d) => ({
-    id: d.id,
-    name: d.name,
-    description: d.description,
-    highlighted: d.highlighted,
   }));
 }
 

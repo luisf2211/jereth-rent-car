@@ -16,22 +16,25 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { formatDailyPrice } from "@/features/vehicles/format";
+import { rentalDays } from "@/utils/rental-days";
+
+/** Delivery location option with its own fee. */
+export interface BookingLocation {
+  id: string;
+  name: string;
+  deliveryFee: number;
+}
 
 interface Props {
   vehicleTitle: string;
   dailyPrice: number;
   whatsappNumber: string;
-  /** Delivery location names to offer (from content). */
-  locations: string[];
+  /** Delivery/pickup locations with their fees (from the delivery module). */
+  locations: BookingLocation[];
 }
 
-function daysBetween(pickup: string, dropoff: string): number {
-  if (!pickup || !dropoff) return 0;
-  const a = new Date(pickup).getTime();
-  const b = new Date(dropoff).getTime();
-  if (Number.isNaN(a) || Number.isNaN(b) || b <= a) return 0;
-  return Math.round((b - a) / 86_400_000);
-}
+const DEFAULT_PICKUP_TIME = "10:00";
+const DEFAULT_DROPOFF_TIME = "10:00";
 
 function formatDate(iso: string): string {
   if (!iso) return "";
@@ -40,32 +43,73 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Booking module. Desktop: a sticky card in the right column. Mobile: a fixed
- * bottom bar that opens a drawer with the same fields. Dates/location are local
- * state (no availability engine yet); the CTA builds a WhatsApp message with
- * the chosen dates. Phone comes from CompanySettings (passed in).
+ * Booking tarifario. Desktop: sticky card in the right column. Mobile: fixed
+ * bottom bar that opens a drawer with the same fields. The customer picks
+ * dates, pickup/return times and pickup/return locations; the total is
+ * computed live as days × dailyPrice + pickup fee + return fee. Days follow
+ * the industry rule (see utils/rental-days): a return before 5pm is still a
+ * full day and adds no extra day; from 5pm a late return adds one day.
+ * The CTA opens a WhatsApp quote with the full breakdown. No availability
+ * engine yet — this is a transparent quote.
  */
 export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumber, locations }: Props) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
-  const [pickup, setPickup] = React.useState("");
-  const [dropoff, setDropoff] = React.useState("");
-  const [location, setLocation] = React.useState("");
+  const [pickupDate, setPickupDate] = React.useState("");
+  const [dropoffDate, setDropoffDate] = React.useState("");
+  const [pickupTime, setPickupTime] = React.useState(DEFAULT_PICKUP_TIME);
+  const [dropoffTime, setDropoffTime] = React.useState(DEFAULT_DROPOFF_TIME);
+  const [pickupLocationId, setPickupLocationId] = React.useState("");
+  const [dropoffLocationId, setDropoffLocationId] = React.useState("");
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
-  const days = daysBetween(pickup, dropoff);
-  const total = days > 0 ? days * dailyPrice : 0;
+  const hasLocations = locations.length > 0;
+  const findLoc = (id: string) => locations.find((l) => l.id === id);
+  const pickupLoc = findLoc(pickupLocationId);
+  const dropoffLoc = findLoc(dropoffLocationId);
+
+  const days = rentalDays({ pickupDate, dropoffDate, pickupTime, dropoffTime });
+  const rentalSubtotal = days * dailyPrice;
+  const pickupFee = pickupLoc?.deliveryFee ?? 0;
+  const dropoffFee = dropoffLoc?.deliveryFee ?? 0;
+  const total = days > 0 ? rentalSubtotal + pickupFee + dropoffFee : 0;
 
   const message = React.useMemo(() => {
     const lines = [`Hola, estoy interesado en rentar el ${vehicleTitle}.`];
-    if (pickup) lines.push(`Fecha de recogida: ${formatDate(pickup)}`);
-    if (dropoff) lines.push(`Fecha de devolución: ${formatDate(dropoff)}`);
-    if (location) lines.push(`Lugar: ${location}`);
+    if (pickupDate) lines.push(`Recogida: ${formatDate(pickupDate)} ${pickupTime}`);
+    if (dropoffDate) lines.push(`Devolución: ${formatDate(dropoffDate)} ${dropoffTime}`);
+    if (pickupLoc) lines.push(`Lugar de recogida: ${pickupLoc.name}`);
+    if (dropoffLoc) lines.push(`Lugar de devolución: ${dropoffLoc.name}`);
+    if (days > 0) {
+      lines.push("");
+      lines.push(`${formatDailyPrice(dailyPrice)} x ${days} ${days === 1 ? "día" : "días"} = ${formatDailyPrice(rentalSubtotal)}`);
+      if (pickupFee > 0) lines.push(`Entrega en ${pickupLoc?.name}: ${formatDailyPrice(pickupFee)}`);
+      if (dropoffFee > 0) lines.push(`Devolución en ${dropoffLoc?.name}: ${formatDailyPrice(dropoffFee)}`);
+      lines.push(`Total estimado: ${formatDailyPrice(total)}`);
+    }
+    lines.push("");
     lines.push("¿Está disponible?");
     return lines.join("\n");
-  }, [vehicleTitle, pickup, dropoff, location]);
+  }, [
+    vehicleTitle,
+    pickupDate,
+    dropoffDate,
+    pickupTime,
+    dropoffTime,
+    pickupLoc,
+    dropoffLoc,
+    days,
+    dailyPrice,
+    rentalSubtotal,
+    pickupFee,
+    dropoffFee,
+    total,
+  ]);
 
   const href = whatsappNumber ? buildWhatsAppUrl(whatsappNumber, message) : undefined;
+
+  const locationLabel = (l: BookingLocation) =>
+    l.deliveryFee > 0 ? `${l.name} (+${formatDailyPrice(l.deliveryFee)})` : `${l.name} (gratis)`;
 
   const fields = (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -74,36 +118,72 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
           type="date"
           label="Recogida"
           size="small"
-          value={pickup}
-          onChange={(e) => setPickup(e.target.value)}
+          value={pickupDate}
+          onChange={(e) => setPickupDate(e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
           sx={{ flex: "1 1 140px" }}
         />
+        <TextField
+          type="time"
+          label="Hora"
+          size="small"
+          value={pickupTime}
+          onChange={(e) => setPickupTime(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          sx={{ flex: "1 1 100px" }}
+        />
+      </Box>
+      <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
         <TextField
           type="date"
           label="Devolución"
           size="small"
-          value={dropoff}
-          onChange={(e) => setDropoff(e.target.value)}
+          value={dropoffDate}
+          onChange={(e) => setDropoffDate(e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
           sx={{ flex: "1 1 140px" }}
         />
-      </Box>
-      {locations.length > 0 && (
         <TextField
-          select
-          label="Lugar de entrega"
+          type="time"
+          label="Hora"
           size="small"
-          fullWidth
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-        >
-          {locations.map((l) => (
-            <MenuItem key={l} value={l}>
-              {l}
-            </MenuItem>
-          ))}
-        </TextField>
+          value={dropoffTime}
+          onChange={(e) => setDropoffTime(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          sx={{ flex: "1 1 100px" }}
+        />
+      </Box>
+      {hasLocations && (
+        <>
+          <TextField
+            select
+            label="Lugar de recogida"
+            size="small"
+            fullWidth
+            value={pickupLocationId}
+            onChange={(e) => setPickupLocationId(e.target.value)}
+          >
+            {locations.map((l) => (
+              <MenuItem key={l.id} value={l.id}>
+                {locationLabel(l)}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Lugar de devolución"
+            size="small"
+            fullWidth
+            value={dropoffLocationId}
+            onChange={(e) => setDropoffLocationId(e.target.value)}
+          >
+            {locations.map((l) => (
+              <MenuItem key={l.id} value={l.id}>
+                {locationLabel(l)}
+              </MenuItem>
+            ))}
+          </TextField>
+        </>
       )}
     </Box>
   );
@@ -114,13 +194,32 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
         <Typography variant="body2" color="text.secondary">
           {formatDailyPrice(dailyPrice)} x {days} {days === 1 ? "día" : "días"}
         </Typography>
-        <Typography variant="body2">{formatDailyPrice(total)}</Typography>
+        <Typography variant="body2">{formatDailyPrice(rentalSubtotal)}</Typography>
       </Box>
+      {pickupFee > 0 && (
+        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            Entrega · {pickupLoc?.name}
+          </Typography>
+          <Typography variant="body2">{formatDailyPrice(pickupFee)}</Typography>
+        </Box>
+      )}
+      {dropoffFee > 0 && (
+        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            Devolución · {dropoffLoc?.name}
+          </Typography>
+          <Typography variant="body2">{formatDailyPrice(dropoffFee)}</Typography>
+        </Box>
+      )}
       <Divider sx={{ my: 1 }} />
       <Box sx={{ display: "flex", justifyContent: "space-between" }}>
         <Typography sx={{ fontWeight: 700 }}>Total estimado</Typography>
         <Typography sx={{ fontWeight: 700 }}>{formatDailyPrice(total)}</Typography>
       </Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
+        Devoluciones antes de las 5:00 pm se cobran como día completo.
+      </Typography>
     </Box>
   );
 

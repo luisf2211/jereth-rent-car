@@ -7,7 +7,6 @@ import { requirePermission } from "@/lib/auth/current-user";
 import {
   requirementSchema,
   simpleTextSchema,
-  deliveryLocationSchema,
   faqSchema,
   reviewSchema,
 } from "@/lib/validations/content";
@@ -130,40 +129,6 @@ export async function deletePolicy(id: string): Promise<ActionResult> {
   }
   revalidateContent();
   return { ok: true, message: "Eliminado." };
-}
-
-/* ---------------------------- Delivery locations ------------------------- */
-
-export async function saveDeliveryLocation(id: string | null, input: unknown): Promise<ActionResult> {
-  const denied = await guard();
-  if (denied) return denied;
-
-  const parsed = deliveryLocationSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
-
-  const data = { ...parsed.data, description: parsed.data.description || null };
-  try {
-    if (id) await prisma.deliveryLocation.update({ where: { id }, data });
-    else await prisma.deliveryLocation.create({ data });
-  } catch (error) {
-    console.error("saveDeliveryLocation failed:", error);
-    return { ok: false, message: "No se pudo guardar el lugar de entrega." };
-  }
-  revalidateContent();
-  return { ok: true, message: "Lugar de entrega guardado." };
-}
-
-export async function deleteDeliveryLocation(id: string): Promise<ActionResult> {
-  const denied = await guard();
-  if (denied) return denied;
-  try {
-    await prisma.deliveryLocation.delete({ where: { id } });
-  } catch (error) {
-    console.error("deleteDeliveryLocation failed:", error);
-    return { ok: false, message: "No se pudo eliminar." };
-  }
-  revalidateContent();
-  return { ok: true, message: "Lugar eliminado." };
 }
 
 /* --------------------------------- FAQ ----------------------------------- */

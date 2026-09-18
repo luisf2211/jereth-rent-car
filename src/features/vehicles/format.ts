@@ -61,6 +61,17 @@ export function vehicleTitleWithYear(
   return `${vehicle.brand} ${vehicle.model} ${vehicle.year}`;
 }
 
+/**
+ * Public title including the year and, when applicable, the "o similar"
+ * wording — e.g. "Toyota Corolla 2023 o similar". Used in the fleet cards.
+ */
+export function vehicleTitleWithYearSimilar(
+  vehicle: Pick<Vehicle, "brand" | "model" | "year" | "orSimilar">
+): string {
+  const base = `${vehicle.brand} ${vehicle.model} ${vehicle.year}`;
+  return vehicle.orSimilar ? `${base} o similar` : base;
+}
+
 export function formatDailyPrice(dailyPrice: number): string {
   return `US$${dailyPrice}`;
 }
