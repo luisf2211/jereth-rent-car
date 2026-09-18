@@ -24,6 +24,9 @@ export const brandingSchema = z.object({
   googleMapsUrl: optionalUrl,
   address: z.string().trim().max(200).optional().or(z.literal("")),
   aboutText: z.string().trim().max(1200).optional().or(z.literal("")),
+  heroImageUrl: optionalUrl,
+  heroTitle: z.string().trim().max(120).optional().or(z.literal("")),
+  heroSubtitle: z.string().trim().max(300).optional().or(z.literal("")),
   logoScale: z.coerce.number().min(0.8).max(3).default(1),
   navLogoScale: z.coerce.number().min(0.8).max(3).default(1),
   primaryColor: z

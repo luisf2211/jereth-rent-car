@@ -28,11 +28,16 @@ import type { ActionResult } from "@/lib/actions/result";
 export interface FieldDef {
   name: string;
   label: string;
-  type: "text" | "number" | "switch";
+  type: "text" | "number" | "switch" | "image";
   multiline?: boolean;
   defaultValue?: string | number | boolean;
   half?: boolean;
 }
+
+/** Uploads a file and returns its public URL (for "image" fields). */
+export type ImageUploadFn = (
+  formData: FormData
+) => Promise<{ ok: true; url: string } | { ok: false; message: string }>;
 
 interface Row {
   id: string;
@@ -50,6 +55,104 @@ interface Props<T extends Row> {
   onSave: (id: string | null, values: Record<string, unknown>) => Promise<ActionResult>;
   onDelete: (id: string) => Promise<ActionResult>;
   onResult: (message: string, error?: boolean) => void;
+  /** Required when any field is of type "image". */
+  uploadImage?: ImageUploadFn;
+}
+
+/** Inline image uploader used by "image" fields inside the editor dialog. */
+function ImageField({
+  label,
+  value,
+  onChange,
+  upload,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  upload?: ImageUploadFn;
+  error?: string;
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [localError, setLocalError] = React.useState<string | null>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !upload) return;
+    setLocalError(null);
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await upload(fd);
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = "";
+    if (res.ok) onChange(res.url);
+    else setLocalError(res.message);
+  };
+
+  const shown = error ?? localError;
+
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        {label}
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            width: 120,
+            height: 80,
+            borderRadius: 2,
+            border: "1px dashed",
+            borderColor: shown ? "error.main" : "divider",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "grey.50",
+            overflow: "hidden",
+          }}
+        >
+          {value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={value} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              Sin foto
+            </Typography>
+          )}
+        </Box>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            hidden
+            onChange={handleFile}
+          />
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              disabled={uploading}
+              onClick={() => inputRef.current?.click()}
+            >
+              {uploading ? "Subiendo..." : value ? "Cambiar foto" : "Subir foto"}
+            </Button>
+            {value && !uploading && (
+              <Button color="secondary" size="small" onClick={() => onChange("")}>
+                Quitar
+              </Button>
+            )}
+          </Box>
+          <Typography variant="caption" color={shown ? "error" : "text.secondary"}>
+            {shown ?? "PNG, JPG, WEBP. Máx 5MB."}
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
+  );
 }
 
 function initialValues(fields: FieldDef[], item?: Row): Record<string, unknown> {
@@ -82,6 +185,7 @@ export default function ContentSection<T extends Row>({
   onSave,
   onDelete,
   onResult,
+  uploadImage,
 }: Props<T>) {
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<T | null>(null);
@@ -193,6 +297,14 @@ export default function ContentSection<T extends Row>({
                       />
                     }
                     label={f.label}
+                  />
+                ) : f.type === "image" ? (
+                  <ImageField
+                    label={f.label}
+                    value={String(values[f.name] ?? "")}
+                    onChange={(url) => setField(f.name, url)}
+                    upload={uploadImage}
+                    error={fieldErrors[f.name]}
                   />
                 ) : (
                   <TextField

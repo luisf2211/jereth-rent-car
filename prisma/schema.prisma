@@ -81,6 +81,11 @@ model CompanySettings {
   googleMapsUrl  String?
   // Short "about" text for the Nosotros section (owner-written; optional)
   aboutText      String?
+  // Homepage hero: background photo + headline/subtitle (all optional; the
+  // hero falls back to sensible defaults when empty).
+  heroImageUrl   String?
+  heroTitle      String?
+  heroSubtitle   String?
   // Logo display scale in the footer (1.0 = default).
   logoScale      Float    @default(1)
   // Logo display scale in the navbar (1.0 = default).
@@ -164,6 +169,9 @@ model DeliveryLocation {
   id          String   @id @default(cuid())
   name        String
   description String?
+  // Real photo of the location (e.g. the airport terminal) shown in the
+  // public carousel. Optional — cards fall back to an icon when empty.
+  imageUrl    String?
   // Extra fee (USD) added to the rental total when this location is chosen
   // for pickup or return. 0 = free.
   deliveryFee Int      @default(0)

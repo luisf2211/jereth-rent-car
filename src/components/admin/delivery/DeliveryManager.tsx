@@ -8,6 +8,7 @@ import type { AdminDeliveryLocation } from "@/features/delivery-locations/data";
 import {
   saveDeliveryLocation,
   deleteDeliveryLocation,
+  uploadDeliveryImage,
 } from "@/features/delivery-locations/actions";
 import ContentSection, { type FieldDef } from "@/components/admin/content/ContentSection";
 
@@ -32,6 +33,7 @@ export default function DeliveryManager({ locations }: Props) {
   const fields: FieldDef[] = [
     { name: "name", label: "Nombre del lugar", type: "text" },
     { name: "description", label: "Descripción (opcional)", type: "text", multiline: true },
+    { name: "imageUrl", label: "Foto del lugar (opcional)", type: "image" },
     { name: "deliveryFee", label: "Cargo de entrega (US$)", type: "number", defaultValue: 0, half: true },
     { name: "highlighted", label: "Destacado (ej. aeropuerto)", type: "switch", defaultValue: false, half: true },
     { name: "mapUrl", label: "URL del mapa (Google Maps, opcional)", type: "text" },
@@ -53,6 +55,7 @@ export default function DeliveryManager({ locations }: Props) {
         onSave={(id, values) => saveDeliveryLocation(id, values)}
         onDelete={(id) => deleteDeliveryLocation(id)}
         onResult={notify}
+        uploadImage={uploadDeliveryImage}
       />
 
       <Snackbar

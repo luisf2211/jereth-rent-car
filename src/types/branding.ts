@@ -15,6 +15,9 @@ export interface CompanySettings {
   address: string | null;
   googleMapsUrl: string | null;
   aboutText: string | null;
+  heroImageUrl: string | null;
+  heroTitle: string | null;
+  heroSubtitle: string | null;
   logoScale: number;
   navLogoScale: number;
   socialLinks: {

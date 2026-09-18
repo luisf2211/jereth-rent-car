@@ -10,6 +10,7 @@ export interface DeliveryLocationItem {
   id: string;
   name: string;
   description: string | null;
+  imageUrl: string | null;
   deliveryFee: number;
   mapUrl: string | null;
   highlighted: boolean;
@@ -20,6 +21,7 @@ export interface AdminDeliveryLocation {
   id: string;
   name: string;
   description: string | null;
+  imageUrl: string | null;
   deliveryFee: number;
   mapUrl: string | null;
   highlighted: boolean;
@@ -37,6 +39,7 @@ export async function getDeliveryLocations(): Promise<DeliveryLocationItem[]> {
     id: d.id,
     name: d.name,
     description: d.description,
+    imageUrl: d.imageUrl,
     deliveryFee: d.deliveryFee,
     mapUrl: d.mapUrl,
     highlighted: d.highlighted,
@@ -50,6 +53,7 @@ export async function listDeliveryLocationsAdmin(): Promise<AdminDeliveryLocatio
     id: d.id,
     name: d.name,
     description: d.description,
+    imageUrl: d.imageUrl,
     deliveryFee: d.deliveryFee,
     mapUrl: d.mapUrl,
     highlighted: d.highlighted,

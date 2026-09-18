@@ -33,6 +33,9 @@ type FormValues = {
   googleMapsUrl: string;
   address: string;
   aboutText: string;
+  heroImageUrl: string;
+  heroTitle: string;
+  heroSubtitle: string;
   primaryColor: string;
   logoScale: number;
   navLogoScale: number;
@@ -194,6 +197,67 @@ export default function BrandingForm({
                     />
                   )}
                 />
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        {/* Hero (portada) */}
+        <Card>
+          <CardContent>
+            <SectionHeading
+              title="Portada (hero)"
+              hint="Foto de fondo y mensaje de la portada del sitio. Si dejas la imagen vacía, se usa un fondo limpio; si dejas el texto vacío, se usa el mensaje por defecto."
+            />
+            <Grid container spacing={3} sx={{ mt: 0.5, alignItems: "flex-start" }}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Controller
+                  name="heroImageUrl"
+                  control={control}
+                  render={({ field }) => (
+                    <LogoUploader
+                      value={field.value}
+                      onChange={field.onChange}
+                      error={errors.heroImageUrl?.message}
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12 }}>
+                    <Controller
+                      name="heroTitle"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Título de la portada (opcional)"
+                          placeholder="Renta tu vehículo en Santo Domingo"
+                          error={Boolean(errors.heroTitle)}
+                          helperText={errors.heroTitle?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Controller
+                      name="heroSubtitle"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Subtítulo de la portada (opcional)"
+                          placeholder="Entrega en el Aeropuerto Las Américas (SDQ) y en toda la ciudad."
+                          multiline
+                          minRows={3}
+                          error={Boolean(errors.heroSubtitle)}
+                          helperText={errors.heroSubtitle?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                </Grid>
               </Grid>
             </Grid>
           </CardContent>
