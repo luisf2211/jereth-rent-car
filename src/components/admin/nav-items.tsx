@@ -6,20 +6,24 @@ import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 
+import type { Permission } from "@/lib/permissions";
+
 export interface AdminNavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  /** Permission required to see this item. Undefined = always visible. */
+  permission?: Permission;
 }
 
 /** Sidebar/drawer navigation for the backoffice. */
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin", icon: <DashboardRoundedIcon /> },
-  { label: "Vehículos", href: "/admin/vehicles", icon: <DirectionsCarFilledRoundedIcon /> },
-  { label: "Contenido", href: "/admin/content", icon: <ArticleRoundedIcon /> },
-  { label: "Usuarios", href: "/admin/users", icon: <PeopleRoundedIcon /> },
-  { label: "Roles", href: "/admin/roles", icon: <AdminPanelSettingsRoundedIcon /> },
-  { label: "Branding", href: "/admin/settings/branding", icon: <PaletteRoundedIcon /> },
+  { label: "Vehículos", href: "/admin/vehicles", icon: <DirectionsCarFilledRoundedIcon />, permission: "vehicles.view" },
+  { label: "Contenido", href: "/admin/content", icon: <ArticleRoundedIcon />, permission: "content.view" },
+  { label: "Usuarios", href: "/admin/users", icon: <PeopleRoundedIcon />, permission: "users.view" },
+  { label: "Roles", href: "/admin/roles", icon: <AdminPanelSettingsRoundedIcon />, permission: "roles.view" },
+  { label: "Branding", href: "/admin/settings/branding", icon: <PaletteRoundedIcon />, permission: "branding.view" },
 ];
 
 export const ADMIN_DRAWER_WIDTH = 264;

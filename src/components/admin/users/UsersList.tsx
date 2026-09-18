@@ -28,6 +28,8 @@ import { toggleUserActive } from "@/features/users/actions";
 
 interface UsersListProps {
   users: UserListItem[];
+  /** Whether to show row actions (edit / activate-deactivate). */
+  canManage?: boolean;
 }
 
 type ToggleTarget = { id: string; name: string; nextActive: boolean } | null;
@@ -37,7 +39,7 @@ type ToggleTarget = { id: string; name: string; nextActive: boolean } | null;
  * - md and up: DataGrid.
  * - below md: cards with an actions menu (touch-friendly).
  */
-export default function UsersList({ users }: UsersListProps) {
+export default function UsersList({ users, canManage = true }: UsersListProps) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const router = useRouter();
@@ -104,11 +106,12 @@ export default function UsersList({ users }: UsersListProps) {
       sortable: false,
       filterable: false,
       align: "right",
-      renderCell: (params) => (
-        <IconButton aria-label="Acciones" onClick={(e) => openMenu(e, params.row)}>
-          <MoreVertRoundedIcon />
-        </IconButton>
-      ),
+      renderCell: (params) =>
+        canManage ? (
+          <IconButton aria-label="Acciones" onClick={(e) => openMenu(e, params.row)}>
+            <MoreVertRoundedIcon />
+          </IconButton>
+        ) : null,
     },
   ];
 
@@ -140,9 +143,11 @@ export default function UsersList({ users }: UsersListProps) {
                       {user.email}
                     </Typography>
                   </Box>
-                  <IconButton aria-label="Acciones" onClick={(e) => openMenu(e, user)}>
-                    <MoreVertRoundedIcon />
-                  </IconButton>
+                  {canManage && (
+                    <IconButton aria-label="Acciones" onClick={(e) => openMenu(e, user)}>
+                      <MoreVertRoundedIcon />
+                    </IconButton>
+                  )}
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1.5 }}>
                   <UserStatusChip isActive={user.isActive} />

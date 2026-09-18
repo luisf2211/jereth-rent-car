@@ -30,6 +30,8 @@ import { formatDailyPrice, transmissionLabel, vehicleTitleWithYear, categoryLabe
 
 interface Props {
   vehicles: VehicleAdminItem[];
+  /** Whether to show row actions (edit / publish-hide). */
+  canManage?: boolean;
 }
 
 type ToggleTarget = { id: string; title: string; nextActive: boolean } | null;
@@ -49,7 +51,7 @@ function StatusChip({ isActive }: { isActive: boolean }) {
  * Responsive vehicles list for the backoffice.
  * DataGrid on desktop, cards on mobile/tablet.
  */
-export default function VehiclesAdminList({ vehicles }: Props) {
+export default function VehiclesAdminList({ vehicles, canManage = true }: Props) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const router = useRouter();
@@ -148,11 +150,12 @@ export default function VehiclesAdminList({ vehicles }: Props) {
       sortable: false,
       filterable: false,
       align: "right",
-      renderCell: (params) => (
-        <IconButton aria-label="Acciones" onClick={(e) => openMenu(e, params.row)}>
-          <MoreVertRoundedIcon />
-        </IconButton>
-      ),
+      renderCell: (params) =>
+        canManage ? (
+          <IconButton aria-label="Acciones" onClick={(e) => openMenu(e, params.row)}>
+            <MoreVertRoundedIcon />
+          </IconButton>
+        ) : null,
     },
   ];
 
@@ -183,9 +186,11 @@ export default function VehiclesAdminList({ vehicles }: Props) {
                       <Typography variant="subtitle1" sx={{ fontWeight: 600 }} noWrap>
                         {vehicleTitleWithYear(v)}
                       </Typography>
-                      <IconButton aria-label="Acciones" size="small" onClick={(e) => openMenu(e, v)}>
-                        <MoreVertRoundedIcon />
-                      </IconButton>
+                      {canManage && (
+                        <IconButton aria-label="Acciones" size="small" onClick={(e) => openMenu(e, v)}>
+                          <MoreVertRoundedIcon />
+                        </IconButton>
+                      )}
                     </Box>
                     <Typography variant="body2" color="text.secondary">
                       {transmissionLabel(v.transmission)} · {v.passengers} pasajeros

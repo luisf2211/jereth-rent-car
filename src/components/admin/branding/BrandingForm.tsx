@@ -41,7 +41,13 @@ type FormValues = {
  * Branding editor. Updates CompanySettings via a server action; changes
  * revalidate the whole site so the header/footer/logo reflect them.
  */
-export default function BrandingForm({ initial }: { initial: BrandingFormData }) {
+export default function BrandingForm({
+  initial,
+  canEdit = true,
+}: {
+  initial: BrandingFormData;
+  canEdit?: boolean;
+}) {
   const router = useRouter();
   const [formError, setFormError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
@@ -303,7 +309,7 @@ export default function BrandingForm({ initial }: { initial: BrandingFormData })
           </Grid>
 
           <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={2} sx={{ mt: 4, justifyContent: "flex-end" }}>
-            <Button type="submit" variant="contained" disabled={isSubmitting}>
+            <Button type="submit" variant="contained" disabled={isSubmitting || !canEdit}>
               {isSubmitting ? "Guardando..." : "Guardar cambios"}
             </Button>
           </Stack>

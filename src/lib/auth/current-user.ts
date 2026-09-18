@@ -1,19 +1,33 @@
 import { auth } from "@/auth";
+import prisma from "@/lib/prisma";
 import type { AuthUser, Permission } from "@/lib/permissions";
 
 /**
- * Resolves the current authenticated user from the Auth.js session.
- * Permissions come from the JWT, populated at sign-in from the user's role.
+ * Resolves the current authenticated user, reading role + permissions FRESH
+ * from the database by the session user id. This means changes to a role's
+ * permissions take effect immediately (no re-login needed). Also treats a
+ * now-inactive user as logged out.
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const session = await auth();
-  if (!session?.user) return null;
+  const id = session?.user?.id;
+  if (!id) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: {
+      role: { include: { permissions: { include: { permission: true } } } },
+    },
+  });
+
+  if (!user || !user.isActive) return null;
 
   return {
-    id: session.user.id,
-    name: session.user.name ?? "",
-    email: session.user.email ?? "",
-    permissions: session.user.permissions ?? [],
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    roleName: user.role.name,
+    permissions: user.role.permissions.map((rp) => rp.permission.key as Permission),
   };
 }
 

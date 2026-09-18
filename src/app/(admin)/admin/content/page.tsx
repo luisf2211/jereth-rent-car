@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import PageHeader from "@/components/ui/PageHeader";
+import AccessDenied from "@/components/admin/AccessDenied";
 import ContentManager from "@/components/admin/content/ContentManager";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { hasPermission } from "@/lib/permissions";
 import {
   listRequirementsAdmin,
   listDeliveryLocationsAdmin,
@@ -11,6 +14,9 @@ import {
 export const metadata: Metadata = { title: "Contenido" };
 
 export default async function ContentPage() {
+  const user = await getCurrentUser();
+  if (!hasPermission(user, "content.view")) return <AccessDenied />;
+
   const [requirements, deliveryLocations, faqs, reviews] = await Promise.all([
     listRequirementsAdmin(),
     listDeliveryLocationsAdmin(),

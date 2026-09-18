@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
+import AccessDenied from "@/components/admin/AccessDenied";
 import VehicleForm from "@/components/admin/vehicles/VehicleForm";
 import { getVehicleForAdmin } from "@/features/vehicles/admin-data";
 import { vehicleTitleWithYear } from "@/features/vehicles/format";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { hasPermission } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Editar vehículo" };
 
 export default async function EditVehiclePage({ params }: PageProps<"/admin/vehicles/[id]">) {
+  const user = await getCurrentUser();
+  if (!hasPermission(user, "vehicles.edit")) return <AccessDenied />;
+
   const { id } = await params;
   const vehicle = await getVehicleForAdmin(id);
 

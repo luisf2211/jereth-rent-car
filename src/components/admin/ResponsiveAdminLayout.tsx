@@ -8,6 +8,7 @@ import Container from "@mui/material/Container";
 import AdminSidebar from "./AdminSidebar";
 import AdminAppBar from "./AdminAppBar";
 import { ADMIN_DRAWER_WIDTH } from "./nav-items";
+import type { Permission } from "@/lib/permissions";
 
 /**
  * Responsive backoffice shell.
@@ -20,10 +21,12 @@ export default function ResponsiveAdminLayout({
   children,
   userName,
   userEmail,
+  permissions,
 }: {
   children: React.ReactNode;
   userName: string;
   userEmail: string;
+  permissions: Permission[];
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -55,7 +58,7 @@ export default function ResponsiveAdminLayout({
           ModalProps={{ keepMounted: true }}
           sx={{ display: { xs: "block", md: "none" }, ...drawerStyles }}
         >
-          <AdminSidebar onNavigate={() => setMobileOpen(false)} />
+          <AdminSidebar onNavigate={() => setMobileOpen(false)} permissions={permissions} />
         </Drawer>
 
         {/* Permanent drawer (desktop / tablet landscape) */}
@@ -64,7 +67,7 @@ export default function ResponsiveAdminLayout({
           open
           sx={{ display: { xs: "none", md: "block" }, ...drawerStyles }}
         >
-          <AdminSidebar />
+          <AdminSidebar permissions={permissions} />
         </Drawer>
       </Box>
 

@@ -13,10 +13,13 @@ import ListItemText from "@mui/material/ListItemText";
 import Logo from "@/components/ui/Logo";
 import { useBranding } from "@/components/branding/BrandingProvider";
 import { ADMIN_NAV_ITEMS } from "./nav-items";
+import type { Permission } from "@/lib/permissions";
 
 interface AdminSidebarProps {
   /** Called after navigation (used to close the temporary drawer on mobile). */
   onNavigate?: () => void;
+  /** Current user's permissions — used to hide modules without access. */
+  permissions: Permission[];
 }
 
 function isActive(pathname: string, href: string): boolean {
@@ -28,9 +31,13 @@ function isActive(pathname: string, href: string): boolean {
  * Sidebar contents shared by the permanent (desktop) and temporary (mobile)
  * drawers. Highlights the active route.
  */
-export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
+export default function AdminSidebar({ onNavigate, permissions }: AdminSidebarProps) {
   const pathname = usePathname();
   const { companyName, logoUrl } = useBranding();
+  const permSet = React.useMemo(() => new Set(permissions), [permissions]);
+  const visibleItems = ADMIN_NAV_ITEMS.filter(
+    (item) => !item.permission || permSet.has(item.permission)
+  );
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -40,7 +47,7 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
         </Box>
       </Toolbar>
       <List sx={{ px: 1.5, flexGrow: 1 }}>
-        {ADMIN_NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <ListItem key={item.href} disablePadding sx={{ mb: 0.5 }}>

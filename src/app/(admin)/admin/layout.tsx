@@ -21,7 +21,11 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   return (
     <BrandingProvider settings={settings}>
-      <ResponsiveAdminLayout userName={user?.name ?? ""} userEmail={user?.email ?? ""}>
+      <ResponsiveAdminLayout
+        userName={user?.name ?? ""}
+        userEmail={user?.email ?? ""}
+        permissions={user?.permissions ?? []}
+      >
         {children}
       </ResponsiveAdminLayout>
     </BrandingProvider>
