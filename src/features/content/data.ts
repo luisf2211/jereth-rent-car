@@ -42,6 +42,29 @@ export async function getRequirements(): Promise<RequirementItem[]> {
   return rows.map((r) => ({ id: r.id, text: r.text }));
 }
 
+export interface SimpleTextItem {
+  id: string;
+  text: string;
+}
+
+/** "Tu renta incluye" items (public). */
+export async function getInclusions(): Promise<SimpleTextItem[]> {
+  const rows = await prisma.inclusion.findMany({
+    where: { isActive: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  return rows.map((r) => ({ id: r.id, text: r.text }));
+}
+
+/** Vehicle policies (public). */
+export async function getPolicies(): Promise<SimpleTextItem[]> {
+  const rows = await prisma.policy.findMany({
+    where: { isActive: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  return rows.map((r) => ({ id: r.id, text: r.text }));
+}
+
 /* ----------------------------- Admin readers ----------------------------- */
 // Return ALL rows (active + inactive) for the backoffice management screens.
 
@@ -79,6 +102,23 @@ export interface AdminReview {
 
 export async function listRequirementsAdmin(): Promise<AdminRequirement[]> {
   const rows = await prisma.requirement.findMany({ orderBy: { sortOrder: "asc" } });
+  return rows.map((r) => ({ id: r.id, text: r.text, sortOrder: r.sortOrder, isActive: r.isActive }));
+}
+
+export interface AdminTextItem {
+  id: string;
+  text: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export async function listInclusionsAdmin(): Promise<AdminTextItem[]> {
+  const rows = await prisma.inclusion.findMany({ orderBy: { sortOrder: "asc" } });
+  return rows.map((r) => ({ id: r.id, text: r.text, sortOrder: r.sortOrder, isActive: r.isActive }));
+}
+
+export async function listPoliciesAdmin(): Promise<AdminTextItem[]> {
+  const rows = await prisma.policy.findMany({ orderBy: { sortOrder: "asc" } });
   return rows.map((r) => ({ id: r.id, text: r.text, sortOrder: r.sortOrder, isActive: r.isActive }));
 }
 

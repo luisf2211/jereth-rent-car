@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
 import AccessDenied from "@/components/admin/AccessDenied";
 import VehicleForm from "@/components/admin/vehicles/VehicleForm";
-import { getVehicleForAdmin } from "@/features/vehicles/admin-data";
+import { getVehicleForAdmin, listUsedFeatures } from "@/features/vehicles/admin-data";
 import { vehicleTitleWithYear } from "@/features/vehicles/format";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { hasPermission } from "@/lib/permissions";
@@ -15,7 +15,10 @@ export default async function EditVehiclePage({ params }: PageProps<"/admin/vehi
   if (!hasPermission(user, "vehicles.edit")) return <AccessDenied />;
 
   const { id } = await params;
-  const vehicle = await getVehicleForAdmin(id);
+  const [vehicle, featureSuggestions] = await Promise.all([
+    getVehicleForAdmin(id),
+    listUsedFeatures(),
+  ]);
 
   if (!vehicle) {
     notFound();
@@ -24,7 +27,7 @@ export default async function EditVehiclePage({ params }: PageProps<"/admin/vehi
   return (
     <>
       <PageHeader title="Editar vehículo" description={vehicleTitleWithYear(vehicle)} />
-      <VehicleForm vehicle={vehicle} />
+      <VehicleForm vehicle={vehicle} featureSuggestions={featureSuggestions} />
     </>
   );
 }

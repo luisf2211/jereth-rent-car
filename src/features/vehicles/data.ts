@@ -17,9 +17,12 @@ function toVehicle(row: PrismaVehicle): Vehicle {
     category: row.category,
     orSimilar: row.orSimilar,
     transmission: row.transmission,
+    fuelType: row.fuelType,
     passengers: row.passengers,
+    doors: row.doors,
     dailyPrice: row.dailyPrice,
     imageUrl: row.imageUrl,
+    carouselImageUrl: row.carouselImageUrl,
     images: row.images,
     description: row.description,
     features: row.features,
@@ -48,4 +51,23 @@ export async function getFeaturedVehicles(limit = 4): Promise<Vehicle[]> {
 export async function getVehicleById(id: string): Promise<Vehicle | null> {
   const row = await prisma.vehicle.findUnique({ where: { id } });
   return row ? toVehicle(row) : null;
+}
+
+/** Active vehicles similar to the given one (same category first, excludes it). */
+export async function getSimilarVehicles(vehicle: Vehicle, limit = 3): Promise<Vehicle[]> {
+  const sameCategory = await prisma.vehicle.findMany({
+    where: { isActive: true, id: { not: vehicle.id }, category: vehicle.category },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+  let rows = sameCategory;
+  if (rows.length < limit) {
+    const fill = await prisma.vehicle.findMany({
+      where: { isActive: true, id: { not: vehicle.id }, category: { not: vehicle.category } },
+      orderBy: { createdAt: "asc" },
+      take: limit - rows.length,
+    });
+    rows = [...rows, ...fill];
+  }
+  return rows.map(toVehicle);
 }

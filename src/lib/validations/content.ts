@@ -7,6 +7,9 @@ export const requirementSchema = z.object({
   isActive: z.boolean(),
 });
 
+/** Simple text item (inclusiones / políticas) — mismo shape que requisito. */
+export const simpleTextSchema = requirementSchema;
+
 /** Lugar de entrega. */
 export const deliveryLocationSchema = z.object({
   name: z.string().trim().min(2, "El nombre es obligatorio").max(120),

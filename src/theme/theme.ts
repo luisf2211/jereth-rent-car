@@ -42,29 +42,18 @@ export function buildTheme(primaryColor?: string) {
         defaultProps: { disableElevation: true },
         styleOverrides: {
           root: {
-            borderRadius: 999,
-            paddingInline: 22,
-            minHeight: 46,
-            transition: "transform 120ms ease, background-color 120ms ease, box-shadow 120ms ease",
+            // Modern, sober rounded rectangle — not a pill.
+            borderRadius: 8,
+            paddingInline: 20,
+            minHeight: 44,
+            transition: "background-color 140ms ease, border-color 140ms ease, opacity 140ms ease",
           },
           sizeLarge: {
-            minHeight: 54,
-            paddingInline: 30,
-            fontSize: "1.02rem",
+            minHeight: 52,
+            paddingInline: 26,
+            fontSize: "1rem",
           },
         },
-        variants: [
-          {
-            props: { variant: "contained", color: "primary" },
-            style: {
-              boxShadow: "0 6px 18px rgba(230,0,122,0.28)",
-              "&:hover": {
-                boxShadow: "0 8px 22px rgba(230,0,122,0.34)",
-                transform: "translateY(-1px)",
-              },
-            },
-          },
-        ],
       },
       MuiIconButton: {
         styleOverrides: {

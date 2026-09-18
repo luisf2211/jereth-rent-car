@@ -27,6 +27,8 @@ import FeaturesEditor from "./FeaturesEditor";
 
 interface VehicleFormProps {
   vehicle?: VehicleAdminItem;
+  /** Amenities already used across the fleet, for the searchable picker. */
+  featureSuggestions?: string[];
 }
 
 type FormValues = {
@@ -36,9 +38,12 @@ type FormValues = {
   category: "economico" | "compacto" | "sedan" | "suv" | "suv_grande" | "premium";
   orSimilar: boolean;
   transmission: "automatic" | "manual";
+  fuelType: "gasolina" | "diesel" | "hibrido" | "electrico";
   passengers: number;
+  doors: number;
   dailyPrice: number;
   imageUrl: string;
+  carouselImageUrl: string;
   images: string[];
   description: string;
   features: string[];
@@ -50,7 +55,7 @@ type FormValues = {
  * Create/edit vehicle form. RHF + Zod for client validation; server action
  * re-validates and persists.
  */
-export default function VehicleForm({ vehicle }: VehicleFormProps) {
+export default function VehicleForm({ vehicle, featureSuggestions = [] }: VehicleFormProps) {
   const router = useRouter();
   const isEdit = Boolean(vehicle);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -69,9 +74,12 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
       category: vehicle?.category ?? "economico",
       orSimilar: vehicle?.orSimilar ?? true,
       transmission: vehicle?.transmission ?? "automatic",
+      fuelType: vehicle?.fuelType ?? "gasolina",
       passengers: vehicle?.passengers ?? 5,
+      doors: vehicle?.doors ?? 4,
       dailyPrice: vehicle?.dailyPrice ?? 35,
       imageUrl: vehicle?.imageUrl ?? "",
+      carouselImageUrl: vehicle?.carouselImageUrl ?? "",
       images: vehicle?.images ?? [],
       description: vehicle?.description ?? "",
       features: vehicle?.features ?? [],
@@ -106,7 +114,7 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
           </Alert>
         )}
         <Grid container spacing={3}>
-          <Grid size={{ xs: 12 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
               Foto de portada
             </Typography>
@@ -121,6 +129,25 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
                 />
               )}
             />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+              Foto de carrusel (portada del inicio)
+            </Typography>
+            <Controller
+              name="carouselImageUrl"
+              control={control}
+              render={({ field }) => (
+                <VehicleImageUploader
+                  value={field.value}
+                  onChange={field.onChange}
+                  error={errors.carouselImageUrl?.message}
+                />
+              )}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+              Se muestra en el carrusel del inicio. Si la dejas vacía, se usa la foto de portada.
+            </Typography>
           </Grid>
 
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -187,6 +214,41 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
                   <MenuItem value="automatic">Automático</MenuItem>
                   <MenuItem value="manual">Manual</MenuItem>
                 </TextField>
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Controller
+              name="fuelType"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Combustible"
+                  error={Boolean(errors.fuelType)}
+                  helperText={errors.fuelType?.message}
+                >
+                  <MenuItem value="gasolina">Gasolina</MenuItem>
+                  <MenuItem value="diesel">Diésel</MenuItem>
+                  <MenuItem value="hibrido">Híbrido</MenuItem>
+                  <MenuItem value="electrico">Eléctrico</MenuItem>
+                </TextField>
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Controller
+              name="doors"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  label="Puertas"
+                  error={Boolean(errors.doors)}
+                  helperText={errors.doors?.message}
+                />
               )}
             />
           </Grid>
@@ -271,7 +333,11 @@ export default function VehicleForm({ vehicle }: VehicleFormProps) {
               name="features"
               control={control}
               render={({ field }) => (
-                <FeaturesEditor value={field.value} onChange={field.onChange} />
+                <FeaturesEditor
+                  value={field.value}
+                  onChange={field.onChange}
+                  suggestions={featureSuggestions}
+                />
               )}
             />
           </Grid>

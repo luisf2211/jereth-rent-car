@@ -1,7 +1,18 @@
-import type { Transmission, Vehicle, VehicleCategory } from "@/types/vehicle";
+import type { FuelType, Transmission, Vehicle, VehicleCategory } from "@/types/vehicle";
 
 export function transmissionLabel(transmission: Transmission): string {
   return transmission === "automatic" ? "Automático" : "Manual";
+}
+
+const FUEL_LABELS: Record<FuelType, string> = {
+  gasolina: "Gasolina",
+  diesel: "Diésel",
+  hibrido: "Híbrido",
+  electrico: "Eléctrico",
+};
+
+export function fuelLabel(fuel: FuelType): string {
+  return FUEL_LABELS[fuel];
 }
 
 /** Display order + Spanish labels for categories. */

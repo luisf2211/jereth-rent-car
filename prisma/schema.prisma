@@ -91,6 +91,13 @@ enum Transmission {
   manual
 }
 
+enum FuelType {
+  gasolina
+  diesel
+  hibrido
+  electrico
+}
+
 enum VehicleCategory {
   economico
   compacto
@@ -109,9 +116,13 @@ model Vehicle {
   // When true, public listings show "<brand> <model> o similar".
   orSimilar    Boolean         @default(true)
   transmission Transmission
+  fuelType     FuelType        @default(gasolina)
   passengers   Int
+  doors        Int             @default(4)
   dailyPrice   Int // USD per day
   imageUrl     String // cover photo (used in cards)
+  // Photo shown in the homepage hero carousel (falls back to imageUrl).
+  carouselImageUrl String?
   // Additional real photos for the detail gallery/carousel.
   images       String[]        @default([])
   // Short owner-written description (optional).
@@ -154,6 +165,30 @@ model DeliveryLocation {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+// "Tu renta incluye" items (asistencia, vehículo revisado, etc.).
+model Inclusion {
+  id        String   @id @default(cuid())
+  text      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+// Vehicle rental policies (no fumar, devolver con combustible, etc.).
+model Policy {
+  id        String   @id @default(cuid())
+  text      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive, sortOrder])
 }

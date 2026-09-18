@@ -13,6 +13,7 @@ import type {
   AdminDeliveryLocation,
   AdminFaq,
   AdminReview,
+  AdminTextItem,
 } from "@/features/content/data";
 import {
   saveRequirement,
@@ -23,6 +24,10 @@ import {
   deleteFaq,
   saveReview,
   deleteReview,
+  saveInclusion,
+  deleteInclusion,
+  savePolicy,
+  deletePolicy,
 } from "@/features/content/actions";
 import ContentSection, { type FieldDef } from "./ContentSection";
 
@@ -31,13 +36,22 @@ interface Props {
   deliveryLocations: AdminDeliveryLocation[];
   faqs: AdminFaq[];
   reviews: AdminReview[];
+  inclusions: AdminTextItem[];
+  policies: AdminTextItem[];
 }
 
 /**
  * Single-screen content manager with tabs. Each tab is a list of records with
  * add/edit (modal) and delete. No separate pages — everything happens here.
  */
-export default function ContentManager({ requirements, deliveryLocations, faqs, reviews }: Props) {
+export default function ContentManager({
+  requirements,
+  deliveryLocations,
+  faqs,
+  reviews,
+  inclusions,
+  policies,
+}: Props) {
   const router = useRouter();
   const [tab, setTab] = React.useState(0);
   const [snack, setSnack] = React.useState<{ msg: string; error?: boolean } | null>(null);
@@ -78,6 +92,12 @@ export default function ContentManager({ requirements, deliveryLocations, faqs, 
     { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true },
   ];
 
+  const textFields: FieldDef[] = [
+    { name: "text", label: "Texto", type: "text", multiline: true },
+    { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
+    { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
+  ];
+
   return (
     <>
       <Card sx={{ mb: 2 }}>
@@ -89,7 +109,9 @@ export default function ContentManager({ requirements, deliveryLocations, faqs, 
           sx={{ px: 1 }}
         >
           <Tab label="Requisitos" />
+          <Tab label="Qué incluye" />
           <Tab label="Lugares de entrega" />
+          <Tab label="Políticas" />
           <Tab label="FAQ" />
           <Tab label="Reseñas" />
         </Tabs>
@@ -109,6 +131,19 @@ export default function ContentManager({ requirements, deliveryLocations, faqs, 
       </Box>
 
       <Box hidden={tab !== 1}>
+        <ContentSection<AdminTextItem>
+          items={inclusions}
+          fields={textFields}
+          emptyLabel="Aún no hay elementos. Agrega qué incluye la renta."
+          addLabel="Nuevo elemento"
+          primaryText={(i) => i.text}
+          onSave={(id, values) => saveInclusion(id, values)}
+          onDelete={(id) => deleteInclusion(id)}
+          onResult={notify}
+        />
+      </Box>
+
+      <Box hidden={tab !== 2}>
         <ContentSection<AdminDeliveryLocation>
           items={deliveryLocations}
           fields={deliveryFields}
@@ -122,7 +157,20 @@ export default function ContentManager({ requirements, deliveryLocations, faqs, 
         />
       </Box>
 
-      <Box hidden={tab !== 2}>
+      <Box hidden={tab !== 3}>
+        <ContentSection<AdminTextItem>
+          items={policies}
+          fields={textFields}
+          emptyLabel="Aún no hay políticas. Agrega las reglas del vehículo."
+          addLabel="Nueva política"
+          primaryText={(p) => p.text}
+          onSave={(id, values) => savePolicy(id, values)}
+          onDelete={(id) => deletePolicy(id)}
+          onResult={notify}
+        />
+      </Box>
+
+      <Box hidden={tab !== 4}>
         <ContentSection<AdminFaq>
           items={faqs}
           fields={faqFields}
@@ -136,7 +184,7 @@ export default function ContentManager({ requirements, deliveryLocations, faqs, 
         />
       </Box>
 
-      <Box hidden={tab !== 3}>
+      <Box hidden={tab !== 5}>
         <ContentSection<AdminReview>
           items={reviews}
           fields={reviewFields}

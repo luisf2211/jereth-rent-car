@@ -38,6 +38,7 @@ export async function createVehicle(input: unknown): Promise<ActionResult> {
     ...parsed.data,
     description: parsed.data.description || null,
     whatsappMessage: parsed.data.whatsappMessage || null,
+    carouselImageUrl: parsed.data.carouselImageUrl || null,
   };
   try {
     await prisma.vehicle.create({ data });
@@ -66,6 +67,7 @@ export async function updateVehicle(id: string, input: unknown): Promise<ActionR
     ...parsed.data,
     description: parsed.data.description || null,
     whatsappMessage: parsed.data.whatsappMessage || null,
+    carouselImageUrl: parsed.data.carouselImageUrl || null,
   };
   try {
     await prisma.vehicle.update({ where: { id }, data });

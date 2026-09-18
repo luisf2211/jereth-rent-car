@@ -9,6 +9,8 @@ import {
   listDeliveryLocationsAdmin,
   listFaqsAdmin,
   listReviewsAdmin,
+  listInclusionsAdmin,
+  listPoliciesAdmin,
 } from "@/features/content/data";
 
 export const metadata: Metadata = { title: "Contenido" };
@@ -17,11 +19,13 @@ export default async function ContentPage() {
   const user = await getCurrentUser();
   if (!hasPermission(user, "content.view")) return <AccessDenied />;
 
-  const [requirements, deliveryLocations, faqs, reviews] = await Promise.all([
+  const [requirements, deliveryLocations, faqs, reviews, inclusions, policies] = await Promise.all([
     listRequirementsAdmin(),
     listDeliveryLocationsAdmin(),
     listFaqsAdmin(),
     listReviewsAdmin(),
+    listInclusionsAdmin(),
+    listPoliciesAdmin(),
   ]);
 
   return (
@@ -35,6 +39,8 @@ export default async function ContentPage() {
         deliveryLocations={deliveryLocations}
         faqs={faqs}
         reviews={reviews}
+        inclusions={inclusions}
+        policies={policies}
       />
     </>
   );

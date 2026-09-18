@@ -1,92 +1,81 @@
 "use client";
 
 import * as React from "react";
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
+import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
 interface Props {
   value: string[];
   onChange: (features: string[]) => void;
+  /** Amenities already used across vehicles, offered as searchable options. */
+  suggestions?: string[];
 }
 
-const SUGGESTIONS = [
+const DEFAULT_SUGGESTIONS = [
   "Aire acondicionado",
   "Bluetooth",
   "GPS",
   "Cámara de retroceso",
+  "Sensores de parqueo",
   "Puerto USB",
+  "Apple CarPlay",
+  "Android Auto",
   "Baúl amplio",
+  "Asientos de cuero",
+  "Transmisión automática",
+  "Cristales eléctricos",
 ];
 
 /**
- * Editable list of amenities. Type + Enter (or the button) to add; click the
- * chip's × to remove. Quick suggestions speed up common ones.
+ * Searchable amenities picker. Type to filter existing options, pick from the
+ * dropdown, or add a brand-new one (freeSolo). Selected amenities show as
+ * removable chips. Options combine defaults + amenities already used across
+ * the fleet, so reusing existing ones is easy and consistent.
  */
-export default function FeaturesEditor({ value, onChange }: Props) {
-  const [draft, setDraft] = React.useState("");
+export default function FeaturesEditor({ value, onChange, suggestions = [] }: Props) {
+  // Merge defaults + fleet-wide suggestions, de-duplicated (case-insensitive).
+  const options = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const item of [...suggestions, ...DEFAULT_SUGGESTIONS]) {
+      const key = item.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(item.trim());
+    }
+    return out.sort((a, b) => a.localeCompare(b, "es"));
+  }, [suggestions]);
 
-  const add = (raw: string) => {
-    const v = raw.trim();
-    if (!v || value.includes(v)) return;
-    onChange([...value, v]);
-    setDraft("");
+  const normalize = (list: string[]) => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const item of list) {
+      const v = item.trim();
+      const key = v.toLowerCase();
+      if (!v || seen.has(key)) continue;
+      seen.add(key);
+      out.push(v);
+    }
+    return out;
   };
-  const remove = (f: string) => onChange(value.filter((x) => x !== f));
-
-  const remainingSuggestions = SUGGESTIONS.filter((s) => !value.includes(s));
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}>
+    <Autocomplete<string, true, false, true>
+      multiple
+      freeSolo
+      autoHighlight
+      options={options}
+      value={value}
+      onChange={(_, next) => onChange(normalize(next))}
+      filterSelectedOptions
+      renderInput={(params) => (
         <TextField
-          size="small"
-          label="Facilidad"
-          placeholder="Ej. Aire acondicionado"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add(draft);
-            }
-          }}
+          {...params}
+          label="Facilidades"
+          placeholder="Busca o escribe una facilidad y presiona Enter"
+          helperText="Escribe para buscar entre las existentes o agrega una nueva."
         />
-        <Button
-          variant="outlined"
-          color="secondary"
-          startIcon={<AddRoundedIcon />}
-          onClick={() => add(draft)}
-          sx={{ mt: 0.25 }}
-        >
-          Agregar
-        </Button>
-      </Box>
-
-      {value.length > 0 && (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1.5 }}>
-          {value.map((f) => (
-            <Chip key={f} label={f} onDelete={() => remove(f)} />
-          ))}
-        </Box>
       )}
-
-      {remainingSuggestions.length > 0 && (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1.5 }}>
-          {remainingSuggestions.map((s) => (
-            <Chip
-              key={s}
-              label={`+ ${s}`}
-              variant="outlined"
-              size="small"
-              onClick={() => add(s)}
-              sx={{ color: "text.secondary" }}
-            />
-          ))}
-        </Box>
-      )}
-    </Box>
+    />
   );
 }

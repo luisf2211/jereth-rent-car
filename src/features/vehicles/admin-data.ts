@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import type { Transmission, VehicleCategory } from "@/types/vehicle";
+import type { Transmission, FuelType, VehicleCategory } from "@/types/vehicle";
 
 /**
  * Admin view model for a vehicle row (includes inactive ones).
@@ -12,9 +12,12 @@ export interface VehicleAdminItem {
   category: VehicleCategory;
   orSimilar: boolean;
   transmission: Transmission;
+  fuelType: FuelType;
   passengers: number;
+  doors: number;
   dailyPrice: number;
   imageUrl: string;
+  carouselImageUrl: string | null;
   images: string[];
   description: string | null;
   features: string[];
@@ -30,9 +33,12 @@ type VehicleRow = {
   category: VehicleCategory;
   orSimilar: boolean;
   transmission: Transmission;
+  fuelType: FuelType;
   passengers: number;
+  doors: number;
   dailyPrice: number;
   imageUrl: string;
+  carouselImageUrl: string | null;
   images: string[];
   description: string | null;
   features: string[];
@@ -49,9 +55,12 @@ function toItem(v: VehicleRow): VehicleAdminItem {
     category: v.category,
     orSimilar: v.orSimilar,
     transmission: v.transmission,
+    fuelType: v.fuelType,
     passengers: v.passengers,
+    doors: v.doors,
     dailyPrice: v.dailyPrice,
     imageUrl: v.imageUrl,
+    carouselImageUrl: v.carouselImageUrl,
     images: v.images,
     description: v.description,
     features: v.features,
@@ -75,4 +84,20 @@ export async function getVehicleForAdmin(id: string): Promise<VehicleAdminItem |
 
 export async function countVehicles(): Promise<number> {
   return prisma.vehicle.count();
+}
+
+/** Distinct amenities used across all vehicles (for the searchable picker). */
+export async function listUsedFeatures(): Promise<string[]> {
+  const rows = await prisma.vehicle.findMany({ select: { features: true } });
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of rows) {
+    for (const f of r.features) {
+      const key = f.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(f.trim());
+    }
+  }
+  return out;
 }

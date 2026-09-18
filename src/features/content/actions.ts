@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth/current-user";
 import {
   requirementSchema,
+  simpleTextSchema,
   deliveryLocationSchema,
   faqSchema,
   reviewSchema,
@@ -67,6 +68,68 @@ export async function deleteRequirement(id: string): Promise<ActionResult> {
   }
   revalidateContent();
   return { ok: true, message: "Requisito eliminado." };
+}
+
+/* ------------------------------ Inclusions ------------------------------- */
+
+export async function saveInclusion(id: string | null, input: unknown): Promise<ActionResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  const parsed = simpleTextSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
+  try {
+    if (id) await prisma.inclusion.update({ where: { id }, data: parsed.data });
+    else await prisma.inclusion.create({ data: parsed.data });
+  } catch (error) {
+    console.error("saveInclusion failed:", error);
+    return { ok: false, message: "No se pudo guardar." };
+  }
+  revalidateContent();
+  return { ok: true, message: "Guardado." };
+}
+
+export async function deleteInclusion(id: string): Promise<ActionResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  try {
+    await prisma.inclusion.delete({ where: { id } });
+  } catch (error) {
+    console.error("deleteInclusion failed:", error);
+    return { ok: false, message: "No se pudo eliminar." };
+  }
+  revalidateContent();
+  return { ok: true, message: "Eliminado." };
+}
+
+/* -------------------------------- Policies ------------------------------- */
+
+export async function savePolicy(id: string | null, input: unknown): Promise<ActionResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  const parsed = simpleTextSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
+  try {
+    if (id) await prisma.policy.update({ where: { id }, data: parsed.data });
+    else await prisma.policy.create({ data: parsed.data });
+  } catch (error) {
+    console.error("savePolicy failed:", error);
+    return { ok: false, message: "No se pudo guardar." };
+  }
+  revalidateContent();
+  return { ok: true, message: "Guardado." };
+}
+
+export async function deletePolicy(id: string): Promise<ActionResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  try {
+    await prisma.policy.delete({ where: { id } });
+  } catch (error) {
+    console.error("deletePolicy failed:", error);
+    return { ok: false, message: "No se pudo eliminar." };
+  }
+  revalidateContent();
+  return { ok: true, message: "Eliminado." };
 }
 
 /* ---------------------------- Delivery locations ------------------------- */

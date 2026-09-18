@@ -3,28 +3,46 @@ import { notFound } from "next/navigation";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import SettingsSuggestRoundedIcon from "@mui/icons-material/SettingsSuggestRounded";
+import Link from "@mui/material/Link";
+import Accordion from "@mui/material/Accordion";
+import AccordionSummary from "@mui/material/AccordionSummary";
+import AccordionDetails from "@mui/material/AccordionDetails";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
+import SettingsSuggestRoundedIcon from "@mui/icons-material/SettingsSuggestRounded";
+import LocalGasStationRoundedIcon from "@mui/icons-material/LocalGasStationRounded";
+import SensorDoorRoundedIcon from "@mui/icons-material/SensorDoorRounded";
+import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
+import FlightLandRoundedIcon from "@mui/icons-material/FlightLandRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
-import VehicleGallery from "@/components/public/VehicleGallery";
-import { getVehicleById } from "@/features/vehicles/data";
+import VehicleCard from "@/components/public/VehicleCard";
+import VehicleGalleryPro from "@/components/public/vehicle-detail/VehicleGalleryPro";
+import VehicleBooking from "@/components/public/vehicle-detail/VehicleBooking";
+import VehicleDescription from "@/components/public/vehicle-detail/VehicleDescription";
+import DetailReviews from "@/components/public/vehicle-detail/DetailReviews";
+import { getVehicleById, getSimilarVehicles } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
 import {
+  getRequirements,
+  getDeliveryLocations,
+  getPolicies,
+  getInclusions,
+  getReviews,
+} from "@/features/content/data";
+import {
   categoryLabel,
-  formatDailyPrice,
+  fuelLabel,
   transmissionLabel,
   vehicleTitle,
+  vehicleTitleWithYear,
   vehicleWhatsAppMessage,
 } from "@/features/vehicles/format";
 
@@ -44,84 +62,130 @@ export async function generateMetadata({
   };
 }
 
+/** Small reusable "section" heading. */
+function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Box component="section" sx={{ mt: { xs: 4, md: 5 } }}>
+      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+        {title}
+      </Typography>
+      {children}
+    </Box>
+  );
+}
+
 export default async function VehicleDetailPage({ params }: PageProps<"/vehicles/[id]">) {
   const { id } = await params;
-  const [vehicle, { whatsappNumber }] = await Promise.all([
-    getVehicleById(id),
-    getCompanySettings(),
-  ]);
+  const vehicle = await getVehicleById(id);
+  if (!vehicle) notFound();
 
-  if (!vehicle) {
-    notFound();
-  }
+  const [settings, requirements, deliveryLocations, policies, inclusions, reviews, similar] =
+    await Promise.all([
+      getCompanySettings(),
+      getRequirements(),
+      getDeliveryLocations(),
+      getPolicies(),
+      getInclusions(),
+      getReviews(),
+      getSimilarVehicles(vehicle),
+    ]);
 
   const title = vehicleTitle(vehicle);
-  const message = vehicleWhatsAppMessage(vehicle);
   const gallery = [vehicle.imageUrl, ...vehicle.images].filter(Boolean);
+  const finalMessage = vehicleWhatsAppMessage(vehicle);
 
-  const specs = [
-    { icon: <CalendarMonthRoundedIcon fontSize="small" />, label: "Año", value: String(vehicle.year) },
-    { icon: <PeopleAltRoundedIcon fontSize="small" />, label: "Pasajeros", value: String(vehicle.passengers) },
-    { icon: <SettingsSuggestRoundedIcon fontSize="small" />, label: "Transmisión", value: transmissionLabel(vehicle.transmission) },
-    { icon: <CategoryRoundedIcon fontSize="small" />, label: "Categoría", value: categoryLabel(vehicle.category) },
+  const summary = [
+    { icon: <PeopleAltRoundedIcon />, label: `${vehicle.passengers} pasajeros` },
+    { icon: <SettingsSuggestRoundedIcon />, label: transmissionLabel(vehicle.transmission) },
+    { icon: <LocalGasStationRoundedIcon />, label: fuelLabel(vehicle.fuelType) },
+    { icon: <SensorDoorRoundedIcon />, label: `${vehicle.doors} puertas` },
+    { icon: <DirectionsCarFilledRoundedIcon />, label: categoryLabel(vehicle.category) },
+    { icon: <CalendarMonthRoundedIcon />, label: String(vehicle.year) },
   ];
 
+  const avgRating =
+    reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : null;
+
   return (
-    <Container sx={{ pt: { xs: 11, md: 14 }, pb: { xs: 6, md: 9 } }}>
-      <Button href="/vehicles" startIcon={<ArrowBackRoundedIcon />} color="secondary" sx={{ mb: 2.5 }}>
-        Volver a la flota
-      </Button>
+    <Box sx={{ pb: { xs: 12, md: 0 } }}>
+      <Container sx={{ pt: { xs: 10, md: 13 }, pb: { xs: 6, md: 9 } }}>
+        {/* Breadcrumb */}
+        <Box sx={{ mb: 2, fontSize: 14 }}>
+          <Link href="/" underline="hover" color="text.secondary">
+            Inicio
+          </Link>
+          <Box component="span" sx={{ color: "text.disabled", mx: 1 }}>
+            /
+          </Box>
+          <Link href="/vehicles" underline="hover" color="text.secondary">
+            Vehículos
+          </Link>
+          <Box component="span" sx={{ color: "text.disabled", mx: 1 }}>
+            /
+          </Box>
+          <Box component="span" sx={{ color: "text.primary" }}>
+            {vehicleTitleWithYear(vehicle)}
+          </Box>
+        </Box>
 
-      <Grid container spacing={{ xs: 3, md: 5 }}>
-        {/* Left: gallery + content */}
-        <Grid size={{ xs: 12, md: 7 }}>
-          <VehicleGallery images={gallery} alt={title} />
-
-          <Box sx={{ mt: 4 }}>
-            <Chip label={categoryLabel(vehicle.category)} size="small" sx={{ mb: 1.5 }} />
-            <Typography variant="h4" component="h1" sx={{ mb: 1 }}>
-              {title}
-            </Typography>
-
-            {vehicle.description && (
-              <Typography variant="body1" color="text.secondary" sx={{ mt: 2, lineHeight: 1.7, whiteSpace: "pre-line" }}>
-                {vehicle.description}
-              </Typography>
+        {/* Header */}
+        <Box sx={{ mb: 2.5 }}>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
+            {title}
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5, mt: 1, color: "text.secondary" }}>
+            {avgRating !== null && (
+              <Box component="span" sx={{ fontWeight: 600, color: "text.primary" }}>
+                ★ {avgRating.toFixed(1)}
+                <Box component="span" sx={{ color: "text.secondary", fontWeight: 400 }}>
+                  {" "}
+                  · {reviews.length} {reviews.length === 1 ? "reseña" : "reseñas"}
+                </Box>
+              </Box>
             )}
+            <Typography variant="body2">{categoryLabel(vehicle.category)}</Typography>
+            <Typography variant="body2">·</Typography>
+            <Typography variant="body2">{transmissionLabel(vehicle.transmission)}</Typography>
+            <Typography variant="body2">·</Typography>
+            <Typography variant="body2">{vehicle.passengers} pasajeros</Typography>
+            <Chip label="Disponible" size="small" color="success" variant="outlined" sx={{ ml: { sm: 1 } }} />
+          </Box>
+        </Box>
 
-            {/* Specs */}
+        {/* Gallery */}
+        <VehicleGalleryPro images={gallery} alt={title} />
+
+        {/* Content + booking */}
+        <Grid container spacing={{ xs: 3, md: 6 }} sx={{ mt: { xs: 1, md: 2 } }}>
+          <Grid size={{ xs: 12, md: 8 }}>
+            {/* Summary */}
             <Box
               sx={{
-                mt: 3,
                 display: "grid",
-                gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" },
-                gap: 2,
+                gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" },
+                gap: 2.5,
+                py: 3,
+                borderTop: "1px solid",
+                borderBottom: "1px solid",
+                borderColor: "divider",
               }}
             >
-              {specs.map((s) => (
-                <Box
-                  key={s.label}
-                  sx={{ p: 2, borderRadius: 3, bgcolor: "grey.50", border: "1px solid", borderColor: "divider" }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "primary.main", mb: 0.5 }}>
-                    {s.icon}
-                    <Typography variant="caption" color="text.secondary">
-                      {s.label}
-                    </Typography>
-                  </Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {s.value}
-                  </Typography>
+              {summary.map((s) => (
+                <Box key={s.label} sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                  <Box sx={{ color: "text.secondary", display: "flex" }}>{s.icon}</Box>
+                  <Typography variant="body2">{s.label}</Typography>
                 </Box>
               ))}
             </Box>
 
-            {/* Features */}
+            {vehicle.description && (
+              <SectionBlock title="Sobre este vehículo">
+                <VehicleDescription text={vehicle.description} />
+              </SectionBlock>
+            )}
+
             {vehicle.features.length > 0 && (
-              <Box sx={{ mt: 4 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Facilidades
-                </Typography>
+              <SectionBlock title="Características">
                 <Grid container spacing={1.5}>
                   {vehicle.features.map((f) => (
                     <Grid key={f} size={{ xs: 12, sm: 6 }}>
@@ -132,60 +196,140 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                     </Grid>
                   ))}
                 </Grid>
-              </Box>
+              </SectionBlock>
             )}
-          </Box>
-        </Grid>
 
-        {/* Right: sticky reservation card */}
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Box sx={{ position: { md: "sticky" }, top: { md: 96 } }}>
-            <Card>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75, mb: 0.5 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Desde
-                  </Typography>
-                  <Typography variant="h4" component="p" sx={{ fontWeight: 800 }}>
-                    {formatDailyPrice(vehicle.dailyPrice)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    / día
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-                  Coordina la entrega en el Aeropuerto Las Américas (SDQ) o en Santo Domingo.
-                </Typography>
+            {inclusions.length > 0 && (
+              <SectionBlock title="Tu renta incluye">
+                <Grid container spacing={1.5}>
+                  {inclusions.map((i) => (
+                    <Grid key={i.id} size={{ xs: 12, sm: 6 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <CheckRoundedIcon fontSize="small" sx={{ color: "primary.main" }} />
+                        <Typography variant="body2">{i.text}</Typography>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </SectionBlock>
+            )}
 
-                <WhatsAppButton
-                  phoneNumber={whatsappNumber}
-                  message={message}
-                  label="Consultar disponibilidad"
-                  source="vehicle"
-                  context={title}
-                  size="large"
-                  fullWidth
-                />
-
-                <Divider sx={{ my: 2.5 }} />
-
-                <Stack spacing={1}>
-                  {specs.slice(0, 3).map((s) => (
-                    <Box key={s.label} sx={{ display: "flex", justifyContent: "space-between" }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {s.label}
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {s.value}
-                      </Typography>
+            {requirements.length > 0 && (
+              <SectionBlock title="Requisitos para rentar">
+                <Stack spacing={1.25}>
+                  {requirements.map((r) => (
+                    <Box key={r.id} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <CheckRoundedIcon fontSize="small" sx={{ color: "primary.main" }} />
+                      <Typography variant="body2">{r.text}</Typography>
                     </Box>
                   ))}
                 </Stack>
-              </CardContent>
-            </Card>
-          </Box>
+              </SectionBlock>
+            )}
+
+            {deliveryLocations.length > 0 && (
+              <SectionBlock title="Recogida y entrega">
+                <Stack spacing={1.5}>
+                  {deliveryLocations.map((loc) => (
+                    <Box key={loc.id} sx={{ display: "flex", alignItems: "flex-start", gap: 1.25 }}>
+                      <Box sx={{ color: "primary.main", display: "flex", mt: 0.25 }}>
+                        {loc.highlighted ? <FlightLandRoundedIcon fontSize="small" /> : <PlaceRoundedIcon fontSize="small" />}
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {loc.name}
+                        </Typography>
+                        {loc.description && (
+                          <Typography variant="body2" color="text.secondary">
+                            {loc.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  ))}
+                </Stack>
+              </SectionBlock>
+            )}
+
+            {policies.length > 0 && (
+              <SectionBlock title="Políticas del vehículo">
+                <Accordion
+                  disableGutters
+                  elevation={0}
+                  sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, "&:before": { display: "none" } }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
+                    <Typography sx={{ fontWeight: 600 }}>Ver políticas</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={1}>
+                      {policies.map((p) => (
+                        <Typography key={p.id} variant="body2" color="text.secondary">
+                          • {p.text}
+                        </Typography>
+                      ))}
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              </SectionBlock>
+            )}
+
+            {reviews.length > 0 && (
+              <SectionBlock title="Lo que dicen nuestros clientes">
+                <DetailReviews reviews={reviews} />
+              </SectionBlock>
+            )}
+          </Grid>
+
+          {/* Booking (sticky on desktop, fixed bar on mobile) */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <VehicleBooking
+              vehicleTitle={title}
+              dailyPrice={vehicle.dailyPrice}
+              whatsappNumber={settings.whatsappNumber}
+              locations={deliveryLocations.map((l) => l.name)}
+            />
+          </Grid>
         </Grid>
-      </Grid>
-    </Container>
+      </Container>
+
+      {/* Similar vehicles */}
+      {similar.length > 0 && (
+        <Box sx={{ bgcolor: "grey.50", py: { xs: 6, md: 8 } }}>
+          <Container>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
+              También te pueden interesar
+            </Typography>
+            <Grid container spacing={{ xs: 2.5, md: 3 }} sx={{ alignItems: "stretch" }}>
+              {similar.map((s) => (
+                <Grid key={s.id} size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: "flex" }}>
+                  <VehicleCard vehicle={s} whatsappNumber={settings.whatsappNumber} />
+                </Grid>
+              ))}
+            </Grid>
+          </Container>
+        </Box>
+      )}
+
+      {/* Final CTA */}
+      <Container sx={{ py: { xs: 6, md: 9 } }}>
+        <Box sx={{ textAlign: "center", maxWidth: 560, mx: "auto" }}>
+          <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+            ¿Listo para tu próximo viaje?
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Reserva tu vehículo de forma rápida y sencilla por WhatsApp.
+          </Typography>
+          <WhatsAppButton
+            phoneNumber={settings.whatsappNumber}
+            message={finalMessage}
+            label="Reservar por WhatsApp"
+            source="final_cta"
+            context={title}
+            size="large"
+          />
+        </Box>
+      </Container>
+    </Box>
   );
 }

@@ -7,6 +7,8 @@
  */
 export type Transmission = "automatic" | "manual";
 
+export type FuelType = "gasolina" | "diesel" | "hibrido" | "electrico";
+
 export type VehicleCategory =
   | "economico"
   | "compacto"
@@ -23,9 +25,12 @@ export interface Vehicle {
   category: VehicleCategory;
   orSimilar: boolean;
   transmission: Transmission;
+  fuelType: FuelType;
   passengers: number;
+  doors: number;
   dailyPrice: number; // in USD
   imageUrl: string; // cover
+  carouselImageUrl: string | null; // hero carousel (falls back to cover)
   images: string[]; // gallery
   description: string | null;
   features: string[];
