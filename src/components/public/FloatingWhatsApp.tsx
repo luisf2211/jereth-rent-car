@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import Fab from "@mui/material/Fab";
 import Tooltip from "@mui/material/Tooltip";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
@@ -11,12 +14,22 @@ interface Props {
 }
 
 /**
- * Global floating WhatsApp button. Fixed bottom-right, above content but not
- * blocking it, safe-area aware for mobile. data-wa-source lets the future
- * central tracker attribute this conversion.
+ * Global floating WhatsApp button. Fixed bottom-right, safe-area aware.
+ *
+ * On vehicle detail pages the mobile layout already has a fixed "Reservar"
+ * bottom bar, so on small screens we hide this button there to avoid overlap.
+ * On desktop (no bar) it stays visible everywhere.
  */
 export default function FloatingWhatsApp({ whatsappNumber }: Props) {
+  const pathname = usePathname();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   if (!whatsappNumber) return null;
+
+  // Vehicle detail route: /vehicles/<id> (but not the /vehicles list).
+  const isVehicleDetail = /^\/vehicles\/[^/]+$/.test(pathname);
+  if (isVehicleDetail && isMobile) return null;
 
   const href = buildWhatsAppUrl(
     whatsappNumber,
@@ -36,7 +49,7 @@ export default function FloatingWhatsApp({ whatsappNumber }: Props) {
           position: "fixed",
           right: { xs: 16, md: 24 },
           bottom: { xs: "calc(16px + env(safe-area-inset-bottom))", md: 24 },
-          zIndex: (theme) => theme.zIndex.snackbar + 1,
+          zIndex: (t) => t.zIndex.snackbar + 1,
           bgcolor: "#25D366",
           color: "#fff",
           "&:hover": { bgcolor: "#1EBE5B" },

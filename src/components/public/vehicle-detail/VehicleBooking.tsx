@@ -69,24 +69,24 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
 
   const fields = (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Box sx={{ display: "flex", gap: 1.5 }}>
+      <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
         <TextField
           type="date"
           label="Recogida"
           size="small"
-          fullWidth
           value={pickup}
           onChange={(e) => setPickup(e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
+          sx={{ flex: "1 1 140px" }}
         />
         <TextField
           type="date"
           label="Devolución"
           size="small"
-          fullWidth
           value={dropoff}
           onChange={(e) => setDropoff(e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
+          sx={{ flex: "1 1 140px" }}
         />
       </Box>
       {locations.length > 0 && (
@@ -189,14 +189,25 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
           borderColor: "divider",
         }}
       >
-        <Box>
-          <Typography sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-            {formatDailyPrice(dailyPrice)}
-            <Typography component="span" variant="body2" color="text.secondary">
-              {" "}
-              / día
+        <Box sx={{ minWidth: 0 }}>
+          {days > 0 ? (
+            <>
+              <Typography sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+                {formatDailyPrice(total)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {days} {days === 1 ? "día" : "días"} · {formatDailyPrice(dailyPrice)}/día
+              </Typography>
+            </>
+          ) : (
+            <Typography sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+              {formatDailyPrice(dailyPrice)}
+              <Typography component="span" variant="body2" color="text.secondary">
+                {" "}
+                / día
+              </Typography>
             </Typography>
-          </Typography>
+          )}
         </Box>
         <Button variant="contained" size="large" onClick={() => setDrawerOpen(true)} sx={{ flexShrink: 0 }}>
           Reservar

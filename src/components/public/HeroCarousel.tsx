@@ -65,7 +65,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
           position: "relative",
           borderRadius: 3,
           overflow: "hidden",
-          aspectRatio: { xs: "4 / 3", md: "3 / 2" },
+          aspectRatio: { xs: "16 / 11", md: "3 / 2" },
           bgcolor: "grey.900",
         }}
       >
@@ -99,7 +99,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
             left: 0,
             right: 0,
             bottom: 0,
-            p: { xs: 2.5, md: 3.5 },
+            p: { xs: 2, md: 3.5 },
             color: "common.white",
             pointerEvents: "none",
           }}
@@ -109,15 +109,26 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
             href={detailHref}
             sx={{ display: "block", textDecoration: "none", color: "inherit", pointerEvents: "auto" }}
           >
-            <Typography variant="overline" sx={{ color: "grey.300", letterSpacing: "0.15em" }}>
+            <Typography
+              variant="overline"
+              sx={{ color: "grey.300", letterSpacing: "0.15em", display: { xs: "none", sm: "block" } }}
+            >
               {categoryLabel(v.category)}
             </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: "1.15rem", md: "1.5rem" }, mb: 0.5 }}>
               {vehicleTitle(v)}
             </Typography>
-            <Typography variant="body2" sx={{ color: "grey.300", mb: 2 }}>
+            {/* Full specs only on larger screens; on mobile keep it to price. */}
+            <Typography variant="body2" sx={{ color: "grey.300", mb: { xs: 1.25, md: 2 }, display: { xs: "none", sm: "block" } }}>
               {v.passengers} pasajeros · {transmissionLabel(v.transmission)} · desde{" "}
               <Box component="span" sx={{ fontWeight: 700, color: "common.white" }}>
+                {formatDailyPrice(v.dailyPrice)}
+              </Box>{" "}
+              / día
+            </Typography>
+            <Typography variant="body2" sx={{ color: "grey.200", mb: 1.25, display: { xs: "block", sm: "none" } }}>
+              desde{" "}
+              <Box component="span" sx={{ fontWeight: 800, color: "common.white" }}>
                 {formatDailyPrice(v.dailyPrice)}
               </Box>{" "}
               / día
