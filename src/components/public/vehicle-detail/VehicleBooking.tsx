@@ -108,6 +108,23 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
 
   const href = whatsappNumber ? buildWhatsAppUrl(whatsappNumber, message) : undefined;
 
+  // Push a business event to the GTM dataLayer when the customer sends the
+  // quote. The generic whatsapp_click is also captured by WhatsAppTracker;
+  // this adds the quote detail (days, total, locations) for conversions.
+  const pushQuoteEvent = () => {
+    if (typeof window === "undefined") return;
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: "quote_request",
+      vehicle: vehicleTitle,
+      days,
+      daily_price: dailyPrice,
+      pickup_location: pickupLoc?.name,
+      dropoff_location: dropoffLoc?.name,
+      total,
+    });
+  };
+
   const locationLabel = (l: BookingLocation) =>
     l.deliveryFee > 0 ? `${l.name} (+${formatDailyPrice(l.deliveryFee)})` : `${l.name} (gratis)`;
 
@@ -236,6 +253,7 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
       data-wa-source="vehicle"
       data-wa-context={vehicleTitle}
       disabled={!href}
+      onClick={pushQuoteEvent}
       sx={{ mt: 2 }}
     >
       Reservar por WhatsApp
