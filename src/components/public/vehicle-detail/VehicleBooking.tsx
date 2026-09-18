@@ -17,6 +17,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { formatDailyPrice } from "@/features/vehicles/format";
 import { rentalDays } from "@/utils/rental-days";
+import { trackEvent } from "@/lib/analytics";
 
 /** Delivery location option with its own fee. */
 export interface BookingLocation {
@@ -108,20 +109,17 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
 
   const href = whatsappNumber ? buildWhatsAppUrl(whatsappNumber, message) : undefined;
 
-  // Push a business event to the GTM dataLayer when the customer sends the
-  // quote. The generic whatsapp_click is also captured by WhatsAppTracker;
-  // this adds the quote detail (days, total, locations) for conversions.
+  // Report a business event when the customer sends the quote. The generic
+  // whatsapp_click is also captured by WhatsAppTracker; this adds the quote
+  // detail (days, total, locations) to GA4 + dataLayer for conversions.
   const pushQuoteEvent = () => {
-    if (typeof window === "undefined") return;
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-      event: "quote_request",
+    trackEvent("quote_request", {
       vehicle: vehicleTitle,
       days,
       daily_price: dailyPrice,
       pickup_location: pickupLoc?.name,
       dropoff_location: dropoffLoc?.name,
-      total,
+      value: total,
     });
   };
 

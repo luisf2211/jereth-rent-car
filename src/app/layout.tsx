@@ -7,6 +7,7 @@ import {
   GoogleTagManagerScript,
   GoogleTagManagerNoScript,
 } from "@/components/analytics/GoogleTagManager";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import WhatsAppTracker from "@/components/analytics/WhatsAppTracker";
 
 const geistSans = Geist({
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </AppRouterCacheProvider>
         <WhatsAppTracker />
         <GoogleTagManagerScript />
+        <GoogleAnalytics />
       </body>
     </html>
   );
