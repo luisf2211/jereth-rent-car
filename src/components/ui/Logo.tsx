@@ -26,11 +26,15 @@ interface LogoProps {
  */
 function splitName(companyName: string): { primary: string; kicker?: string } {
   const match = companyName.match(/^(.*?)[\s-]+(rent\s*a?\s*car)$/i);
-  if (match) return { primary: match[1].trim(), kicker: match[2].toUpperCase() };
+  if (match) return { primary: match[1].trim(), kicker: "Rent Car" };
   return { primary: companyName };
 }
 
-/** Wordmark: company name with a subtle two-line hierarchy. */
+/**
+ * Wordmark on a single line: the brand name in a strong weight and the
+ * "Rent Car" descriptor in a lighter weight + magenta, sharing the same line
+ * for a tidy, considered lockup (no stacked labels).
+ */
 function Wordmark({
   companyName,
   onDark,
@@ -42,37 +46,41 @@ function Wordmark({
 }) {
   const { primary, kicker } = splitName(companyName);
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", lineHeight: 1, textDecoration: "none" }}>
-      <Typography
-        component="span"
-        sx={{
-          fontWeight: 800,
-          fontSize,
-          letterSpacing: "-0.01em",
-          lineHeight: 1.05,
-          color: onDark ? "common.white" : "text.primary",
-          whiteSpace: "nowrap",
-          textDecoration: "none",
-        }}
-      >
+    <Typography
+      component="span"
+      className="jereth-wordmark"
+      sx={{
+        fontSize,
+        lineHeight: 1,
+        letterSpacing: "-0.01em",
+        whiteSpace: "nowrap",
+        textDecoration: "none",
+        color: onDark ? "common.white" : "text.primary",
+        display: "inline-flex",
+        alignItems: "baseline",
+        gap: 0.6,
+        // Subtle brand-color tint on hover (whole lockup).
+        "& > span": { transition: "color 160ms ease" },
+        "&:hover > span": { color: "primary.main" },
+      }}
+    >
+      <Box component="span" sx={{ fontWeight: 800 }}>
         {primary}
-      </Typography>
+      </Box>
       {kicker && (
-        <Typography
+        <Box
           component="span"
           sx={{
-            fontWeight: 700,
-            fontSize: "0.66rem",
-            letterSpacing: "0.28em",
-            mt: 0.4,
-            color: "primary.main",
-            textDecoration: "none",
+            fontWeight: 500,
+            // Descriptor reads a touch smaller than the brand name.
+            fontSize: "0.82em",
+            color: onDark ? "grey.400" : "text.secondary",
           }}
         >
           {kicker}
-        </Typography>
+        </Box>
       )}
-    </Box>
+    </Typography>
   );
 }
 
