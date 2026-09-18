@@ -25,7 +25,7 @@ import { PUBLIC_NAV_LINKS } from "./nav-links";
  * WhatsApp lives on the vehicle cards/detail and the floating button.
  */
 export default function PublicHeader() {
-  const { companyName, logoUrl } = useBranding();
+  const { companyName, logoUrl, navLogoScale } = useBranding();
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -40,7 +40,7 @@ export default function PublicHeader() {
       <Container>
         <Toolbar disableGutters sx={{ gap: 2, minHeight: { xs: 64, md: 76 } }}>
           <Box component={NextLink} href="/" sx={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-            <Logo companyName={companyName} logoUrl={logoUrl} variant="onDark" display="name" />
+            <Logo companyName={companyName} logoUrl={logoUrl} variant="onDark" display="name" scale={navLogoScale} />
           </Box>
 
           <Box
@@ -77,7 +77,7 @@ export default function PublicHeader() {
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
         <Box sx={{ width: 300, p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-            <Logo companyName={companyName} logoUrl={logoUrl} display="name" />
+            <Logo companyName={companyName} logoUrl={logoUrl} display="name" scale={navLogoScale} />
             <IconButton aria-label="Cerrar menú" onClick={() => setOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>

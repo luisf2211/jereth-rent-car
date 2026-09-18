@@ -13,6 +13,7 @@ export interface BrandingFormData {
   aboutText: string;
   primaryColor: string;
   logoScale: number;
+  navLogoScale: number;
 }
 
 const EMPTY: BrandingFormData = {
@@ -28,6 +29,7 @@ const EMPTY: BrandingFormData = {
   aboutText: "",
   primaryColor: "",
   logoScale: 1,
+  navLogoScale: 1,
 };
 
 /** Editable branding fields for the admin form. */
@@ -47,5 +49,6 @@ export async function getBrandingFormData(): Promise<BrandingFormData> {
     aboutText: row.aboutText ?? "",
     primaryColor: row.primaryColor ?? "",
     logoScale: row.logoScale ?? 1,
+    navLogoScale: row.navLogoScale ?? 1,
   };
 }

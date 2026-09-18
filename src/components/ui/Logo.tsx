@@ -9,7 +9,8 @@ interface LogoProps {
   variant?: "default" | "onDark";
   /**
    * What to render:
-   * - "name": wordmark only (used in the navbar).
+   * - "name": navbar mark. Shows the uploaded logo image when one is set,
+   *   otherwise falls back to the text wordmark.
    * - "logo": the uploaded logo image, larger (used in the footer). Falls back
    *   to the wordmark when no logo image is set.
    */
@@ -18,6 +19,11 @@ interface LogoProps {
   scale?: number;
   /** Base height in px for the "logo" image before scaling. */
   baseHeight?: number;
+  /**
+   * Base height in px for the navbar logo image (display="name") before
+   * scaling. Responsive object allowed.
+   */
+  navHeight?: number | Record<string, number>;
 }
 
 /**
@@ -95,17 +101,44 @@ export default function Logo({
   display = "name",
   scale = 1,
   baseHeight = 56,
+  navHeight = { xs: 34, md: 40 },
 }: LogoProps) {
   const onDark = variant === "onDark";
+  const clampedScale = Math.min(Math.max(scale, 0.8), 3);
 
   if (display === "logo" && logoUrl) {
-    const height = Math.round(baseHeight * Math.min(Math.max(scale, 0.8), 3));
+    const height = Math.round(baseHeight * clampedScale);
     return (
       <Box
         component="img"
         src={logoUrl}
         alt={companyName}
         sx={{ height, width: "auto", maxWidth: "100%", objectFit: "contain", display: "block" }}
+      />
+    );
+  }
+
+  // Navbar: show the uploaded logo image when there is one, scaled by the
+  // navbar logo scale; otherwise fall back to the text wordmark below.
+  if (display === "name" && logoUrl) {
+    const scaledNavHeight =
+      typeof navHeight === "number"
+        ? Math.round(navHeight * clampedScale)
+        : Object.fromEntries(
+            Object.entries(navHeight).map(([bp, h]) => [bp, Math.round(h * clampedScale)])
+          );
+    return (
+      <Box
+        component="img"
+        src={logoUrl}
+        alt={companyName}
+        sx={{
+          height: scaledNavHeight,
+          width: "auto",
+          maxWidth: { xs: 180, md: 260 },
+          objectFit: "contain",
+          display: "block",
+        }}
       />
     );
   }

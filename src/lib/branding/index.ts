@@ -19,6 +19,7 @@ const FALLBACK_SETTINGS: CompanySettings = {
   googleMapsUrl: null,
   aboutText: null,
   logoScale: 1,
+  navLogoScale: 1,
   socialLinks: {},
 };
 
@@ -40,6 +41,7 @@ export async function getCompanySettings(): Promise<CompanySettings> {
       googleMapsUrl: row.googleMapsUrl,
       aboutText: row.aboutText,
       logoScale: row.logoScale ?? 1,
+      navLogoScale: row.navLogoScale ?? 1,
       socialLinks: {
         instagram: row.instagramUrl ?? undefined,
         facebook: row.facebookUrl ?? undefined,

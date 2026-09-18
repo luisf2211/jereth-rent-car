@@ -15,6 +15,7 @@ export interface CompanySettings {
   googleMapsUrl: string | null;
   aboutText: string | null;
   logoScale: number;
+  navLogoScale: number;
   socialLinks: {
     instagram?: string;
     facebook?: string;

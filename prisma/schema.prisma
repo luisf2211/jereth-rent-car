@@ -78,8 +78,10 @@ model CompanySettings {
   googleMapsUrl  String?
   // Short "about" text for the Nosotros section (owner-written; optional)
   aboutText      String?
-  // Logo display scale (1.0 = default). Lets the owner enlarge/shrink the logo.
+  // Logo display scale in the footer (1.0 = default).
   logoScale      Float    @default(1)
+  // Logo display scale in the navbar (1.0 = default).
+  navLogoScale   Float    @default(1)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

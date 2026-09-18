@@ -65,6 +65,7 @@ export async function updateBranding(input: unknown): Promise<ActionResult> {
     aboutText: orNull(d.aboutText),
     primaryColor: orNull(d.primaryColor),
     logoScale: d.logoScale ?? 1,
+    navLogoScale: d.navLogoScale ?? 1,
   };
 
   try {

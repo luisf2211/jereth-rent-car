@@ -35,6 +35,7 @@ type FormValues = {
   aboutText: string;
   primaryColor: string;
   logoScale: number;
+  navLogoScale: number;
 };
 
 /**
@@ -197,7 +198,41 @@ export default function BrandingForm({
               />
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 8 }}>
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="caption" color="text.secondary">
+                Si subes un logo, se mostrará en la barra de navegación (y en el
+                pie de página) en lugar del nombre en texto. Si no hay logo, se
+                usa el nombre de la empresa.
+              </Typography>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
+                name="navLogoScale"
+                control={control}
+                render={({ field }) => (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Tamaño del logo en el navbar: {Math.round((field.value ?? 1) * 100)}%
+                    </Typography>
+                    <Slider
+                      value={field.value ?? 1}
+                      onChange={(_, v) => field.onChange(v as number)}
+                      min={0.8}
+                      max={3}
+                      step={0.1}
+                      marks={[
+                        { value: 1, label: "1x" },
+                        { value: 2, label: "2x" },
+                        { value: 3, label: "3x" },
+                      ]}
+                      valueLabelDisplay="auto"
+                      valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
+                    />
+                  </Box>
+                )}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Controller
                 name="logoScale"
                 control={control}
