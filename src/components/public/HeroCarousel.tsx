@@ -135,7 +135,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
             disabled={!href}
             sx={{ pointerEvents: "auto" }}
           >
-            Cotizar por WhatsApp
+            Rentar
           </Button>
         </Box>
 

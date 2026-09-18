@@ -16,18 +16,17 @@ import ListItemText from "@mui/material/ListItemText";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Logo from "@/components/ui/Logo";
-import WhatsAppButton from "@/components/ui/WhatsAppButton";
 import { useBranding } from "@/components/branding/BrandingProvider";
 import { PUBLIC_NAV_LINKS } from "./nav-links";
 
 /**
  * Public header. Solid black bar across the whole site, white text. Fixed to
- * the top. Client component: manages the mobile drawer.
+ * the top. Client component: manages the mobile drawer. No WhatsApp CTA here —
+ * WhatsApp lives on the vehicle cards/detail and the floating button.
  */
 export default function PublicHeader() {
-  const { companyName, logoUrl, whatsappNumber } = useBranding();
+  const { companyName, logoUrl } = useBranding();
   const [open, setOpen] = React.useState(false);
-  const ctaMessage = "Hola Jereth Rent Car, quiero información para rentar un vehículo.";
 
   return (
     <AppBar
@@ -64,10 +63,6 @@ export default function PublicHeader() {
             ))}
           </Box>
 
-          <Box sx={{ display: { xs: "none", md: "block" }, ml: "auto" }}>
-            <WhatsAppButton phoneNumber={whatsappNumber} message={ctaMessage} source="header" />
-          </Box>
-
           <IconButton
             aria-label="Abrir menú"
             edge="end"
@@ -101,13 +96,6 @@ export default function PublicHeader() {
               </ListItem>
             ))}
           </List>
-          <WhatsAppButton
-            phoneNumber={whatsappNumber}
-            message={ctaMessage}
-            source="header"
-            fullWidth
-            size="large"
-          />
         </Box>
       </Drawer>
     </AppBar>
