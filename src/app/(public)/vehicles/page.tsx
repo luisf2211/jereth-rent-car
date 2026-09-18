@@ -7,6 +7,8 @@ import VehiclesCatalog from "@/components/public/VehiclesCatalog";
 import { getVehicles } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Vehículos",
   description: "Explora nuestra flota de vehículos para alquiler en Santo Domingo. Filtra por categoría, transmisión y pasajeros.",

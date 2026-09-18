@@ -10,6 +10,10 @@ import AboutSection from "@/components/public/AboutSection";
 import ContactSection from "@/components/public/ContactSection";
 import FinalCtaSection from "@/components/public/FinalCtaSection";
 
+// Reads live data from the DB (vehicles, content), so render per request
+// instead of prerendering at build time.
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return (
     <>
