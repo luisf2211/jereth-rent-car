@@ -1,7 +1,8 @@
 html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
+  /* No overflow-x:hidden here on purpose: it would only mask real horizontal
+     overflow. Each section is responsible for staying within the viewport. */
+  max-width: 100%;
 }
 
 * {

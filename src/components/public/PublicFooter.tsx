@@ -65,7 +65,7 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
             </Stack>
           </Grid>
 
-          <Grid size={{ xs: 6, md: 4 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Typography variant="subtitle2" sx={{ color: "common.white", mb: 1.5 }}>
               Contacto
             </Typography>
@@ -83,10 +83,12 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
               <Box
                 component="a"
                 href={`mailto:${contactEmail}`}
-                sx={{ display: "flex", alignItems: "center", gap: 1, color: "grey.400", "&:hover": { color: "common.white" } }}
+                sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, color: "grey.400", "&:hover": { color: "common.white" } }}
               >
-                <EmailRoundedIcon fontSize="small" />
-                <Typography variant="body2">{contactEmail}</Typography>
+                <EmailRoundedIcon fontSize="small" sx={{ flexShrink: 0 }} />
+                <Typography variant="body2" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                  {contactEmail}
+                </Typography>
               </Box>
               <Stack direction="row" spacing={1}>
                 {socialLinks.instagram && (

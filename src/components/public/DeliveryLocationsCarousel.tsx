@@ -177,7 +177,7 @@ export default function DeliveryLocationsCarousel({ locations }: Props) {
             sx={{
               position: "absolute",
               top: "38%",
-              left: { xs: 4, md: -18 },
+              left: 8,
               transform: "translateY(-50%)",
               bgcolor: "common.white",
               boxShadow: 2,
@@ -192,7 +192,7 @@ export default function DeliveryLocationsCarousel({ locations }: Props) {
             sx={{
               position: "absolute",
               top: "38%",
-              right: { xs: 4, md: -18 },
+              right: 8,
               transform: "translateY(-50%)",
               bgcolor: "common.white",
               boxShadow: 2,

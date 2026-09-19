@@ -1,22 +1,21 @@
 import * as React from "react";
 import Container from "@mui/material/Container";
-import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import VehicleCard from "@/components/public/VehicleCard";
-import { getFeaturedVehicles } from "@/features/vehicles/data";
+import VehiclesCarousel from "@/components/public/VehiclesCarousel";
+import { getVehicles } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
 
 /**
  * Featured vehicles. Editorial header row (title left, "ver todos" right on
- * desktop). Renders nothing if there are no published vehicles.
- * Responsive grid: 4 cols (md), 2 (sm), 1 (xs).
+ * desktop). The whole fleet is shown as an auto-scrolling infinite carousel.
+ * Renders nothing if there are no published vehicles.
  */
 export default async function FeaturedVehiclesSection() {
   const [vehicles, { whatsappNumber }] = await Promise.all([
-    getFeaturedVehicles(4),
+    getVehicles(),
     getCompanySettings(),
   ]);
 
@@ -53,13 +52,7 @@ export default async function FeaturedVehiclesSection() {
           </Button>
         </Box>
 
-        <Grid container spacing={{ xs: 2.5, md: 3 }} sx={{ alignItems: "stretch" }}>
-          {vehicles.map((vehicle) => (
-            <Grid key={vehicle.id} size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: "flex" }}>
-              <VehicleCard vehicle={vehicle} whatsappNumber={whatsappNumber} />
-            </Grid>
-          ))}
-        </Grid>
+        <VehiclesCarousel vehicles={vehicles} whatsappNumber={whatsappNumber} />
       </Container>
     </Box>
   );
