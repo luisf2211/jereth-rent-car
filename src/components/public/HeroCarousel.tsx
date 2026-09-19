@@ -125,7 +125,9 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
         )}
       </Box>
 
-      {/* Info block below the photo */}
+      {/* Info block below the photo. Colors are set explicitly so the block
+          stays legible even when the hero section renders light text over a
+          background photo (the info block has its own white surface). */}
       <Stack
         direction={{ xs: "column", sm: "row" }}
         sx={{
@@ -133,12 +135,13 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
           gap: { xs: 1.5, sm: 2 },
           justifyContent: "space-between",
           alignItems: { xs: "stretch", sm: "flex-end" },
+          color: "text.primary",
         }}
       >
         <Box
           component={NextLink}
           href={detailHref}
-          sx={{ minWidth: 0, textDecoration: "none", color: "inherit" }}
+          sx={{ minWidth: 0, textDecoration: "none", color: "text.primary" }}
         >
           <Typography
             variant="overline"
@@ -152,6 +155,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
               fontSize: { xs: "1.2rem", md: "1.4rem" },
               lineHeight: 1.2,
               mb: 0.75,
+              color: "text.primary",
             }}
           >
             {vehicleTitle(v)}

@@ -45,7 +45,7 @@ export default function PublicHeader() {
 
           <Box
             component="nav"
-            sx={{ display: { xs: "none", md: "flex" }, gap: 0.5, ml: 3, flexGrow: 1 }}
+            sx={{ display: { xs: "none", md: "flex" }, gap: 0.5, flexGrow: 1, justifyContent: "center" }}
           >
             {PUBLIC_NAV_LINKS.map((link) => (
               <Button
