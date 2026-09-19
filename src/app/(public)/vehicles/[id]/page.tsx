@@ -28,7 +28,7 @@ import VehicleGalleryPro from "@/components/public/vehicle-detail/VehicleGallery
 import VehicleBooking from "@/components/public/vehicle-detail/VehicleBooking";
 import VehicleDescription from "@/components/public/vehicle-detail/VehicleDescription";
 import DetailReviews from "@/components/public/vehicle-detail/DetailReviews";
-import { getVehicleById, getSimilarVehicles } from "@/features/vehicles/data";
+import { getVehicleById, getSimilarVehicles, incrementVehicleViews } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
 import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import {
@@ -79,6 +79,9 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
   const { id } = await params;
   const vehicle = await getVehicleById(id);
   if (!vehicle) notFound();
+
+  // Count this view (best-effort) to drive the "most viewed first" fleet order.
+  void incrementVehicleViews(id);
 
   const [settings, requirements, deliveryLocations, policies, inclusions, reviews, similar] =
     await Promise.all([

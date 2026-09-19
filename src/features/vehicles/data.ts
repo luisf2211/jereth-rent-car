@@ -31,10 +31,16 @@ function toVehicle(row: PrismaVehicle): Vehicle {
   };
 }
 
+/**
+ * Ordering for the public fleet: most-viewed first, with the newest as a
+ * stable tiebreaker so vehicles with no views yet keep a sensible order.
+ */
+const POPULAR_ORDER = [{ viewCount: "desc" as const }, { createdAt: "asc" as const }];
+
 export async function getVehicles(): Promise<Vehicle[]> {
   const rows = await prisma.vehicle.findMany({
     where: { isActive: true },
-    orderBy: { createdAt: "asc" },
+    orderBy: POPULAR_ORDER,
   });
   return rows.map(toVehicle);
 }
@@ -42,7 +48,7 @@ export async function getVehicles(): Promise<Vehicle[]> {
 export async function getFeaturedVehicles(limit = 4): Promise<Vehicle[]> {
   const rows = await prisma.vehicle.findMany({
     where: { isActive: true },
-    orderBy: { createdAt: "asc" },
+    orderBy: POPULAR_ORDER,
     take: limit,
   });
   return rows.map(toVehicle);
@@ -51,6 +57,22 @@ export async function getFeaturedVehicles(limit = 4): Promise<Vehicle[]> {
 export async function getVehicleById(id: string): Promise<Vehicle | null> {
   const row = await prisma.vehicle.findUnique({ where: { id } });
   return row ? toVehicle(row) : null;
+}
+
+/**
+ * Increments a vehicle's detail-page view counter. Best-effort: failures are
+ * swallowed so a counter hiccup never breaks the page. Only counts active
+ * vehicles.
+ */
+export async function incrementVehicleViews(id: string): Promise<void> {
+  try {
+    await prisma.vehicle.updateMany({
+      where: { id, isActive: true },
+      data: { viewCount: { increment: 1 } },
+    });
+  } catch (error) {
+    console.error("incrementVehicleViews failed:", error);
+  }
 }
 
 /** Active vehicles similar to the given one (same category first, excludes it). */

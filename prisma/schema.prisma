@@ -143,11 +143,15 @@ model Vehicle {
   // which is replaced by the vehicle title. Empty = use the default message.
   whatsappMessage String?
   isActive     Boolean         @default(true)
+  // Detail-page view counter. Drives the "most viewed first" ordering of the
+  // public fleet. Incremented server-side when a detail page is opened.
+  viewCount    Int             @default(0)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
   @@index([isActive])
   @@index([category])
+  @@index([isActive, viewCount])
 }
 
 // --- Editable site content (managed from the backoffice) -------------------
