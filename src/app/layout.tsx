@@ -28,6 +28,17 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${settings.companyName}`,
     },
     description: `Renta el vehículo perfecto con ${settings.companyName}.`,
+    // Official JERETH RENT CAR icons (files live in /public). Shown in tabs,
+    // favorites and iOS home screen. Does not affect the on-page logo.
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+        { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+        { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    },
   };
 }
 
