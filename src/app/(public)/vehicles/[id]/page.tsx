@@ -247,8 +247,14 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                           <Chip
                             size="small"
                             variant="outlined"
-                            label={loc.deliveryFee > 0 ? `+${formatDailyPrice(loc.deliveryFee)}` : "Gratis"}
-                            color={loc.deliveryFee > 0 ? "default" : "success"}
+                            label={
+                              !loc.hasFee
+                                ? "Gratis"
+                                : loc.deliveryFee > 0
+                                  ? `+${formatDailyPrice(loc.deliveryFee)}`
+                                  : "Cargo adicional"
+                            }
+                            color={loc.hasFee ? "default" : "success"}
                           />
                         </Box>
                         {loc.description && (
@@ -314,6 +320,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
               locations={deliveryLocations.map((l) => ({
                 id: l.id,
                 name: l.name,
+                hasFee: l.hasFee,
                 deliveryFee: l.deliveryFee,
               }))}
             />

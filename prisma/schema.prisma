@@ -176,8 +176,11 @@ model DeliveryLocation {
   // Real photo of the location (e.g. the airport terminal) shown in the
   // public carousel. Optional — cards fall back to an icon when empty.
   imageUrl    String?
-  // Extra fee (USD) added to the rental total when this location is chosen
-  // for pickup or return. 0 = free.
+  // Whether this location carries an extra delivery charge. When false the
+  // location is free. When true it shows "Cargo adicional"; if deliveryFee > 0
+  // the amount is shown and added to the total, otherwise just the label.
+  hasFee      Boolean  @default(false)
+  // Extra fee (USD) added to the rental total when hasFee is true and > 0.
   deliveryFee Int      @default(0)
   // Optional Google Maps URL to show the exact spot (e.g. airport terminal).
   mapUrl      String?

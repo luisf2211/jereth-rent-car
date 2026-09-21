@@ -71,6 +71,8 @@ export async function saveDeliveryLocation(
     description: parsed.data.description || null,
     imageUrl: parsed.data.imageUrl || null,
     mapUrl: parsed.data.mapUrl || null,
+    // Free locations never carry an amount.
+    deliveryFee: parsed.data.hasFee ? parsed.data.deliveryFee : 0,
   };
 
   try {

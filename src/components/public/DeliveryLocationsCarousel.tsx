@@ -17,8 +17,9 @@ interface Props {
   locations: DeliveryLocationItem[];
 }
 
-function formatFee(fee: number): string {
-  return fee > 0 ? `+US$${fee}` : "Entrega gratis";
+function formatFee(loc: DeliveryLocationItem): string {
+  if (!loc.hasFee) return "Entrega gratis";
+  return loc.deliveryFee > 0 ? `+US$${loc.deliveryFee}` : "Cargo adicional";
 }
 
 function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
@@ -54,12 +55,12 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
         )}
         <Chip
           size="small"
-          label={formatFee(loc.deliveryFee)}
+          label={formatFee(loc)}
           sx={{
             position: "absolute",
             top: 12,
             right: 12,
-            bgcolor: loc.deliveryFee > 0 ? "rgba(10,10,10,0.72)" : "success.main",
+            bgcolor: loc.hasFee ? "rgba(10,10,10,0.72)" : "success.main",
             color: "common.white",
             fontWeight: 700,
           }}

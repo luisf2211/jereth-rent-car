@@ -19,10 +19,12 @@ import { formatDailyPrice } from "@/features/vehicles/format";
 import { rentalDays } from "@/utils/rental-days";
 import { trackEvent } from "@/lib/analytics";
 
-/** Delivery location option with its own fee. */
+/** Delivery location option. `hasFee` marks a paid location; `deliveryFee`
+ *  is the amount (may be 0 = "Cargo adicional" label without a price). */
 export interface BookingLocation {
   id: string;
   name: string;
+  hasFee: boolean;
   deliveryFee: number;
 }
 
@@ -123,8 +125,12 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
     });
   };
 
-  const locationLabel = (l: BookingLocation) =>
-    l.deliveryFee > 0 ? `${l.name} (+${formatDailyPrice(l.deliveryFee)})` : `${l.name} (gratis)`;
+  const locationLabel = (l: BookingLocation) => {
+    if (!l.hasFee) return `${l.name} (gratis)`;
+    return l.deliveryFee > 0
+      ? `${l.name} (+${formatDailyPrice(l.deliveryFee)})`
+      : `${l.name} (cargo adicional)`;
+  };
 
   const fields = (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
@@ -211,20 +217,24 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
         </Typography>
         <Typography variant="body2">{formatDailyPrice(rentalSubtotal)}</Typography>
       </Box>
-      {pickupFee > 0 && (
+      {pickupLoc?.hasFee && (
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
           <Typography variant="body2" color="text.secondary">
-            Entrega · {pickupLoc?.name}
+            Entrega · {pickupLoc.name}
           </Typography>
-          <Typography variant="body2">{formatDailyPrice(pickupFee)}</Typography>
+          <Typography variant="body2">
+            {pickupFee > 0 ? formatDailyPrice(pickupFee) : "Cargo adicional"}
+          </Typography>
         </Box>
       )}
-      {dropoffFee > 0 && (
+      {dropoffLoc?.hasFee && (
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
           <Typography variant="body2" color="text.secondary">
-            Devolución · {dropoffLoc?.name}
+            Devolución · {dropoffLoc.name}
           </Typography>
-          <Typography variant="body2">{formatDailyPrice(dropoffFee)}</Typography>
+          <Typography variant="body2">
+            {dropoffFee > 0 ? formatDailyPrice(dropoffFee) : "Cargo adicional"}
+          </Typography>
         </Box>
       )}
       <Divider sx={{ my: 1 }} />

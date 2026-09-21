@@ -48,7 +48,7 @@ export default function DeliveryManager({ locations }: Props) {
     },
     {
       name: "deliveryFee",
-      label: "Monto del cargo (US$)",
+      label: "Monto del cargo (US$) — deja 0 para mostrar solo la etiqueta",
       type: "number",
       defaultValue: 0,
       half: true,
@@ -60,21 +60,24 @@ export default function DeliveryManager({ locations }: Props) {
     { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
   ];
 
-  // Seed the UI-only feeType from the stored deliveryFee when editing.
+  // Seed the UI-only feeType from the stored hasFee flag when editing.
   const seedValues = (
     item: AdminDeliveryLocation | null,
     values: Record<string, unknown>
   ): Record<string, unknown> => ({
     ...values,
-    feeType: item && item.deliveryFee > 0 ? "paid" : "free",
+    feeType: item?.hasFee ? "paid" : "free",
   });
 
-  // Force deliveryFee to 0 for free delivery and drop the UI-only feeType.
+  // Map the UI-only feeType to hasFee. When "paid" with amount 0, the location
+  // shows "Cargo adicional" without an amount and adds nothing to the total.
   const transformBeforeSave = (values: Record<string, unknown>): Record<string, unknown> => {
     const { feeType, ...rest } = values;
+    const hasFee = feeType === "paid";
     return {
       ...rest,
-      deliveryFee: feeType === "paid" ? rest.deliveryFee : 0,
+      hasFee,
+      deliveryFee: hasFee ? rest.deliveryFee : 0,
     };
   };
 
@@ -86,7 +89,11 @@ export default function DeliveryManager({ locations }: Props) {
         emptyLabel="Aún no hay lugares de entrega. Agrega el primero."
         addLabel="Nuevo lugar"
         primaryText={(d) =>
-          d.deliveryFee > 0 ? `${d.name} · US$${d.deliveryFee}` : `${d.name} · Gratis`
+          !d.hasFee
+            ? `${d.name} · Gratis`
+            : d.deliveryFee > 0
+              ? `${d.name} · Cargo US$${d.deliveryFee}`
+              : `${d.name} · Cargo adicional`
         }
         secondaryText={(d) => d.description ?? undefined}
         onSave={(id, values) => saveDeliveryLocation(id, values)}
