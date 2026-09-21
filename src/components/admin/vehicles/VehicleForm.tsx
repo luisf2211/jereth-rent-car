@@ -24,6 +24,8 @@ import { CATEGORY_ORDER, categoryLabel } from "@/features/vehicles/format";
 import VehicleImageUploader from "./VehicleImageUploader";
 import VehicleGalleryUploader from "./VehicleGalleryUploader";
 import FeaturesEditor from "./FeaturesEditor";
+import type { ImageFit, ImageFits } from "@/types/vehicle";
+import { DEFAULT_FIT } from "@/lib/image-fit";
 
 interface VehicleFormProps {
   vehicle?: VehicleAdminItem;
@@ -45,11 +47,32 @@ type FormValues = {
   imageUrl: string;
   carouselImageUrl: string;
   images: string[];
+  imageFits: ImageFits;
   description: string;
   features: string[];
   whatsappMessage: string;
   isActive: boolean;
 };
+
+/**
+ * Parse imageFits from the DB (Prisma returns Json as `unknown`).
+ * Validates structure loosely — any entry missing x/y/zoom gets defaults.
+ */
+function parseImageFits(raw: unknown): ImageFits {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const fits: ImageFits = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const v = val as Record<string, unknown>;
+      fits[key] = {
+        x: typeof v.x === "number" ? v.x : 50,
+        y: typeof v.y === "number" ? v.y : 50,
+        zoom: typeof v.zoom === "number" ? v.zoom : 1,
+      };
+    }
+  }
+  return fits;
+}
 
 /**
  * Create/edit vehicle form. RHF + Zod for client validation; server action
@@ -64,6 +87,8 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
     control,
     handleSubmit,
     setError,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(vehicleSchema) as Resolver<FormValues>,
@@ -81,12 +106,23 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
       imageUrl: vehicle?.imageUrl ?? "",
       carouselImageUrl: vehicle?.carouselImageUrl ?? "",
       images: vehicle?.images ?? [],
+      imageFits: parseImageFits(vehicle?.imageFits),
       description: vehicle?.description ?? "",
       features: vehicle?.features ?? [],
       whatsappMessage: vehicle?.whatsappMessage ?? "",
       isActive: vehicle?.isActive ?? true,
     },
   });
+
+  const imageFits = watch("imageFits");
+
+  /** Get the ImageFit for a specific key, falling back to DEFAULT_FIT. */
+  const getFitFor = (key: string): ImageFit => imageFits[key] ?? DEFAULT_FIT;
+
+  /** Update the ImageFit for a specific key. */
+  const setFitFor = (key: string, fit: ImageFit) => {
+    setValue("imageFits", { ...imageFits, [key]: fit }, { shouldDirty: true });
+  };
 
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
@@ -114,6 +150,7 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
           </Alert>
         )}
         <Grid container spacing={3}>
+          {/* ── Cover photo ── */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
               Foto de portada
@@ -126,10 +163,15 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
                   value={field.value}
                   onChange={field.onChange}
                   error={errors.imageUrl?.message}
+                  fit={getFitFor("cover")}
+                  onFitChange={(fit) => setFitFor("cover", fit)}
+                  previewAspectRatio="4 / 3"
                 />
               )}
             />
           </Grid>
+
+          {/* ── Carousel photo ── */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
               Foto de carrusel (portada del inicio)
@@ -142,6 +184,9 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
                   value={field.value}
                   onChange={field.onChange}
                   error={errors.carouselImageUrl?.message}
+                  fit={getFitFor("carousel")}
+                  onFitChange={(fit) => setFitFor("carousel", fit)}
+                  previewAspectRatio="16 / 9"
                 />
               )}
             />
@@ -150,6 +195,7 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
             </Typography>
           </Grid>
 
+          {/* ── Vehicle fields ── */}
           <Grid size={{ xs: 12, sm: 6 }}>
             <Controller
               name="brand"
@@ -306,6 +352,7 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
             />
           </Grid>
 
+          {/* ── Description & features ── */}
           <Grid size={{ xs: 12 }}>
             <Divider sx={{ my: 1 }} />
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -362,13 +409,19 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
             />
           </Grid>
 
+          {/* ── Gallery ── */}
           <Grid size={{ xs: 12 }}>
             <Divider sx={{ my: 1 }} />
             <Controller
               name="images"
               control={control}
               render={({ field }) => (
-                <VehicleGalleryUploader value={field.value} onChange={field.onChange} />
+                <VehicleGalleryUploader
+                  value={field.value}
+                  onChange={field.onChange}
+                  fits={imageFits}
+                  onFitChange={(url, fit) => setFitFor(url, fit)}
+                />
               )}
             />
           </Grid>

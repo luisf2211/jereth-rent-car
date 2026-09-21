@@ -14,10 +14,14 @@ import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import type { ImageFits } from "@/types/vehicle";
+import { getFit, fitToStyle } from "@/lib/image-fit";
 
 interface Props {
   images: string[];
   alt: string;
+  /** Per-photo framing map. Keys are photo URLs. */
+  imageFits?: ImageFits | null;
 }
 
 /**
@@ -27,7 +31,7 @@ interface Props {
  * - Mobile: swipeable carousel with a "n / total" indicator.
  * Falls back gracefully with 1–4 images.
  */
-export default function VehicleGalleryPro({ images, alt }: Props) {
+export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -64,7 +68,12 @@ export default function VehicleGalleryPro({ images, alt }: Props) {
             key={pics[index]}
             src={pics[index]}
             alt={alt}
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "block",
+              ...fitToStyle(getFit(imageFits, pics[index])),
+            }}
           />
           {count > 1 && (
             <Box
@@ -131,12 +140,30 @@ export default function VehicleGalleryPro({ images, alt }: Props) {
       >
         <Box sx={{ gridRow: "1 / span 2", gridColumn: "1", position: "relative", bgcolor: "grey.100" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={main} alt={alt} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <img
+            src={main}
+            alt={alt}
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "block",
+              ...fitToStyle(getFit(imageFits, main)),
+            }}
+          />
         </Box>
         {rest.map((img, i) => (
           <Box key={img + i} sx={{ position: "relative", bgcolor: "grey.100" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img} alt={`${alt} ${i + 2}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img
+              src={img}
+              alt={`${alt} ${i + 2}`}
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "block",
+                ...fitToStyle(getFit(imageFits, img)),
+              }}
+            />
           </Box>
         ))}
 

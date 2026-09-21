@@ -157,7 +157,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
         </Box>
 
         {/* Gallery */}
-        <VehicleGalleryPro images={gallery} alt={title} />
+        <VehicleGalleryPro images={gallery} alt={title} imageFits={vehicle.imageFits} />
 
         {/* Content + booking */}
         <Grid container spacing={{ xs: 3, md: 6 }} sx={{ mt: { xs: 1, md: 2 } }}>

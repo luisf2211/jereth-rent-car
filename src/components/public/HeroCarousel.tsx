@@ -19,6 +19,7 @@ import {
   vehicleTitle,
   vehicleWhatsAppMessage,
 } from "@/features/vehicles/format";
+import { getFit, fitToStyle } from "@/lib/image-fit";
 
 interface Props {
   vehicles: Vehicle[];
@@ -54,6 +55,10 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
     ? buildWhatsAppUrl(whatsappNumber, vehicleWhatsAppMessage(v))
     : undefined;
   const carouselImage = v.carouselImageUrl || v.imageUrl;
+  // Use "carousel" framing when a dedicated carousel photo exists, otherwise
+  // fall back to "cover" framing (same image used in both slots).
+  const carouselFitKey = v.carouselImageUrl ? "carousel" : "cover";
+  const carouselFit = getFit(v.imageFits, carouselFitKey);
   const detailHref = `/vehicles/${v.id}`;
 
   return (
@@ -86,7 +91,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
             key={v.id}
             src={carouselImage}
             alt={vehicleTitle(v)}
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            style={{ width: "100%", height: "100%", display: "block", ...fitToStyle(carouselFit) }}
           />
         </Box>
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { requirePermission } from "@/lib/auth/current-user";
 import { vehicleSchema } from "@/lib/validations/vehicle";
 import type { ActionResult } from "@/lib/actions/result";
@@ -39,6 +40,10 @@ export async function createVehicle(input: unknown): Promise<ActionResult> {
     description: parsed.data.description || null,
     whatsappMessage: parsed.data.whatsappMessage || null,
     carouselImageUrl: parsed.data.carouselImageUrl || null,
+    // imageFits: store as-is (Prisma Json field). Empty object means no custom framing.
+    imageFits: Object.keys(parsed.data.imageFits ?? {}).length > 0
+      ? (parsed.data.imageFits as Prisma.InputJsonValue)
+      : Prisma.JsonNull,
   };
   try {
     await prisma.vehicle.create({ data });
@@ -68,6 +73,9 @@ export async function updateVehicle(id: string, input: unknown): Promise<ActionR
     description: parsed.data.description || null,
     whatsappMessage: parsed.data.whatsappMessage || null,
     carouselImageUrl: parsed.data.carouselImageUrl || null,
+    imageFits: Object.keys(parsed.data.imageFits ?? {}).length > 0
+      ? (parsed.data.imageFits as Prisma.InputJsonValue)
+      : Prisma.JsonNull,
   };
   try {
     await prisma.vehicle.update({ where: { id }, data });

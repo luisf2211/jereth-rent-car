@@ -146,6 +146,12 @@ model Vehicle {
   // Detail-page view counter. Drives the "most viewed first" ordering of the
   // public fleet. Incremented server-side when a detail page is opened.
   viewCount    Int             @default(0)
+  // Framing data for every photo. Stored as a JSON object keyed by the photo
+  // URL (or the special keys "cover" and "carousel"). Each entry holds
+  // { x: number, y: number, zoom: number } where x/y are percent offsets
+  // (0–100) and zoom is a scale multiplier (1 = fit-width, >1 zooms in).
+  // Null means no custom framing has been set (falls back to center/cover).
+  imageFits    Json?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 

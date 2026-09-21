@@ -17,6 +17,22 @@ export type VehicleCategory =
   | "suv_grande"
   | "premium";
 
+/**
+ * Framing data for a single photo.
+ * x/y = focal-point as percentages (0–100). zoom = scale multiplier (1 = no zoom).
+ * Default when absent: x:50, y:50, zoom:1 (centered, no zoom).
+ */
+export interface ImageFit {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+/**
+ * Per-photo framing map. Keys: "cover", "carousel", or a photo URL.
+ */
+export type ImageFits = Record<string, ImageFit>;
+
 export interface Vehicle {
   id: string;
   brand: string;
@@ -32,6 +48,8 @@ export interface Vehicle {
   imageUrl: string; // cover
   carouselImageUrl: string | null; // hero carousel (falls back to cover)
   images: string[]; // gallery
+  /** Per-photo framing. null/undefined means no custom framing has been saved. */
+  imageFits: ImageFits | null;
   description: string | null;
   features: string[];
   whatsappMessage: string | null;

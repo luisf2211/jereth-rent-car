@@ -19,6 +19,8 @@ export interface VehicleAdminItem {
   imageUrl: string;
   carouselImageUrl: string | null;
   images: string[];
+  /** Per-photo framing data. Prisma returns Json as `unknown`. */
+  imageFits: unknown;
   description: string | null;
   features: string[];
   whatsappMessage: string | null;
@@ -40,6 +42,7 @@ type VehicleRow = {
   imageUrl: string;
   carouselImageUrl: string | null;
   images: string[];
+  imageFits: unknown;
   description: string | null;
   features: string[];
   whatsappMessage: string | null;
@@ -62,6 +65,7 @@ function toItem(v: VehicleRow): VehicleAdminItem {
     imageUrl: v.imageUrl,
     carouselImageUrl: v.carouselImageUrl,
     images: v.images,
+    imageFits: v.imageFits,
     description: v.description,
     features: v.features,
     whatsappMessage: v.whatsappMessage,

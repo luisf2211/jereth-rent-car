@@ -15,6 +15,7 @@ import {
   vehicleTitleWithYearSimilar,
   vehicleWhatsAppMessage,
 } from "@/features/vehicles/format";
+import { getFit, fitToStyle } from "@/lib/image-fit";
 
 interface VehicleCardProps {
   vehicle: Vehicle;
@@ -29,6 +30,7 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
   const title = vehicleTitle(vehicle);
   const displayTitle = vehicleTitleWithYearSimilar(vehicle);
   const message = vehicleWhatsAppMessage(vehicle);
+  const coverFit = getFit(vehicle.imageFits, "cover");
 
   return (
     <Card sx={{ width: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -48,8 +50,8 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
             inset: 0,
             width: "100%",
             height: "100%",
-            objectFit: "cover",
             display: "block",
+            ...fitToStyle(coverFit),
           }}
         />
         <Chip

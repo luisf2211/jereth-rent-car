@@ -1,6 +1,25 @@
 import prisma from "@/lib/prisma";
-import type { Vehicle } from "@/types/vehicle";
+import type { Vehicle, ImageFits } from "@/types/vehicle";
 import type { Vehicle as PrismaVehicle } from "@/generated/prisma/client";
+
+/**
+ * Safely parse the `imageFits` Json field coming from Prisma.
+ */
+function parseImageFits(raw: unknown): ImageFits | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const fits: ImageFits = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const v = val as Record<string, unknown>;
+      fits[key] = {
+        x: typeof v.x === "number" ? v.x : 50,
+        y: typeof v.y === "number" ? v.y : 50,
+        zoom: typeof v.zoom === "number" ? v.zoom : 1,
+      };
+    }
+  }
+  return Object.keys(fits).length > 0 ? fits : null;
+}
 
 /**
  * Vehicle data access.
@@ -24,6 +43,7 @@ function toVehicle(row: PrismaVehicle): Vehicle {
     imageUrl: row.imageUrl,
     carouselImageUrl: row.carouselImageUrl,
     images: row.images,
+    imageFits: parseImageFits(row.imageFits),
     description: row.description,
     features: row.features,
     whatsappMessage: row.whatsappMessage,
