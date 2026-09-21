@@ -17,6 +17,10 @@ import Grid from "@mui/material/Grid";
 import TextField from "@mui/material/TextField";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import RadioGroup from "@mui/material/RadioGroup";
+import Radio from "@mui/material/Radio";
 import Alert from "@mui/material/Alert";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
@@ -28,10 +32,18 @@ import type { ActionResult } from "@/lib/actions/result";
 export interface FieldDef {
   name: string;
   label: string;
-  type: "text" | "number" | "switch" | "image";
+  type: "text" | "number" | "switch" | "image" | "radio";
   multiline?: boolean;
   defaultValue?: string | number | boolean;
   half?: boolean;
+  /** Options for "radio" fields. */
+  options?: { value: string; label: string }[];
+  /**
+   * Optional visibility predicate. The field only renders when this returns
+   * true for the current form values (e.g. show the amount only when the fee
+   * type is "paid"). Hidden fields keep their value.
+   */
+  showWhen?: (values: Record<string, unknown>) => boolean;
 }
 
 /** Uploads a file and returns its public URL (for "image" fields). */
@@ -57,6 +69,14 @@ interface Props<T extends Row> {
   onResult: (message: string, error?: boolean) => void;
   /** Required when any field is of type "image". */
   uploadImage?: ImageUploadFn;
+  /**
+   * Optional last-mile normalization of the values right before saving (e.g.
+   * force a fee to 0 when the "free" option is selected). Also used to seed
+   * UI-only fields (like a feeType radio) from an existing item on edit.
+   */
+  transformBeforeSave?: (values: Record<string, unknown>) => Record<string, unknown>;
+  /** Optional seeding of UI-only fields when opening the editor for an item. */
+  seedValues?: (item: T | null, values: Record<string, unknown>) => Record<string, unknown>;
 }
 
 /** Inline image uploader used by "image" fields inside the editor dialog. */
@@ -186,6 +206,8 @@ export default function ContentSection<T extends Row>({
   onDelete,
   onResult,
   uploadImage,
+  transformBeforeSave,
+  seedValues,
 }: Props<T>) {
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<T | null>(null);
@@ -197,14 +219,16 @@ export default function ContentSection<T extends Row>({
 
   const openNew = () => {
     setEditing(null);
-    setValues(initialValues(fields));
+    const base = initialValues(fields);
+    setValues(seedValues ? seedValues(null, base) : base);
     setFieldErrors({});
     setFormError(null);
     setOpen(true);
   };
   const openEdit = (item: T) => {
     setEditing(item);
-    setValues(initialValues(fields, item));
+    const base = initialValues(fields, item);
+    setValues(seedValues ? seedValues(item, base) : base);
     setFieldErrors({});
     setFormError(null);
     setOpen(true);
@@ -217,7 +241,8 @@ export default function ContentSection<T extends Row>({
     setSaving(true);
     setFormError(null);
     setFieldErrors({});
-    const res = await onSave(editing?.id ?? null, values);
+    const payload = transformBeforeSave ? transformBeforeSave(values) : values;
+    const res = await onSave(editing?.id ?? null, payload);
     setSaving(false);
     if (res.ok) {
       setOpen(false);
@@ -286,9 +311,29 @@ export default function ContentSection<T extends Row>({
             </Alert>
           )}
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            {fields.map((f) => (
+            {fields
+              .filter((f) => !f.showWhen || f.showWhen(values))
+              .map((f) => (
               <Grid key={f.name} size={{ xs: 12, sm: f.half ? 6 : 12 }}>
-                {f.type === "switch" ? (
+                {f.type === "radio" ? (
+                  <FormControl error={Boolean(fieldErrors[f.name])}>
+                    <FormLabel sx={{ fontSize: "0.9rem", mb: 0.5 }}>{f.label}</FormLabel>
+                    <RadioGroup
+                      row
+                      value={String(values[f.name] ?? "")}
+                      onChange={(e) => setField(f.name, e.target.value)}
+                    >
+                      {(f.options ?? []).map((opt) => (
+                        <FormControlLabel
+                          key={opt.value}
+                          value={opt.value}
+                          control={<Radio />}
+                          label={opt.label}
+                        />
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                ) : f.type === "switch" ? (
                   <FormControlLabel
                     control={
                       <Switch

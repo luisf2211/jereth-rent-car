@@ -34,12 +34,49 @@ export default function DeliveryManager({ locations }: Props) {
     { name: "name", label: "Nombre del lugar", type: "text" },
     { name: "description", label: "Descripción (opcional)", type: "text", multiline: true },
     { name: "imageUrl", label: "Foto del lugar (opcional)", type: "image" },
-    { name: "deliveryFee", label: "Cargo de entrega (US$)", type: "number", defaultValue: 0, half: true },
+    // UI-only selector: free vs paid delivery. Not stored directly; it drives
+    // whether the amount field shows and whether deliveryFee is forced to 0.
+    {
+      name: "feeType",
+      label: "Tipo de entrega",
+      type: "radio",
+      defaultValue: "free",
+      options: [
+        { value: "free", label: "Entrega gratis" },
+        { value: "paid", label: "Cargo adicional" },
+      ],
+    },
+    {
+      name: "deliveryFee",
+      label: "Monto del cargo (US$)",
+      type: "number",
+      defaultValue: 0,
+      half: true,
+      showWhen: (v) => v.feeType === "paid",
+    },
     { name: "highlighted", label: "Destacado (ej. aeropuerto)", type: "switch", defaultValue: false, half: true },
     { name: "mapUrl", label: "URL del mapa (Google Maps, opcional)", type: "text" },
     { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
     { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
   ];
+
+  // Seed the UI-only feeType from the stored deliveryFee when editing.
+  const seedValues = (
+    item: AdminDeliveryLocation | null,
+    values: Record<string, unknown>
+  ): Record<string, unknown> => ({
+    ...values,
+    feeType: item && item.deliveryFee > 0 ? "paid" : "free",
+  });
+
+  // Force deliveryFee to 0 for free delivery and drop the UI-only feeType.
+  const transformBeforeSave = (values: Record<string, unknown>): Record<string, unknown> => {
+    const { feeType, ...rest } = values;
+    return {
+      ...rest,
+      deliveryFee: feeType === "paid" ? rest.deliveryFee : 0,
+    };
+  };
 
   return (
     <>
@@ -56,6 +93,8 @@ export default function DeliveryManager({ locations }: Props) {
         onDelete={(id) => deleteDeliveryLocation(id)}
         onResult={notify}
         uploadImage={uploadDeliveryImage}
+        seedValues={seedValues}
+        transformBeforeSave={transformBeforeSave}
       />
 
       <Snackbar
