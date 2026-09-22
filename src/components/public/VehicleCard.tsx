@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import Card from "@mui/material/Card";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -25,45 +26,50 @@ interface VehicleCardProps {
 }
 
 /**
- * Vehicle card — the entire card navigates to the vehicle detail page.
+ * Vehicle card.
  *
- * Pattern: the Card itself is rendered as an <a> (component="a") so every
- * pixel of the card is part of the link. The WhatsApp button calls
- * e.stopPropagation() to intercept its own click without triggering the
- * parent link navigation.
+ * Two independent actions:
+ *  - Click anywhere on the card (photo, title, specs, price, empty space)
+ *    → navigate to /vehicles/[id]  (via router.push)
+ *  - Click "Consultar disponibilidad" → opens WhatsApp (href on the button)
  *
- * This component is a Client Component only because stopPropagation requires
- * an event handler. No state is held; the "use client" boundary is minimal.
+ * Why not Card as <a>: WhatsAppButton is itself an <a>. Nesting <a> inside
+ * <a> is invalid HTML — browsers break the inner link. Instead the Card uses
+ * onClick for navigation and the WhatsApp wrapper calls stopPropagation so
+ * its click never reaches the card handler.
+ *
+ * Keyboard: the WhatsApp button is still reachable via Tab because it is a
+ * real <a> in the DOM. The card itself is not in the tab order (no href),
+ * so keyboard users navigate directly to the button.
  */
 export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProps) {
+  const router = useRouter();
   const title = vehicleTitle(vehicle);
   const displayTitle = vehicleTitleWithYearSimilar(vehicle);
   const message = vehicleWhatsAppMessage(vehicle);
   const coverFit = getFit(vehicle.imageFits, "cover");
   const detailHref = `/vehicles/${vehicle.id}`;
 
+  const handleCardClick = () => {
+    router.push(detailHref);
+  };
+
   return (
     <Card
-      component="a"
-      href={detailHref}
+      onClick={handleCardClick}
+      role="link"
+      tabIndex={-1}          // keyboard users reach the WhatsApp <a> directly
       aria-label={`Ver detalles de ${title}`}
       sx={{
         width: "100%",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        textDecoration: "none",
-        color: "inherit",
         cursor: "pointer",
         transition: "box-shadow 0.18s ease, transform 0.18s ease",
         "&:hover": {
           boxShadow: 6,
           transform: "translateY(-2px)",
-        },
-        "&:focus-visible": {
-          outline: "2px solid",
-          outlineColor: "primary.main",
-          outlineOffset: 2,
         },
       }}
     >
@@ -130,9 +136,9 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
           </Typography>
 
           {/*
-           * stopPropagation prevents the click from bubbling up to the
-           * parent <a> (the card link), so tapping/clicking this button
-           * only opens WhatsApp and does not navigate to the detail page.
+           * stopPropagation: prevents the click from bubbling up to the Card's
+           * onClick handler, so the WhatsApp <a> opens its own href (wa.me)
+           * without also triggering navigation to the detail page.
            */}
           <Box
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
