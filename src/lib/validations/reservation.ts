@@ -44,6 +44,7 @@ export const RESERVATION_SOURCES = [
   "recurrente",
   "otro",
   "link",
+  "web",
 ] as const;
 export type ReservationSource = (typeof RESERVATION_SOURCES)[number];
 
@@ -54,6 +55,7 @@ export const RESERVATION_SOURCE_LABELS: Record<ReservationSource, string> = {
   recurrente: "Cliente recurrente",
   otro: "Otro",
   link: "Enlace",
+  web: "Página web",
 };
 
 /** Origins selectable by the admin when creating a link (excludes "link"). */
@@ -101,6 +103,26 @@ export const createReservationLinkSchema = z.object({
 });
 
 export type CreateReservationLinkInput = z.infer<typeof createReservationLinkSchema>;
+
+/**
+ * Schema for STARTING a reservation from the PUBLIC vehicle page. Only the
+ * vehicle is required; dates/times/locations are optional pre-fill carried
+ * over from the vehicle page selection. Delivery locations are sent as IDs
+ * (resolved server-side). The daily price is NOT accepted from the client —
+ * the server always uses the real vehicle price. Origin is always "web".
+ */
+export const webReservationStartSchema = z.object({
+  vehicleId: z.string().trim().min(1, "Vehículo obligatorio"),
+  pickupDate: optionalDate,
+  pickupTime: optionalTime,
+  dropoffDate: optionalDate,
+  dropoffTime: optionalTime,
+  // DeliveryLocation IDs (empty = not chosen).
+  pickupLocationId: optionalStr(60),
+  dropoffLocationId: optionalStr(60),
+});
+
+export type WebReservationStartInput = z.infer<typeof webReservationStartSchema>;
 
 /**
  * Schema the CUSTOMER submits from the digital form (the shared form used both

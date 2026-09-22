@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -13,12 +14,14 @@ import IconButton from "@mui/material/IconButton";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Alert from "@mui/material/Alert";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { formatDailyPrice } from "@/features/vehicles/format";
 import { rentalDays, meetsMinimumRental, MIN_RENTAL_DAYS } from "@/utils/rental-days";
 import { trackEvent } from "@/lib/analytics";
+import { startWebReservation } from "@/features/reservations/actions";
 
 /** Delivery location option. `hasFee` marks a paid location; `deliveryFee`
  *  is the amount (may be 0 = "Cargo adicional" label without a price). */
@@ -30,11 +33,16 @@ export interface BookingLocation {
 }
 
 interface Props {
+  /** Real vehicle id — used to start the digital reservation with the same car. */
+  vehicleId: string;
   vehicleTitle: string;
   dailyPrice: number;
   whatsappNumber: string;
   /** Delivery/pickup locations with their fees (from the delivery module). */
   locations: BookingLocation[];
+  /** Reservation settings switch. When true the CTA becomes the digital flow
+   *  ("Reservar ahora"); when false it stays the current WhatsApp quote. */
+  digitalEnabled: boolean;
 }
 
 const DEFAULT_PICKUP_TIME = "10:00";
@@ -56,8 +64,9 @@ function formatDate(iso: string): string {
  * The CTA opens a WhatsApp quote with the full breakdown. No availability
  * engine yet — this is a transparent quote.
  */
-export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumber, locations }: Props) {
+export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, whatsappNumber, locations, digitalEnabled }: Props) {
   const theme = useTheme();
+  const router = useRouter();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [pickupDate, setPickupDate] = React.useState("");
   const [dropoffDate, setDropoffDate] = React.useState("");
@@ -66,6 +75,9 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
   const [pickupLocationId, setPickupLocationId] = React.useState("");
   const [dropoffLocationId, setDropoffLocationId] = React.useState("");
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  // Digital-flow submit state (only used when digitalEnabled).
+  const [starting, setStarting] = React.useState(false);
+  const [startError, setStartError] = React.useState<string | null>(null);
 
   const hasLocations = locations.length > 0;
   const findLoc = (id: string) => locations.find((l) => l.id === id);
@@ -131,6 +143,41 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
       dropoff_location: dropoffLoc?.name,
       value: total,
     });
+  };
+
+  // Digital flow: create the reservation row (carrying the current selection)
+  // and send the customer to the existing form at /reservar/<token>. The
+  // server recomputes price/days/fees — nothing here is trusted for billing.
+  const startDigital = async () => {
+    if (starting) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const res = await startWebReservation({
+        vehicleId,
+        pickupDate,
+        pickupTime,
+        dropoffDate,
+        dropoffTime,
+        pickupLocationId,
+        dropoffLocationId,
+      });
+      if (!res.ok) {
+        setStartError(res.message);
+        setStarting(false);
+        return;
+      }
+      trackEvent("reservation_start", {
+        vehicle: vehicleTitle,
+        days,
+        daily_price: dailyPrice,
+        value: total,
+      });
+      router.push(`/reservar/${res.token}`);
+    } catch {
+      setStartError("No se pudo iniciar la reserva. Intenta de nuevo.");
+      setStarting(false);
+    }
   };
 
   const locationLabel = (l: BookingLocation) => {
@@ -266,7 +313,8 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
     </>
   );
 
-  const cta = (
+  // WhatsApp CTA (unchanged) — used when digital reservations are OFF.
+  const whatsappCta = (
     <Button
       component="a"
       href={href}
@@ -285,6 +333,33 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
       Reservar por WhatsApp
     </Button>
   );
+
+  // Digital CTA — used when the reservation switch is ON. Disabled while the
+  // selection is below the 3-day minimum (same guard as the WhatsApp quote)
+  // or while the reservation is being created.
+  const digitalCta = (
+    <>
+      <Button
+        type="button"
+        variant="contained"
+        size="large"
+        fullWidth
+        endIcon={<ArrowForwardRoundedIcon />}
+        disabled={belowMinimum || starting}
+        onClick={startDigital}
+        sx={{ mt: 2 }}
+      >
+        {starting ? "Iniciando…" : "Reservar ahora"}
+      </Button>
+      {startError && (
+        <Alert severity="error" sx={{ mt: 1.5 }}>
+          {startError}
+        </Alert>
+      )}
+    </>
+  );
+
+  const cta = digitalEnabled ? digitalCta : whatsappCta;
 
   // ---- Desktop: sticky card ----
   if (isDesktop) {

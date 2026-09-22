@@ -9,6 +9,7 @@ import {
   customerReservationSchema,
   reservationSettingsSchema,
   updateStatusSchema,
+  webReservationStartSchema,
 } from "@/lib/validations/reservation";
 import { rentalDays } from "@/utils/rental-days";
 import type { ActionResult } from "@/lib/actions/result";
@@ -124,6 +125,108 @@ export async function createReservationLink(
 
   revalidateReservations(token);
   return { ok: true, message: "Enlace de reserva creado.", token, code };
+}
+
+/* ---------------- Start a reservation from the PUBLIC page ---------------- */
+
+/**
+ * PUBLIC action. Creates a reservation row from the public vehicle page so the
+ * customer can continue in the existing digital form WITHOUT re-entering what
+ * they already selected. No admin auth: this is the public entry point, gated
+ * by the reservation settings switch (digitalEnabled). It never trusts a price
+ * from the client — the real vehicle price is used and days/fees/total are
+ * recomputed with the shared rules (same source of truth as submitReservation).
+ * The reservation starts in "link_created" (does NOT block the vehicle) with
+ * source "web" ("Página web") and returns a token to redirect the customer to
+ * /reservar/<token>.
+ */
+export async function startWebReservation(
+  input: unknown
+): Promise<
+  | { ok: true; token: string; code: string }
+  | { ok: false; message: string; fieldErrors?: Record<string, string> }
+> {
+  // The switch in Configuración de reservas is the source of truth. When the
+  // digital flow is OFF, this action refuses (the public site stays WhatsApp).
+  const settings = await prisma.reservationSettings.findFirst({ orderBy: { createdAt: "asc" } });
+  if (!settings?.digitalEnabled) {
+    return { ok: false, message: "La reserva digital no está disponible en este momento." };
+  }
+
+  const parsed = webReservationStartSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Revisa los datos de la reserva.", fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+  const d = parsed.data;
+
+  // Use the REAL vehicle (and its real daily price) — never a client value.
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: d.vehicleId } });
+  if (!vehicle) {
+    return { ok: false, message: "El vehículo seleccionado no existe.", fieldErrors: { vehicleId: "Vehículo inválido" } };
+  }
+  const dailyPrice = vehicle.dailyPrice;
+
+  // Recompute billed days with the shared rental-days rules (5pm rule + 3-day
+  // minimum are enforced later in the form/submit; here we just carry the
+  // estimate so the customer sees the same numbers they saw on the page).
+  const billedDays =
+    d.pickupDate && d.dropoffDate
+      ? rentalDays({
+          pickupDate: d.pickupDate,
+          dropoffDate: d.dropoffDate,
+          pickupTime: d.pickupTime || undefined,
+          dropoffTime: d.dropoffTime || undefined,
+        })
+      : 0;
+  const subtotalRent = billedDays * dailyPrice;
+
+  // Resolve delivery locations (name + fee) from the existing table by ID,
+  // gating the fee on hasFee — identical logic to submitReservation.
+  const ids = [d.pickupLocationId, d.dropoffLocationId].filter(Boolean) as string[];
+  const locations = ids.length
+    ? await prisma.deliveryLocation.findMany({ where: { id: { in: ids } } })
+    : [];
+  const locOf = (id: string) => locations.find((l) => l.id === id) ?? null;
+  const pickupLoc = d.pickupLocationId ? locOf(d.pickupLocationId) : null;
+  const dropoffLoc = d.dropoffLocationId ? locOf(d.dropoffLocationId) : null;
+  const pickupFee = pickupLoc?.hasFee ? pickupLoc.deliveryFee : 0;
+  const dropoffFee = dropoffLoc?.hasFee ? dropoffLoc.deliveryFee : 0;
+  const estimatedTotal = subtotalRent + pickupFee + dropoffFee;
+
+  const token = generateToken();
+  const code = generateCode();
+
+  try {
+    await prisma.reservation.create({
+      data: {
+        code,
+        token,
+        vehicleId: d.vehicleId,
+        source: "web",
+        status: "link_created",
+        pickupDate: parseDate(d.pickupDate),
+        pickupTime: d.pickupTime || null,
+        dropoffDate: parseDate(d.dropoffDate),
+        dropoffTime: d.dropoffTime || null,
+        // Store resolved location NAMES (getReservationByToken maps them back
+        // to IDs to pre-select the form selectors).
+        pickupLocation: pickupLoc?.name ?? null,
+        dropoffLocation: dropoffLoc?.name ?? null,
+        dailyPrice,
+        billedDays,
+        subtotalRent,
+        pickupFee,
+        dropoffFee,
+        estimatedTotal,
+      },
+    });
+  } catch (error) {
+    console.error("startWebReservation failed:", error);
+    return { ok: false, message: "No se pudo iniciar la reserva." };
+  }
+
+  revalidateReservations(token);
+  return { ok: true, token, code };
 }
 
 /* --------------------- Submit the digital reservation --------------------- */

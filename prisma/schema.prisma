@@ -284,6 +284,8 @@ enum ReservationSource {
   otro
   // The customer opened a public/admin-generated link and filled the form.
   link
+  // The customer started the reservation from the public vehicle page ("Página web").
+  web
 }
 
 // Payment method chosen for the reservation deposit.

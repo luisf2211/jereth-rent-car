@@ -31,6 +31,7 @@ import DetailReviews from "@/components/public/vehicle-detail/DetailReviews";
 import { getVehicleById, getSimilarVehicles, incrementVehicleViews } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
 import { getDeliveryLocations } from "@/features/delivery-locations/data";
+import { getReservationSettings } from "@/features/reservations/data";
 import {
   getRequirements,
   getPolicies,
@@ -83,16 +84,25 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
   // Count this view (best-effort) to drive the "most viewed first" fleet order.
   void incrementVehicleViews(id);
 
-  const [settings, requirements, deliveryLocations, policies, inclusions, reviews, similar] =
-    await Promise.all([
-      getCompanySettings(),
-      getRequirements(),
-      getDeliveryLocations(),
-      getPolicies(),
-      getInclusions(),
-      getReviews(),
-      getSimilarVehicles(vehicle),
-    ]);
+  const [
+    settings,
+    requirements,
+    deliveryLocations,
+    policies,
+    inclusions,
+    reviews,
+    similar,
+    reservationSettings,
+  ] = await Promise.all([
+    getCompanySettings(),
+    getRequirements(),
+    getDeliveryLocations(),
+    getPolicies(),
+    getInclusions(),
+    getReviews(),
+    getSimilarVehicles(vehicle),
+    getReservationSettings(),
+  ]);
 
   const title = vehicleTitle(vehicle);
   const gallery = [vehicle.imageUrl, ...vehicle.images].filter(Boolean);
@@ -314,9 +324,11 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
           {/* Booking (sticky on desktop, fixed bar on mobile) */}
           <Grid size={{ xs: 12, md: 4 }}>
             <VehicleBooking
+              vehicleId={vehicle.id}
               vehicleTitle={title}
               dailyPrice={vehicle.dailyPrice}
               whatsappNumber={settings.whatsappNumber}
+              digitalEnabled={reservationSettings.digitalEnabled}
               locations={deliveryLocations.map((l) => ({
                 id: l.id,
                 name: l.name,
