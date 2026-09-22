@@ -7,7 +7,9 @@ import Avatar from "@mui/material/Avatar";
 import Rating from "@mui/material/Rating";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
+import GoogleIcon from "@mui/icons-material/Google";
 import type { ReviewItem } from "@/features/content/data";
 
 const dateFmt = new Intl.DateTimeFormat("es-DO", { year: "numeric", month: "long" });
@@ -38,7 +40,7 @@ export default function DetailReviews({ reviews }: { reviews: ReviewItem[] }) {
             <Box>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
                 <Avatar src={r.avatarUrl ?? undefined}>{r.authorName.charAt(0)}</Avatar>
-                <Box>
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                   <Typography variant="subtitle2">{r.authorName}</Typography>
                   {r.reviewDate && (
                     <Typography variant="caption" color="text.secondary">
@@ -46,6 +48,15 @@ export default function DetailReviews({ reviews }: { reviews: ReviewItem[] }) {
                     </Typography>
                   )}
                 </Box>
+                {r.source === "google" && (
+                  <Chip
+                    icon={<GoogleIcon sx={{ fontSize: 14 }} />}
+                    label="Google"
+                    size="small"
+                    variant="outlined"
+                    sx={{ flexShrink: 0 }}
+                  />
+                )}
               </Box>
               <Rating value={r.rating} readOnly size="small" sx={{ mb: 0.5 }} />
               <Typography variant="body2" color="text.secondary">

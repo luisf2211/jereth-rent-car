@@ -18,13 +18,21 @@ export const faqSchema = z.object({
   isActive: z.boolean(),
 });
 
+/** Origen de una reseña: agregada a mano o importada de Google. */
+export const REVIEW_SOURCES = ["manual", "google"] as const;
+export type ReviewSource = (typeof REVIEW_SOURCES)[number];
+
 /** Reseña de cliente (reales; nunca inventadas). */
 export const reviewSchema = z.object({
   authorName: z.string().trim().min(2, "El nombre es obligatorio").max(120),
   rating: z.coerce.number().int().min(1, "Mínimo 1").max(5, "Máximo 5"),
   comment: z.string().trim().min(2, "El comentario es obligatorio").max(1000),
   avatarUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
-  source: z.string().trim().max(40),
+  // Origin of the review. "manual" = added from the backoffice, "google" =
+  // imported from Google reviews. Restricted to known values.
+  source: z.enum(REVIEW_SOURCES).default("manual"),
+  // Optional review date (YYYY-MM-DD from the admin date input, or empty).
+  reviewDate: z.string().trim().max(40).optional().or(z.literal("")),
   sortOrder: z.coerce.number().int().min(0).max(999),
   isActive: z.boolean(),
 });

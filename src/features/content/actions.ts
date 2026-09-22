@@ -173,7 +173,23 @@ export async function saveReview(id: string | null, input: unknown): Promise<Act
   const parsed = reviewSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
 
-  const data = { ...parsed.data, avatarUrl: parsed.data.avatarUrl || null };
+  // Parse the optional reviewDate string (YYYY-MM-DD) into a Date, or null.
+  let reviewDate: Date | null = null;
+  if (parsed.data.reviewDate) {
+    const d = new Date(parsed.data.reviewDate);
+    reviewDate = Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  const data = {
+    authorName: parsed.data.authorName,
+    rating: parsed.data.rating,
+    comment: parsed.data.comment,
+    avatarUrl: parsed.data.avatarUrl || null,
+    source: parsed.data.source,
+    reviewDate,
+    sortOrder: parsed.data.sortOrder,
+    isActive: parsed.data.isActive,
+  };
   try {
     if (id) await prisma.review.update({ where: { id }, data });
     else await prisma.review.create({ data });
@@ -196,4 +212,27 @@ export async function deleteReview(id: string): Promise<ActionResult> {
   }
   revalidateContent();
   return { ok: true, message: "Reseña eliminada." };
+}
+
+/** Uploads a reviewer avatar to Storage (clients/) and returns its URL. */
+export async function uploadReviewAvatar(
+  formData: FormData
+): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  try {
+    await requirePermission("content.edit");
+  } catch {
+    return { ok: false, message: "No tienes permiso para subir imágenes." };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Selecciona una imagen." };
+  }
+
+  const { uploadImage, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
+  const res = await uploadImage(STORAGE_FOLDERS.clients, file);
+  if (!res.ok || !res.url) {
+    return { ok: false, message: res.error ?? "No se pudo subir la imagen." };
+  }
+  return { ok: true, url: res.url };
 }

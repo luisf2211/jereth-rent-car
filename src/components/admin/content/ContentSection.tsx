@@ -32,7 +32,7 @@ import type { ActionResult } from "@/lib/actions/result";
 export interface FieldDef {
   name: string;
   label: string;
-  type: "text" | "number" | "switch" | "image" | "radio";
+  type: "text" | "number" | "switch" | "image" | "radio" | "date";
   multiline?: boolean;
   defaultValue?: string | number | boolean;
   half?: boolean;
@@ -67,6 +67,11 @@ interface Props<T extends Row> {
   onSave: (id: string | null, values: Record<string, unknown>) => Promise<ActionResult>;
   onDelete: (id: string) => Promise<ActionResult>;
   onResult: (message: string, error?: boolean) => void;
+  /**
+   * Optional extra chip shown next to the item title (e.g. review origin:
+   * Google / Manual). Return null to render nothing for that item.
+   */
+  renderBadge?: (item: T) => { label: string; color?: "default" | "primary" | "success" | "info" } | null;
   /** Required when any field is of type "image". */
   uploadImage?: ImageUploadFn;
   /**
@@ -208,6 +213,7 @@ export default function ContentSection<T extends Row>({
   uploadImage,
   transformBeforeSave,
   seedValues,
+  renderBadge,
 }: Props<T>) {
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<T | null>(null);
@@ -281,6 +287,12 @@ export default function ContentSection<T extends Row>({
                       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                         {primaryText(item)}
                       </Typography>
+                      {(() => {
+                        const badge = renderBadge?.(item);
+                        return badge ? (
+                          <Chip label={badge.label} size="small" color={badge.color ?? "default"} />
+                        ) : null;
+                      })()}
                       {!item.isActive && <Chip label="Oculto" size="small" variant="outlined" />}
                     </Box>
                     {secondaryText?.(item) && (
@@ -350,6 +362,17 @@ export default function ContentSection<T extends Row>({
                     onChange={(url) => setField(f.name, url)}
                     upload={uploadImage}
                     error={fieldErrors[f.name]}
+                  />
+                ) : f.type === "date" ? (
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label={f.label}
+                    value={values[f.name] ?? ""}
+                    onChange={(e) => setField(f.name, e.target.value)}
+                    error={Boolean(fieldErrors[f.name])}
+                    helperText={fieldErrors[f.name]}
+                    slotProps={{ inputLabel: { shrink: true } }}
                   />
                 ) : (
                   <TextField

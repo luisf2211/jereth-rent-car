@@ -25,6 +25,7 @@ import {
   deleteInclusion,
   savePolicy,
   deletePolicy,
+  uploadReviewAvatar,
 } from "@/features/content/actions";
 import ContentSection, { type FieldDef } from "./ContentSection";
 
@@ -73,10 +74,21 @@ export default function ContentManager({
     { name: "authorName", label: "Nombre del cliente", type: "text", half: true },
     { name: "rating", label: "Rating (1-5)", type: "number", defaultValue: 5, half: true },
     { name: "comment", label: "Comentario", type: "text", multiline: true },
-    { name: "avatarUrl", label: "Foto/avatar URL (opcional)", type: "text" },
-    { name: "source", label: "Origen", type: "text", defaultValue: "google", half: true },
+    { name: "reviewDate", label: "Fecha (opcional)", type: "date", half: true },
+    {
+      name: "source",
+      label: "Origen",
+      type: "radio",
+      defaultValue: "manual",
+      half: true,
+      options: [
+        { value: "manual", label: "Manual" },
+        { value: "google", label: "Google" },
+      ],
+    },
+    { name: "avatarUrl", label: "Foto / avatar (opcional)", type: "image" },
     { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
-    { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true },
+    { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
   ];
 
   const textFields: FieldDef[] = [
@@ -167,6 +179,12 @@ export default function ContentManager({
           onSave={(id, values) => saveReview(id, values)}
           onDelete={(id) => deleteReview(id)}
           onResult={notify}
+          uploadImage={uploadReviewAvatar}
+          renderBadge={(r) =>
+            r.source === "google"
+              ? { label: "Google", color: "info" }
+              : { label: "Manual", color: "default" }
+          }
         />
       </Box>
 

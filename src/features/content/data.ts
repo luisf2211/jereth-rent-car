@@ -81,6 +81,8 @@ export interface AdminReview {
   comment: string;
   avatarUrl: string | null;
   source: string;
+  /** ISO date (YYYY-MM-DD) for the date input, or empty string. */
+  reviewDate: string;
   sortOrder: number;
   isActive: boolean;
 }
@@ -127,6 +129,8 @@ export async function listReviewsAdmin(): Promise<AdminReview[]> {
     comment: r.comment,
     avatarUrl: r.avatarUrl,
     source: r.source,
+    // Format as YYYY-MM-DD for the <input type="date"> in the admin.
+    reviewDate: r.reviewDate ? r.reviewDate.toISOString().slice(0, 10) : "",
     sortOrder: r.sortOrder,
     isActive: r.isActive,
   }));
