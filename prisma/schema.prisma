@@ -269,6 +269,10 @@ enum ReservationStatus {
   pending
   confirmed
   needs_fix
+  // rejected: request received but not approved.
+  rejected
+  // cancelled: a reservation that is cancelled afterwards (distinct from rejected).
+  cancelled
 }
 
 // Where the reservation originated.
@@ -329,6 +333,10 @@ model Reservation {
 
   source             ReservationSource @default(link)
   status             ReservationStatus @default(link_created)
+
+  // Optional reason recorded when a reservation is rejected. Kept for later
+  // use in customer notifications.
+  rejectionReason    String?
 
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt

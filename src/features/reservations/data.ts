@@ -33,6 +33,7 @@ export interface AdminReservation {
   paymentProofUrl: string | null;
   source: ReservationSource;
   status: ReservationStatus;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,13 +101,40 @@ function vehicleTitleOf(v: { brand: string; model: string; year: number }): stri
   return `${v.brand} ${v.model} ${v.year}`;
 }
 
-/** All reservations for the admin list, newest first. */
-export async function listReservationsAdmin(): Promise<AdminReservation[]> {
-  const rows = await prisma.reservation.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { vehicle: { select: { brand: true, model: true, year: true } } },
-  });
-  return rows.map((r) => ({
+/** Prisma row (with vehicle) → AdminReservation view model. */
+type ReservationRowWithVehicle = {
+  id: string;
+  code: string;
+  token: string;
+  vehicleId: string;
+  vehicle: { brand: string; model: string; year: number };
+  customerName: string | null;
+  email: string | null;
+  phone: string | null;
+  country: string | null;
+  idOrPassport: string | null;
+  driverLicense: string | null;
+  pickupDate: Date | null;
+  pickupTime: string | null;
+  dropoffDate: Date | null;
+  dropoffTime: string | null;
+  pickupLocation: string | null;
+  dropoffLocation: string | null;
+  dailyPrice: number;
+  billedDays: number;
+  estimatedTotal: number;
+  reservationDeposit: number;
+  paymentMethod: PaymentMethod | null;
+  paymentProofUrl: string | null;
+  source: ReservationSource;
+  status: ReservationStatus;
+  rejectionReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+function toAdminReservation(r: ReservationRowWithVehicle): AdminReservation {
+  return {
     id: r.id,
     code: r.code,
     token: r.token,
@@ -131,10 +159,29 @@ export async function listReservationsAdmin(): Promise<AdminReservation[]> {
     paymentMethod: r.paymentMethod,
     source: r.source,
     status: r.status,
+    rejectionReason: r.rejectionReason,
     paymentProofUrl: r.paymentProofUrl,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
-  }));
+  };
+}
+
+/** All reservations for the admin list, newest first. */
+export async function listReservationsAdmin(): Promise<AdminReservation[]> {
+  const rows = await prisma.reservation.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { vehicle: { select: { brand: true, model: true, year: true } } },
+  });
+  return rows.map(toAdminReservation);
+}
+
+/** Single reservation for the admin detail/expediente view. */
+export async function getReservationById(id: string): Promise<AdminReservation | null> {
+  const r = await prisma.reservation.findUnique({
+    where: { id },
+    include: { vehicle: { select: { brand: true, model: true, year: true } } },
+  });
+  return r ? toAdminReservation(r) : null;
 }
 
 /** Load a reservation by its shareable token, for the digital form. */

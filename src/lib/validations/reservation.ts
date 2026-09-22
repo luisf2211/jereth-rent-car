@@ -1,7 +1,14 @@
 import { z } from "zod";
 
 /** Reservation lifecycle states (mirror the Prisma enum). */
-export const RESERVATION_STATUSES = ["link_created", "pending", "confirmed", "needs_fix"] as const;
+export const RESERVATION_STATUSES = [
+  "link_created",
+  "pending",
+  "confirmed",
+  "needs_fix",
+  "rejected",
+  "cancelled",
+] as const;
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
 /** Human labels for statuses (admin UI). */
@@ -10,7 +17,21 @@ export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
   pending: "Pendiente",
   confirmed: "Confirmada",
   needs_fix: "Requiere corrección",
+  rejected: "Rechazada",
+  cancelled: "Cancelada",
 };
+
+/**
+ * Schema for changing a reservation status from the admin. When the status is
+ * "rejected", an optional reason can be recorded (used later for customer
+ * notifications).
+ */
+export const updateStatusSchema = z.object({
+  status: z.enum(RESERVATION_STATUSES),
+  rejectionReason: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
 
 /** Where the reservation came from (mirror the Prisma enum). */
 export const RESERVATION_SOURCES = [

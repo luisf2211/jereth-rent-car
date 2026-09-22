@@ -24,6 +24,7 @@ import Divider from "@mui/material/Divider";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
@@ -53,11 +54,13 @@ interface Props {
   canEdit: boolean;
 }
 
-const STATUS_COLOR: Record<ReservationStatus, "default" | "info" | "warning" | "success"> = {
+const STATUS_COLOR: Record<ReservationStatus, "default" | "info" | "warning" | "success" | "error"> = {
   link_created: "info",
   pending: "warning",
   confirmed: "success",
   needs_fix: "default",
+  rejected: "error",
+  cancelled: "default",
 };
 
 function money(n: number) {
@@ -186,7 +189,17 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
             <Card key={r.id}>
               <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
-                  <Box sx={{ flexGrow: 1, minWidth: 220 }}>
+                  <Box
+                    onClick={() => router.push(`/admin/reservations/${r.id}`)}
+                    sx={{
+                      flexGrow: 1,
+                      minWidth: 220,
+                      cursor: "pointer",
+                      borderRadius: 1,
+                      transition: "background-color 0.15s",
+                      "&:hover": { bgcolor: "action.hover" },
+                    }}
+                  >
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                         {r.code}
@@ -217,6 +230,14 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
                   </Box>
 
                   <Stack spacing={1} sx={{ minWidth: 200 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<VisibilityRoundedIcon />}
+                      onClick={() => router.push(`/admin/reservations/${r.id}`)}
+                    >
+                      Ver reserva
+                    </Button>
                     <TextField
                       select
                       size="small"

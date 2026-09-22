@@ -8,8 +8,7 @@ import {
   createReservationLinkSchema,
   customerReservationSchema,
   reservationSettingsSchema,
-  RESERVATION_STATUSES,
-  type ReservationStatus,
+  updateStatusSchema,
 } from "@/lib/validations/reservation";
 import { rentalDays } from "@/utils/rental-days";
 import type { ActionResult } from "@/lib/actions/result";
@@ -190,7 +189,7 @@ export async function submitReservation(token: string, input: unknown): Promise<
 
 export async function updateReservationStatus(
   id: string,
-  status: string
+  input: unknown
 ): Promise<ActionResult> {
   try {
     await requirePermission("reservations.edit");
@@ -198,14 +197,24 @@ export async function updateReservationStatus(
     return { ok: false, message: "No tienes permiso para gestionar reservas." };
   }
 
-  if (!RESERVATION_STATUSES.includes(status as ReservationStatus)) {
-    return { ok: false, message: "Estado inválido." };
+  // Accept either a bare status string (backwards compatible) or an object
+  // { status, rejectionReason } from the detail view.
+  const raw = typeof input === "string" ? { status: input } : input;
+  const parsed = updateStatusSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, message: "Estado inválido.", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
+  const { status, rejectionReason } = parsed.data;
 
   try {
     await prisma.reservation.update({
       where: { id },
-      data: { status: status as ReservationStatus },
+      data: {
+        status,
+        // Store the reason only when rejecting; clear it otherwise so a later
+        // status change doesn't keep a stale reason.
+        rejectionReason: status === "rejected" ? rejectionReason || null : null,
+      },
     });
   } catch (error) {
     console.error("updateReservationStatus failed:", error);
@@ -213,6 +222,8 @@ export async function updateReservationStatus(
   }
 
   revalidateReservations();
+  const id2 = id;
+  revalidatePath(`/admin/reservations/${id2}`);
   return { ok: true, message: "Estado actualizado." };
 }
 

@@ -116,14 +116,38 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
   if (done) {
     return (
       <Card>
-        <CardContent sx={{ textAlign: "center", py: 6 }}>
-          <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-            ¡Reserva enviada!
+        <CardContent sx={{ textAlign: "center", py: { xs: 5, md: 6 }, px: { xs: 3, md: 5 } }}>
+          <Typography variant="h5" sx={{ fontWeight: 800, mb: 2 }}>
+            ¡Solicitud de reserva recibida!
           </Typography>
-          <Typography color="text.secondary">
-            Hemos recibido tus datos para la reserva {reservation.code}. Nos pondremos en contacto
-            contigo para confirmar los detalles.
+          <Typography color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.7 }}>
+            Hemos recibido correctamente tus datos y tu comprobante de pago.
           </Typography>
+          <Typography color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.7 }}>
+            Tu reserva se encuentra <strong>pendiente de verificación</strong>. Nuestro equipo
+            revisará la información y el pago enviado.
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 3, lineHeight: 1.7 }}>
+            Recibirás una respuesta dentro de un plazo de 0 a 24 horas.
+          </Typography>
+          <Box
+            sx={{
+              display: "inline-block",
+              px: 2.5,
+              py: 1.25,
+              borderRadius: 2,
+              bgcolor: "grey.100",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              Número de reserva
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "0.02em" }}>
+              {reservation.code}
+            </Typography>
+          </Box>
         </CardContent>
       </Card>
     );
