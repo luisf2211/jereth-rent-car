@@ -28,7 +28,8 @@ interface Props {
  * Vehicle photo gallery.
  * - Desktop: Airbnb-style grid (1 large + up to 4 small) with a "Ver todas
  *   las fotos" button opening a full dialog.
- * - Mobile: swipeable carousel with a "n / total" indicator.
+ * - Mobile: swipeable carousel with a "n / total" indicator and the SAME
+ *   "Ver todas las fotos" button, opening the same fullscreen dialog.
  * Falls back gracefully with 1–4 images.
  */
 export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
@@ -42,6 +43,90 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
 
   const count = pics.length;
   const go = (n: number) => setIndex((p) => (p + n + count) % count);
+
+  /** Opens the shared fullscreen "Ver todas las fotos" dialog. */
+  const openGallery = () => {
+    setIndex(0);
+    setDialogOpen(true);
+  };
+
+  // Shared "Ver todas las fotos" button — identical look/behaviour on both
+  // desktop and mobile. Positioned by the caller via the `sx` override.
+  const seeAllButton = (extraSx: object) => (
+    <Button
+      variant="contained"
+      size="small"
+      startIcon={<GridViewRoundedIcon />}
+      onClick={openGallery}
+      sx={{
+        position: "absolute",
+        bgcolor: "common.white",
+        color: "text.primary",
+        border: "1px solid",
+        borderColor: "divider",
+        "&:hover": { bgcolor: "grey.100" },
+        ...extraSx,
+      }}
+    >
+      Ver todas las fotos
+    </Button>
+  );
+
+  // The fullscreen dialog is the exact same experience for desktop and mobile.
+  const fullscreenDialog = (
+    <Dialog fullScreen open={dialogOpen} onClose={() => setDialogOpen(false)}>
+      <AppBar
+        position="sticky"
+        sx={{ bgcolor: "common.white", color: "text.primary", borderBottom: "1px solid", borderColor: "divider" }}
+      >
+        <Toolbar>
+          <IconButton edge="start" onClick={() => setDialogOpen(false)} aria-label="Cerrar">
+            <CloseRoundedIcon />
+          </IconButton>
+          <Typography sx={{ ml: 1 }}>
+            {index + 1} / {count}
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      <Box
+        sx={{
+          position: "relative",
+          flexGrow: 1,
+          bgcolor: "#0A0A0A",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 0,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          key={pics[index]}
+          src={pics[index]}
+          alt={alt}
+          style={{ maxWidth: "100%", maxHeight: "88vh", objectFit: "contain", display: "block" }}
+        />
+        {count > 1 && (
+          <>
+            <IconButton
+              onClick={() => go(-1)}
+              aria-label="Anterior"
+              sx={{ position: "absolute", left: 16, bgcolor: "rgba(255,255,255,0.9)", "&:hover": { bgcolor: "common.white" } }}
+            >
+              <ChevronLeftRoundedIcon />
+            </IconButton>
+            <IconButton
+              onClick={() => go(1)}
+              aria-label="Siguiente"
+              sx={{ position: "absolute", right: 16, bgcolor: "rgba(255,255,255,0.9)", "&:hover": { bgcolor: "common.white" } }}
+            >
+              <ChevronRightRoundedIcon />
+            </IconButton>
+          </>
+        )}
+      </Box>
+    </Dialog>
+  );
 
   // ---- Mobile carousel ----
   const touchStartX = React.useRef<number | null>(null);
@@ -92,6 +177,9 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
               {index + 1} / {count}
             </Box>
           )}
+          {/* Same "Ver todas las fotos" action as desktop; sits bottom-left so it
+              doesn't overlap the "n / total" indicator on the bottom-right. */}
+          {seeAllButton({ bottom: 12, left: 12 })}
         </Box>
         {count > 1 && (
           <Box sx={{ display: "flex", justifyContent: "center", gap: 0.75, mt: 1.5 }}>
@@ -116,6 +204,7 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
             ))}
           </Box>
         )}
+        {fullscreenDialog}
       </Box>
     );
   }
@@ -167,69 +256,10 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
           </Box>
         ))}
 
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<GridViewRoundedIcon />}
-          onClick={() => {
-            setIndex(0);
-            setDialogOpen(true);
-          }}
-          sx={{
-            position: "absolute",
-            bottom: 16,
-            right: 16,
-            bgcolor: "common.white",
-            color: "text.primary",
-            border: "1px solid",
-            borderColor: "divider",
-            "&:hover": { bgcolor: "grey.100" },
-          }}
-        >
-          Ver todas las fotos
-        </Button>
+        {seeAllButton({ bottom: 16, right: 16 })}
       </Box>
 
-      {/* Fullscreen dialog */}
-      <Dialog fullScreen open={dialogOpen} onClose={() => setDialogOpen(false)}>
-        <AppBar position="sticky" sx={{ bgcolor: "common.white", color: "text.primary", borderBottom: "1px solid", borderColor: "divider" }}>
-          <Toolbar>
-            <IconButton edge="start" onClick={() => setDialogOpen(false)} aria-label="Cerrar">
-              <CloseRoundedIcon />
-            </IconButton>
-            <Typography sx={{ ml: 1 }}>
-              {index + 1} / {count}
-            </Typography>
-          </Toolbar>
-        </AppBar>
-        <Box sx={{ position: "relative", flexGrow: 1, bgcolor: "#0A0A0A", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            key={pics[index]}
-            src={pics[index]}
-            alt={alt}
-            style={{ maxWidth: "100%", maxHeight: "88vh", objectFit: "contain", display: "block" }}
-          />
-          {count > 1 && (
-            <>
-              <IconButton
-                onClick={() => go(-1)}
-                aria-label="Anterior"
-                sx={{ position: "absolute", left: 16, bgcolor: "rgba(255,255,255,0.9)", "&:hover": { bgcolor: "common.white" } }}
-              >
-                <ChevronLeftRoundedIcon />
-              </IconButton>
-              <IconButton
-                onClick={() => go(1)}
-                aria-label="Siguiente"
-                sx={{ position: "absolute", right: 16, bgcolor: "rgba(255,255,255,0.9)", "&:hover": { bgcolor: "common.white" } }}
-              >
-                <ChevronRightRoundedIcon />
-              </IconButton>
-            </>
-          )}
-        </Box>
-      </Dialog>
+      {fullscreenDialog}
     </>
   );
 }
