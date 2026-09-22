@@ -1,4 +1,5 @@
 import * as React from "react";
+import Image from "next/image";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
@@ -39,11 +40,14 @@ export default async function HeroSection() {
       {/* Background photo + gradient overlay (only when a photo is set) */}
       {hasImage && (
         <Box aria-hidden sx={{ position: "absolute", inset: 0, zIndex: 0 }}>
-          <Box
-            component="img"
+          <Image
             src={heroImageUrl!}
             alt=""
-            sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            fill
+            // Full-bleed background above the fold → LCP candidate, prioritized.
+            priority
+            sizes="100vw"
+            style={{ objectFit: "cover", display: "block" }}
           />
           <Box
             sx={{

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { CompanySettings } from "@/types/branding";
 import prisma from "@/lib/prisma";
 
@@ -27,7 +28,13 @@ const FALLBACK_SETTINGS: CompanySettings = {
   socialLinks: {},
 };
 
-export async function getCompanySettings(): Promise<CompanySettings> {
+/**
+ * Wrapped in React.cache so that the multiple callers within a single request
+ * (root metadata, public layout, HeroSection, FeaturedVehiclesSection,
+ * DeliveryLocationsSection) share ONE database query instead of ~5.
+ * The cache is per-request, so live edits still reflect on the next request.
+ */
+export const getCompanySettings = cache(async (): Promise<CompanySettings> => {
   try {
     const row = await prisma.companySettings.findFirst({
       orderBy: { createdAt: "asc" },
@@ -59,4 +66,4 @@ export async function getCompanySettings(): Promise<CompanySettings> {
     console.error("getCompanySettings failed, using fallback:", error);
     return FALLBACK_SETTINGS;
   }
-}
+});

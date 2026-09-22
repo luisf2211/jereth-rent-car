@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import NextLink from "next/link";
+import Image from "next/image";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -86,12 +87,16 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
             bgcolor: "grey.900",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             key={v.id}
             src={carouselImage}
             alt={vehicleTitle(v)}
-            style={{ width: "100%", height: "100%", display: "block", ...fitToStyle(carouselFit) }}
+            fill
+            // The hero is above the fold and is the likely LCP element, so the
+            // FIRST slide is prioritized; the rest load on demand.
+            priority={index === 0}
+            sizes="(max-width: 900px) 100vw, 66vw"
+            style={{ display: "block", ...fitToStyle(carouselFit) }}
           />
         </Box>
 

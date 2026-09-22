@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -148,14 +149,15 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
           onTouchEnd={onTouchEnd}
           sx={{ position: "relative", borderRadius: 3, overflow: "hidden", aspectRatio: "4 / 3", bgcolor: "grey.100" }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             key={pics[index]}
             src={pics[index]}
             alt={alt}
+            fill
+            // First photo is the LCP of the detail page on mobile.
+            priority={index === 0}
+            sizes="100vw"
             style={{
-              width: "100%",
-              height: "100%",
               display: "block",
               ...fitToStyle(getFit(imageFits, pics[index])),
             }}
@@ -243,13 +245,14 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
         }}
       >
         <Box sx={{ gridRow: "1 / span 2", gridColumn: "1", position: "relative", bgcolor: "grey.100" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={main}
             alt={alt}
+            fill
+            // Main photo is the LCP of the detail page on desktop.
+            priority
+            sizes="(max-width: 900px) 100vw, 50vw"
             style={{
-              width: "100%",
-              height: "100%",
               display: "block",
               ...fitToStyle(getFit(imageFits, main)),
             }}
@@ -257,13 +260,12 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
         </Box>
         {rest.map((img, i) => (
           <Box key={img + i} sx={{ position: "relative", bgcolor: "grey.100" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={img}
               alt={`${alt} ${i + 2}`}
+              fill
+              sizes="(max-width: 900px) 50vw, 25vw"
               style={{
-                width: "100%",
-                height: "100%",
                 display: "block",
                 ...fitToStyle(getFit(imageFits, img)),
               }}

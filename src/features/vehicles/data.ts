@@ -1,3 +1,4 @@
+import { cache } from "react";
 import prisma from "@/lib/prisma";
 import type { Vehicle, ImageFits } from "@/types/vehicle";
 import type { Vehicle as PrismaVehicle } from "@/generated/prisma/client";
@@ -57,13 +58,17 @@ function toVehicle(row: PrismaVehicle): Vehicle {
  */
 const POPULAR_ORDER = [{ viewCount: "desc" as const }, { createdAt: "asc" as const }];
 
-export async function getVehicles(): Promise<Vehicle[]> {
+/**
+ * Wrapped in React.cache so HeroSection and FeaturedVehiclesSection (both on
+ * the home) share ONE query per request instead of two identical findMany.
+ */
+export const getVehicles = cache(async (): Promise<Vehicle[]> => {
   const rows = await prisma.vehicle.findMany({
     where: { isActive: true },
     orderBy: POPULAR_ORDER,
   });
   return rows.map(toVehicle);
-}
+});
 
 export async function getFeaturedVehicles(limit = 4): Promise<Vehicle[]> {
   const rows = await prisma.vehicle.findMany({

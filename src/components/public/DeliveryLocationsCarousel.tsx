@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import NextLink from "next/link";
+import Image from "next/image";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
@@ -66,12 +67,12 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
       {/* Photo */}
       <Box sx={{ position: "relative", aspectRatio: "4 / 3", bgcolor: "grey.900" }}>
         {loc.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={loc.imageUrl}
             alt={loc.name}
-            loading="lazy"
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            fill
+            sizes="(max-width: 600px) 82vw, (max-width: 900px) 48vw, 32vw"
+            style={{ objectFit: "cover", display: "block" }}
           />
         ) : (
           <Box

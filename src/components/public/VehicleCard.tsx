@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Card from "@mui/material/Card";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -82,19 +83,14 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
           bgcolor: "grey.100",
         }}
       >
-        <Box
-          component="img"
+        <Image
           src={vehicle.imageUrl}
           alt={title}
-          loading="lazy"
-          sx={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            display: "block",
-            ...fitToStyle(coverFit),
-          }}
+          fill
+          // Cards are below the fold; lazy by default (no priority). Responsive
+          // sizes so mobile downloads a small variant, not the full-res photo.
+          sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 25vw"
+          style={{ display: "block", ...fitToStyle(coverFit) }}
         />
         <Chip
           label={categoryLabel(vehicle.category)}
