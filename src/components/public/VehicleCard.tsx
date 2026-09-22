@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import Card from "@mui/material/Card";
 import Box from "@mui/material/Box";
@@ -23,18 +25,15 @@ interface VehicleCardProps {
 }
 
 /**
- * Vehicle card — the entire card is a link to the detail page.
+ * Vehicle card — the entire card navigates to the vehicle detail page.
  *
- * Accessibility pattern: the card wraps content in a <a> (the "stretched
- * link"). The WhatsApp button lives inside and uses `position: relative` +
- * `z-index: 1` to sit above the card link, so clicks on it fire WhatsApp
- * instead of navigating. This is the standard "stretched link" technique.
+ * Pattern: the Card itself is rendered as an <a> (component="a") so every
+ * pixel of the card is part of the link. The WhatsApp button calls
+ * e.stopPropagation() to intercept its own click without triggering the
+ * parent link navigation.
  *
- * - Keyboard: Tab reaches both the card link and the WhatsApp button.
- * - Screen readers: the card link has a descriptive aria-label; the button
- *   keeps its own accessible name.
- * - Mobile: tapping the button opens WhatsApp; tapping anywhere else
- *   navigates to the detail page.
+ * This component is a Client Component only because stopPropagation requires
+ * an event handler. No state is held; the "use client" boundary is minimal.
  */
 export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProps) {
   const title = vehicleTitle(vehicle);
@@ -45,52 +44,29 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
 
   return (
     <Card
+      component="a"
+      href={detailHref}
+      aria-label={`Ver detalles de ${title}`}
       sx={{
         width: "100%",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        // Stretched-link container
-        position: "relative",
+        textDecoration: "none",
+        color: "inherit",
         cursor: "pointer",
         transition: "box-shadow 0.18s ease, transform 0.18s ease",
         "&:hover": {
           boxShadow: 6,
           transform: "translateY(-2px)",
         },
-        "&:focus-within a.card-link:focus": {
-          outline: "none", // focus ring shown on the <a> itself via focus-visible
+        "&:focus-visible": {
+          outline: "2px solid",
+          outlineColor: "primary.main",
+          outlineOffset: 2,
         },
       }}
     >
-      {/*
-       * Stretched link: covers the full card via pseudo-element.
-       * Must be positioned before interactive children so z-index stacking
-       * works correctly (children get z-index: 1 to sit above it).
-       */}
-      <Box
-        className="card-link"
-        component="a"
-        href={detailHref}
-        aria-label={`Ver detalles de ${title}`}
-        sx={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 0,
-          // Visually hidden — the stretched pseudo covers the card area
-          "&::after": {
-            content: '""',
-            position: "absolute",
-            inset: 0,
-          },
-          "&:focus-visible": {
-            outline: "2px solid",
-            outlineColor: "primary.main",
-            outlineOffset: -2,
-          },
-        }}
-      />
-
       {/* Photo — 4:3 ratio */}
       <Box
         sx={{
@@ -98,7 +74,6 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
           display: "block",
           aspectRatio: "4 / 3",
           bgcolor: "grey.100",
-          zIndex: 0,
         }}
       >
         <Box
@@ -124,8 +99,6 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
             left: 12,
             bgcolor: "rgba(10,10,10,0.72)",
             color: "common.white",
-            // Sit above the stretched link
-            zIndex: 1,
           }}
         />
       </Box>
@@ -155,11 +128,16 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
             </Box>{" "}
             / día
           </Typography>
+
           {/*
-           * z-index: 1 puts the button above the stretched card link so clicks
-           * fire the WhatsApp action, not the card navigation.
+           * stopPropagation prevents the click from bubbling up to the
+           * parent <a> (the card link), so tapping/clicking this button
+           * only opens WhatsApp and does not navigate to the detail page.
            */}
-          <Box sx={{ position: "relative", zIndex: 1, mt: 1.5 }}>
+          <Box
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            sx={{ mt: 1.5 }}
+          >
             <WhatsAppButton
               phoneNumber={whatsappNumber}
               message={message}
