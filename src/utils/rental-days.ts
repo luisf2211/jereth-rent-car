@@ -1,20 +1,27 @@
 /**
  * Rental day calculation shared by the booking tarifario.
  *
- * Industry-standard rule with one local twist requested by the business:
+ * Business rules (requested by the owner):
  *  - The base number of days is the calendar difference between the pickup
- *    date and the return date.
- *  - Returning later in the day than you picked up normally costs an extra
- *    day ("late return"). BUT if the return is scheduled BEFORE 5:00 pm, the
- *    day is still charged as a full day and NO extra day is added — i.e. the
- *    courtesy window runs until 17:00. From 17:00 onward, a return past the
- *    pickup time adds one full day.
+ *    date and the return date (dropoff − pickup).
+ *  - PICKUP TIME rule (5:00 pm cutoff):
+ *      · Pickup BEFORE 5:00 pm  → the pickup day counts as a rental day.
+ *      · Pickup AT/AFTER 5:00 pm → the pickup day is NOT charged; billing
+ *        starts the next day (one day is subtracted).
+ *  - RETURN TIME does NOT affect the number of billed days. Only the return
+ *    DATE matters.
+ *  - The minimum billable rental is 3 days; this is validated on the real
+ *    billable days AFTER applying the 5:00 pm pickup rule (see MIN_RENTAL_DAYS
+ *    and meetsMinimumRental).
  *
  * All inputs are strings from <input type="date"> (YYYY-MM-DD) and
  * <input type="time"> (HH:mm). Returns 0 when the range is invalid.
  */
 
-const GRACE_HOUR = 17; // 5:00 pm
+const GRACE_HOUR = 17; // 5:00 pm cutoff for the pickup day
+
+/** Minimum billable rental, in days. */
+export const MIN_RENTAL_DAYS = 3;
 
 function parseDate(iso: string): Date | null {
   if (!iso) return null;
@@ -35,19 +42,20 @@ function minutesOfDay(time: string): number | null {
 export interface RentalDaysInput {
   pickupDate: string;
   dropoffDate: string;
-  /** Optional times (HH:mm). When omitted, only the date difference counts. */
+  /** Pickup time (HH:mm). Drives the 5:00 pm rule. */
   pickupTime?: string;
+  /** Return time (HH:mm). Ignored for billing — only the date matters. */
   dropoffTime?: string;
 }
 
 /**
- * Number of billable days. Minimum 1 when the range is a single valid day.
+ * Number of billable days after applying the 5:00 pm pickup rule.
+ * Returns 0 when the range is invalid or the result would be non-positive.
  */
 export function rentalDays({
   pickupDate,
   dropoffDate,
   pickupTime,
-  dropoffTime,
 }: RentalDaysInput): number {
   const a = parseDate(pickupDate);
   const b = parseDate(dropoffDate);
@@ -55,22 +63,22 @@ export function rentalDays({
 
   const dayMs = 86_400_000;
   const calendarDays = Math.round((b.getTime() - a.getTime()) / dayMs);
-  if (calendarDays < 0) return 0;
+  if (calendarDays <= 0) return 0;
 
   let days = calendarDays;
 
-  // Late-return surcharge: only when we have both times.
+  // 5:00 pm pickup rule: a pickup at/after 17:00 doesn't charge the pickup
+  // day, so billing starts the next day → subtract one day.
   const pMin = minutesOfDay(pickupTime ?? "");
-  const dMin = minutesOfDay(dropoffTime ?? "");
-  if (pMin !== null && dMin !== null) {
-    const returnsPastPickup = dMin > pMin;
-    const returnsAtOrAfterGrace = dMin >= GRACE_HOUR * 60;
-    // Before 5pm the day is charged as full but no extra day is added.
-    if (returnsPastPickup && returnsAtOrAfterGrace) {
-      days += 1;
-    }
+  if (pMin !== null && pMin >= GRACE_HOUR * 60) {
+    days -= 1;
   }
 
-  // A same-day rental (or any valid selection) is at least one day.
-  return Math.max(days, 1);
+  // Never negative. (May be below MIN_RENTAL_DAYS; the form validates that.)
+  return Math.max(days, 0);
+}
+
+/** True when the billable days meet the 3-day minimum. */
+export function meetsMinimumRental(days: number): boolean {
+  return days >= MIN_RENTAL_DAYS;
 }

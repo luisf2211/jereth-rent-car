@@ -14,9 +14,10 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import Alert from "@mui/material/Alert";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { formatDailyPrice } from "@/features/vehicles/format";
-import { rentalDays } from "@/utils/rental-days";
+import { rentalDays, meetsMinimumRental, MIN_RENTAL_DAYS } from "@/utils/rental-days";
 import { trackEvent } from "@/lib/analytics";
 
 /** Delivery location option. `hasFee` marks a paid location; `deliveryFee`
@@ -77,6 +78,10 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
   const dropoffFee = dropoffLoc?.deliveryFee ?? 0;
   const total = days > 0 ? rentalSubtotal + pickupFee + dropoffFee : 0;
 
+  // The user has entered a date range but it doesn't reach the 3-day minimum.
+  const bothDatesChosen = Boolean(pickupDate && dropoffDate);
+  const belowMinimum = bothDatesChosen && days > 0 && !meetsMinimumRental(days);
+
   const message = React.useMemo(() => {
     const lines = [`Hola, estoy interesado en rentar el ${vehicleTitle}.`];
     if (pickupDate) lines.push(`Recogida: ${formatDate(pickupDate)} ${pickupTime}`);
@@ -109,7 +114,10 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
     total,
   ]);
 
-  const href = whatsappNumber ? buildWhatsAppUrl(whatsappNumber, message) : undefined;
+  // Only enable the quote CTA when the selection meets the 3-day minimum
+  // (or when no dates are chosen yet — the user can still open a general chat).
+  const href =
+    whatsappNumber && !belowMinimum ? buildWhatsAppUrl(whatsappNumber, message) : undefined;
 
   // Report a business event when the customer sends the quote. The generic
   // whatsapp_click is also captured by WhatsAppTracker; this adds the quote
@@ -209,43 +217,53 @@ export default function VehicleBooking({ vehicleTitle, dailyPrice, whatsappNumbe
     </Box>
   );
 
-  const summary = days > 0 && (
-    <Box sx={{ mt: 2 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-        <Typography variant="body2" color="text.secondary">
-          {formatDailyPrice(dailyPrice)} x {days} {days === 1 ? "día" : "días"}
-        </Typography>
-        <Typography variant="body2">{formatDailyPrice(rentalSubtotal)}</Typography>
-      </Box>
-      {pickupLoc?.hasFee && (
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            Entrega · {pickupLoc.name}
-          </Typography>
-          <Typography variant="body2">
-            {pickupFee > 0 ? formatDailyPrice(pickupFee) : "Cargo adicional"}
+  const summary = (
+    <>
+      {belowMinimum && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          La renta mínima permitida es de {MIN_RENTAL_DAYS} días. Por favor, selecciona una fecha
+          de devolución que complete al menos {MIN_RENTAL_DAYS} días de renta.
+        </Alert>
+      )}
+      {days > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {formatDailyPrice(dailyPrice)} x {days} {days === 1 ? "día" : "días"}
+            </Typography>
+            <Typography variant="body2">{formatDailyPrice(rentalSubtotal)}</Typography>
+          </Box>
+          {pickupLoc?.hasFee && (
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Entrega · {pickupLoc.name}
+              </Typography>
+              <Typography variant="body2">
+                {pickupFee > 0 ? formatDailyPrice(pickupFee) : "Cargo adicional"}
+              </Typography>
+            </Box>
+          )}
+          {dropoffLoc?.hasFee && (
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Devolución · {dropoffLoc.name}
+              </Typography>
+              <Typography variant="body2">
+                {dropoffFee > 0 ? formatDailyPrice(dropoffFee) : "Cargo adicional"}
+              </Typography>
+            </Box>
+          )}
+          <Divider sx={{ my: 1 }} />
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography sx={{ fontWeight: 700 }}>Total estimado</Typography>
+            <Typography sx={{ fontWeight: 700 }}>{formatDailyPrice(total)}</Typography>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
+            Rentas antes de las 5:00 p. m. se cobran como día completo.
           </Typography>
         </Box>
       )}
-      {dropoffLoc?.hasFee && (
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            Devolución · {dropoffLoc.name}
-          </Typography>
-          <Typography variant="body2">
-            {dropoffFee > 0 ? formatDailyPrice(dropoffFee) : "Cargo adicional"}
-          </Typography>
-        </Box>
-      )}
-      <Divider sx={{ my: 1 }} />
-      <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Typography sx={{ fontWeight: 700 }}>Total estimado</Typography>
-        <Typography sx={{ fontWeight: 700 }}>{formatDailyPrice(total)}</Typography>
-      </Box>
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
-        Devoluciones antes de las 5:00 pm se cobran como día completo.
-      </Typography>
-    </Box>
+    </>
   );
 
   const cta = (
