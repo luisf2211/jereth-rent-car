@@ -178,8 +178,19 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
             </Box>
           )}
           {/* Same "Ver todas las fotos" action as desktop; sits bottom-left so it
-              doesn't overlap the "n / total" indicator on the bottom-right. */}
-          {seeAllButton({ bottom: 12, left: 12 })}
+              doesn't overlap the "n / total" indicator on the bottom-right.
+              ~20-25% more compact on mobile: reduced height, padding, icon and
+              text, while staying comfortably tappable. */}
+          {seeAllButton({
+            bottom: 12,
+            left: 12,
+            minHeight: 0,
+            py: 0.4,
+            px: 1,
+            fontSize: "0.72rem",
+            "& .MuiButton-startIcon": { mr: 0.5 },
+            "& .MuiButton-startIcon > *:nth-of-type(1)": { fontSize: 15 },
+          })}
         </Box>
         {count > 1 && (
           <Box sx={{ display: "flex", justifyContent: "center", gap: 0.75, mt: 1.5 }}>
