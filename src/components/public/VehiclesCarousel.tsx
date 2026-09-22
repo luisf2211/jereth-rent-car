@@ -107,6 +107,12 @@ export default function VehiclesCarousel({ vehicles, whatsappNumber }: Props) {
 
   // ---- Pointer drag ----
   const onPointerDown = (e: React.PointerEvent) => {
+    // Don't intercept clicks on interactive elements (buttons, links, cards with role=link).
+    const interactive = (e.target as HTMLElement).closest(
+      "a, button, [role='button'], [role='link']"
+    );
+    if (interactive) return;
+
     draggingRef.current = true;
     movedRef.current = false;
     dragStartXRef.current = e.clientX;
@@ -116,7 +122,7 @@ export default function VehiclesCarousel({ vehicles, whatsappNumber }: Props) {
   const onPointerMove = (e: React.PointerEvent) => {
     if (!draggingRef.current) return;
     const dx = e.clientX - dragStartXRef.current;
-    if (Math.abs(dx) > 4) movedRef.current = true;
+    if (Math.abs(dx) > 8) movedRef.current = true;
     offsetRef.current = dragStartOffsetRef.current - dx;
     applyTransform();
   };
@@ -128,9 +134,11 @@ export default function VehiclesCarousel({ vehicles, whatsappNumber }: Props) {
     } catch {
       /* pointer may already be released */
     }
+    // Reset moved flag after a short delay so onClickCapture can read it first.
+    setTimeout(() => { movedRef.current = false; }, 50);
   };
 
-  // Prevent accidental card navigation right after a drag.
+  // Prevent accidental card navigation right after a real drag (>8px moved).
   const onClickCapture = (e: React.MouseEvent) => {
     if (movedRef.current) {
       e.preventDefault();
