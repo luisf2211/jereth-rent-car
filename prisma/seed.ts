@@ -26,6 +26,9 @@ const PERMISSION_KEYS = [
   "content.edit",
   "delivery.view",
   "delivery.edit",
+  "reservations.view",
+  "reservations.edit",
+  "reservations.settings",
 ] as const;
 
 const VEHICLES = [

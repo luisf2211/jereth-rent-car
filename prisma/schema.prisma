@@ -152,6 +152,8 @@ model Vehicle {
   // (0–100) and zoom is a scale multiplier (1 = fit-width, >1 zooms in).
   // Null means no custom framing has been set (falls back to center/cover).
   imageFits    Json?
+  // Reservations placed for this vehicle (digital booking system).
+  reservations Reservation[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -252,4 +254,117 @@ model Review {
   updatedAt  DateTime @updatedAt
 
   @@index([isActive, sortOrder])
+}
+
+// --- Reservations (digital booking system) ---------------------------------
+
+// Lifecycle of a reservation.
+//  - link_created: an admin created a shareable link; the customer hasn't
+//    filled the form yet. Does NOT hold the vehicle.
+//  - pending:      the customer submitted the form; awaiting review/payment.
+//  - confirmed:    the reservation is approved/confirmed.
+//  - needs_fix:    something is wrong; the customer must correct their data.
+enum ReservationStatus {
+  link_created
+  pending
+  confirmed
+  needs_fix
+}
+
+// Where the reservation originated.
+enum ReservationSource {
+  whatsapp
+  instagram
+  referido
+  recurrente
+  otro
+  // The customer opened a public/admin-generated link and filled the form.
+  link
+}
+
+// Payment method chosen for the reservation deposit.
+enum ReservationPaymentMethod {
+  zelle
+  paypal
+  cashapp
+  otro
+}
+
+model Reservation {
+  id                 String            @id @default(cuid())
+  // Short, human-friendly code shown to staff/customer (e.g. "JRC-8F3K2A").
+  code               String            @unique
+  // Secure random token used in the shareable link (/reservar/<token>).
+  token              String            @unique
+
+  // Vehicle being reserved.
+  vehicleId          String
+  vehicle            Vehicle           @relation(fields: [vehicleId], references: [id])
+
+  // --- Customer data (filled from the digital form; optional at link time) ---
+  customerName       String?
+  email              String?
+  phone              String?
+  country            String?
+  idOrPassport       String?
+  driverLicense      String?
+
+  // --- Rental details (optionally pre-filled when creating the link) ---
+  pickupDate         DateTime?
+  pickupTime         String? // HH:mm
+  dropoffDate        DateTime?
+  dropoffTime        String? // HH:mm
+  pickupLocation     String?
+  dropoffLocation    String?
+
+  // --- Pricing (USD, integers) ---
+  dailyPrice         Int               @default(0)
+  billedDays         Int               @default(0)
+  estimatedTotal     Int               @default(0)
+  reservationDeposit Int               @default(0)
+
+  // --- Payment ---
+  paymentMethod      ReservationPaymentMethod?
+  paymentProofUrl    String?
+
+  source             ReservationSource @default(link)
+  status             ReservationStatus @default(link_created)
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([status])
+  @@index([vehicleId])
+  @@index([createdAt])
+}
+
+// Single-row settings table for the digital booking system (mirrors the
+// CompanySettings singleton pattern). Editable from the admin.
+model ReservationSettings {
+  id                 String   @id @default(cuid())
+  // Master switch. When true, the digital flow is used; when false the site
+  // keeps the current WhatsApp flow. NOT wired to the public button yet.
+  digitalEnabled     Boolean  @default(false)
+  // Default reservation deposit (USD) suggested when creating links.
+  defaultDeposit     Int      @default(0)
+  // General payment instructions shown to the customer.
+  paymentInstructions String?
+
+  // Zelle
+  zelleEnabled       Boolean  @default(false)
+  zelleName          String?
+  zelleEmail         String?
+  zellePhone         String?
+
+  // PayPal
+  paypalEnabled      Boolean  @default(false)
+  paypalEmail        String?
+  paypalLink         String?
+
+  // Cash App
+  cashappEnabled     Boolean  @default(false)
+  cashappTag         String?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }

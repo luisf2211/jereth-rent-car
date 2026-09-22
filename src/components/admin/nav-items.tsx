@@ -6,6 +6,7 @@ import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
+import EventNoteRoundedIcon from "@mui/icons-material/EventNoteRounded";
 
 import type { Permission } from "@/lib/permissions";
 
@@ -23,6 +24,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "Vehículos", href: "/admin/vehicles", icon: <DirectionsCarFilledRoundedIcon />, permission: "vehicles.view" },
   { label: "Contenido", href: "/admin/content", icon: <ArticleRoundedIcon />, permission: "content.view" },
   { label: "Lugares de entrega", href: "/admin/delivery", icon: <PlaceRoundedIcon />, permission: "delivery.view" },
+  { label: "Reservas", href: "/admin/reservations", icon: <EventNoteRoundedIcon />, permission: "reservations.view" },
   { label: "Usuarios", href: "/admin/users", icon: <PeopleRoundedIcon />, permission: "users.view" },
   { label: "Roles", href: "/admin/roles", icon: <AdminPanelSettingsRoundedIcon />, permission: "roles.view" },
   { label: "Branding", href: "/admin/settings/branding", icon: <PaletteRoundedIcon />, permission: "branding.view" },

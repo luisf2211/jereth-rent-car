@@ -23,6 +23,9 @@ export const PERMISSIONS = [
   "content.edit",
   "delivery.view",
   "delivery.edit",
+  "reservations.view",
+  "reservations.edit",
+  "reservations.settings",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -87,6 +90,17 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     permissions: [
       { key: "delivery.view", label: "Ver lugares de entrega" },
       { key: "delivery.edit", label: "Editar lugares de entrega" },
+    ],
+  },
+  {
+    key: "reservations",
+    label: "Reservas",
+    href: "/admin/reservations",
+    viewPermission: "reservations.view",
+    permissions: [
+      { key: "reservations.view", label: "Ver reservas" },
+      { key: "reservations.edit", label: "Crear enlaces y gestionar reservas" },
+      { key: "reservations.settings", label: "Configurar reservas (métodos de pago, switch)" },
     ],
   },
   {
