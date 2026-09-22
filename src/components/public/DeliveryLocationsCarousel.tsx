@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import NextLink from "next/link";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
@@ -22,9 +23,46 @@ function formatFee(loc: DeliveryLocationItem): string {
   return loc.deliveryFee > 0 ? `+US$${loc.deliveryFee}` : "Cargo adicional";
 }
 
+/** Derive a URL-safe slug from a location name for deep-linking. */
+function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
+  const slug = toSlug(loc.name);
+  const href = `/lugares-de-entrega#${slug}`;
+
   return (
-    <Card sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <Card
+      component={NextLink}
+      href={href}
+      aria-label={`Ver detalles de ${loc.name}`}
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        textDecoration: "none",
+        cursor: "pointer",
+        // Subtle scale on hover — uses transform so it doesn't shift other cards
+        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+        "&:hover": {
+          transform: "scale(1.03)",
+          boxShadow: 6,
+          "& .loc-map-link": { color: "primary.main" },
+        },
+        "&:focus-visible": {
+          outline: "2px solid",
+          outlineColor: "primary.main",
+          outlineOffset: 2,
+        },
+      }}
+    >
       {/* Photo */}
       <Box sx={{ position: "relative", aspectRatio: "4 / 3", bgcolor: "grey.900" }}>
         {loc.imageUrl ? (
@@ -84,11 +122,13 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
         )}
         {loc.mapUrl && (
           <Link
+            className="loc-map-link"
             href={loc.mapUrl}
             target="_blank"
             rel="noopener noreferrer"
             underline="hover"
             variant="body2"
+            onClick={(e) => e.stopPropagation()}
             sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, mt: "auto", pt: 1.25 }}
           >
             <PlaceRoundedIcon sx={{ fontSize: 16 }} /> Ver en el mapa
@@ -100,30 +140,53 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
 }
 
 /**
- * Card carousel of delivery/pickup locations with their real photos. Shows
- * several cards per view on a horizontal track that auto-scrolls, pausing on
- * hover. Prev/next step the track; on touch it scrolls natively. When there
- * are few locations it simply lays them out without controls. Client comp.
+ * Infinite/circular carousel of delivery locations.
+ * - Duplicates items so the track loops seamlessly without gaps.
+ * - Auto-scrolls every 3.5s, pauses on hover/focus.
+ * - Prev/Next buttons step one card at a time.
+ * - On mobile, native horizontal scroll + snap works for swipe.
+ * - Cards are fully clickable → /lugares-de-entrega#<slug>.
+ * - Desktop hover: card scales up subtly (transform, no layout shift).
  */
 export default function DeliveryLocationsCarousel({ locations }: Props) {
   const trackRef = React.useRef<HTMLDivElement>(null);
   const [paused, setPaused] = React.useState(false);
   const count = locations.length;
 
-  const step = React.useCallback((dir: 1 | -1) => {
+  // Duplicate items for infinite feel (original + 1 extra copy).
+  // We reset scroll silently when reaching the duplicate zone.
+  const items = count > 1 ? [...locations, ...locations] : locations;
+
+  const getCardWidth = React.useCallback((): number => {
     const track = trackRef.current;
-    if (!track) return;
+    if (!track) return 300;
     const firstCard = track.querySelector<HTMLElement>("[data-card]");
     const gap = 24;
-    const amount = firstCard ? firstCard.offsetWidth + gap : track.clientWidth * 0.8;
-    let next = track.scrollLeft + dir * amount;
-    // Loop back to the start/end for a continuous feel.
-    const maxScroll = track.scrollWidth - track.clientWidth;
-    if (next > maxScroll + 4) next = 0;
-    if (next < 0) next = maxScroll;
-    track.scrollTo({ left: next, behavior: "smooth" });
+    return firstCard ? firstCard.offsetWidth + gap : track.clientWidth * 0.82 + gap;
   }, []);
 
+  const step = React.useCallback(
+    (dir: 1 | -1) => {
+      const track = trackRef.current;
+      if (!track) return;
+      const cardWidth = getCardWidth();
+      let next = track.scrollLeft + dir * cardWidth;
+      const halfScroll = track.scrollWidth / 2;
+
+      // Seamless loop: if we've scrolled past the first copy, snap back silently.
+      if (next >= halfScroll) {
+        track.scrollLeft = next - halfScroll;
+        next = track.scrollLeft + dir * cardWidth;
+      } else if (next < 0) {
+        track.scrollLeft = halfScroll + next;
+        next = track.scrollLeft;
+      }
+      track.scrollTo({ left: next, behavior: "smooth" });
+    },
+    [getCardWidth]
+  );
+
+  // Auto-advance every 3.5s
   React.useEffect(() => {
     if (count <= 1 || paused) return;
     const id = setInterval(() => step(1), 3500);
@@ -136,6 +199,8 @@ export default function DeliveryLocationsCarousel({ locations }: Props) {
     <Box
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
       sx={{ position: "relative" }}
     >
       <Box
@@ -146,14 +211,17 @@ export default function DeliveryLocationsCarousel({ locations }: Props) {
           overflowX: "auto",
           scrollSnapType: "x mandatory",
           pb: 1,
-          // Hide scrollbar; the carousel is driven by autoplay + buttons.
           scrollbarWidth: "none",
           "&::-webkit-scrollbar": { display: "none" },
+          // Give each card room to scale without clipping
+          py: 1,
+          mx: -0.5,
+          px: 0.5,
         }}
       >
-        {locations.map((loc) => (
+        {items.map((loc, i) => (
           <Box
-            key={loc.id}
+            key={`${loc.id}-${i}`}
             data-card
             sx={{
               flex: {
@@ -163,6 +231,8 @@ export default function DeliveryLocationsCarousel({ locations }: Props) {
                 lg: "0 0 31%",
               },
               scrollSnapAlign: "start",
+              // overflow visible so the scale transform isn't clipped
+              overflow: "visible",
             }}
           >
             <LocationCard loc={loc} />
