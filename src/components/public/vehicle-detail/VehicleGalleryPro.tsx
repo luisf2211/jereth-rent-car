@@ -184,11 +184,15 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
           {seeAllButton({
             bottom: 12,
             left: 12,
+            // Shrink the white container to hug the icon + text.
+            minWidth: 0,
+            width: "auto",
             minHeight: 0,
-            py: 0.4,
-            px: 1,
+            py: 0.3,
+            px: 0.85,
+            lineHeight: 1.2,
             fontSize: "0.72rem",
-            "& .MuiButton-startIcon": { mr: 0.5 },
+            "& .MuiButton-startIcon": { ml: 0, mr: 0.4 },
             "& .MuiButton-startIcon > *:nth-of-type(1)": { fontSize: 15 },
           })}
         </Box>
