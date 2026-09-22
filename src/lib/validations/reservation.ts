@@ -22,13 +22,16 @@ export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
 };
 
 /**
- * Schema for changing a reservation status from the admin. When the status is
- * "rejected", an optional reason can be recorded (used later for customer
- * notifications).
+ * Schema for changing a reservation status from the admin.
+ *
+ * For "rejected" and "needs_fix" the admin can record a message. When
+ * statusMessageVisible is true the customer sees it in their portal; when
+ * false it's an internal note only. For other statuses the message is ignored.
  */
 export const updateStatusSchema = z.object({
   status: z.enum(RESERVATION_STATUSES),
-  rejectionReason: z.string().trim().max(500).optional().or(z.literal("")),
+  statusMessage: z.string().trim().max(1000).optional().or(z.literal("")),
+  statusMessageVisible: z.boolean().default(false),
 });
 
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
@@ -102,6 +105,14 @@ export type CreateReservationLinkInput = z.infer<typeof createReservationLinkSch
 /**
  * Schema the CUSTOMER submits from the digital form (the shared form used both
  * from the admin-generated link and, later, the public button).
+ *
+ * Pickup/dropoff locations are now selected from the existing DeliveryLocation
+ * list, so they are sent as IDs (resolved server-side to name + fee). An empty
+ * string means "no location chosen".
+ *
+ * depositChoice is the amount the customer chose to secure the reservation:
+ * 0 means "continue without deposit" (allowed). When > 0, a payment method and
+ * proof are expected (validated in the server action against the settings).
  */
 export const customerReservationSchema = z.object({
   customerName: z.string().trim().min(2, "El nombre es obligatorio").max(120),
@@ -114,10 +125,33 @@ export const customerReservationSchema = z.object({
   pickupTime: z.string().trim().min(1, "Hora de recogida obligatoria").max(5),
   dropoffDate: z.string().trim().min(1, "Fecha de devolución obligatoria").max(10),
   dropoffTime: z.string().trim().min(1, "Hora de devolución obligatoria").max(5),
-  pickupLocation: optionalStr(160),
-  dropoffLocation: optionalStr(160),
+  // DeliveryLocation IDs (empty = not chosen).
+  pickupLocationId: optionalStr(60),
+  dropoffLocationId: optionalStr(60),
+  // Chosen deposit amount (0 = without deposit).
+  depositChoice: z.coerce.number().int().min(0).max(100000).default(0),
   paymentMethod: z.enum(PAYMENT_METHODS).optional(),
   paymentProofUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+  // Optional special request (empty = none).
+  specialRequest: z.string().trim().max(1000).optional().or(z.literal("")),
+
+  // --- Flight info (all optional; only saved when the customer opts in) ---
+  hasArrivalFlight: z.boolean().default(false),
+  arrivalAirline: optionalStr(120),
+  // Flight number: real formats like "AA 987", "B6 244", "UA 1471".
+  arrivalFlightNumber: optionalStr(12),
+  arrivalAirport: optionalStr(160),
+  arrivalDate: optionalDate,
+  arrivalTime: optionalTime,
+  arrivalItineraryUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+
+  hasReturnFlight: z.boolean().default(false),
+  returnAirline: optionalStr(120),
+  returnFlightNumber: optionalStr(12),
+  returnAirport: optionalStr(160),
+  returnDate: optionalDate,
+  returnTime: optionalTime,
+  returnItineraryUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
 });
 
 export type CustomerReservationInput = z.infer<typeof customerReservationSchema>;
@@ -128,6 +162,8 @@ export type CustomerReservationInput = z.infer<typeof customerReservationSchema>
 export const reservationSettingsSchema = z.object({
   digitalEnabled: z.boolean().default(false),
   defaultDeposit: z.coerce.number().int().min(0).max(100000).default(0),
+  // Configurable deposit amounts (USD) the customer can choose from.
+  depositOptions: z.array(z.coerce.number().int().min(1).max(100000)).max(10).default([]),
   paymentInstructions: optionalStr(2000),
   // Zelle
   zelleEnabled: z.boolean().default(false),

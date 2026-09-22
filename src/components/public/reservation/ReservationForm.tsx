@@ -13,13 +13,26 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Alert from "@mui/material/Alert";
-import { submitReservation, uploadPaymentProof } from "@/features/reservations/actions";
+import Tooltip from "@mui/material/Tooltip";
+import IconButton from "@mui/material/IconButton";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Autocomplete from "@mui/material/Autocomplete";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import FlightTakeoffRoundedIcon from "@mui/icons-material/FlightTakeoffRounded";
+import {
+  submitReservation,
+  uploadPaymentProof,
+  uploadFlightItinerary,
+} from "@/features/reservations/actions";
 import { rentalDays, meetsMinimumRental, MIN_RENTAL_DAYS } from "@/utils/rental-days";
 import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   type PaymentMethod,
 } from "@/lib/validations/reservation";
+import { COUNTRIES } from "@/lib/countries";
+import { AIRLINES } from "@/lib/airlines";
 import type { ReservationFormData } from "@/features/reservations/data";
 
 interface PaymentMethodsView {
@@ -29,16 +42,44 @@ interface PaymentMethodsView {
   instructions: string;
 }
 
+/** A delivery location option (from the existing DeliveryLocation table). */
+export interface LocationOption {
+  id: string;
+  name: string;
+  hasFee: boolean;
+  deliveryFee: number;
+}
+
 interface Props {
   reservation: ReservationFormData;
   paymentMethods: PaymentMethodsView;
+  locations: LocationOption[];
+  depositOptions: number[];
 }
+
+const DEPOSIT_INFO =
+  "El depósito no es obligatorio para enviar tu solicitud. Realizar un depósito permite asegurar tu reserva. En caso de que el vehículo reservado no esté disponible, JERETH RENT CAR podrá proporcionar un vehículo similar o de categoría superior, sujeto a disponibilidad y manteniendo las condiciones acordadas.";
 
 function money(n: number) {
   return `US$${n.toLocaleString("en-US")}`;
 }
 
-export default function ReservationForm({ reservation, paymentMethods }: Props) {
+/** Label for a location option, showing the fee when it applies. */
+function locationLabel(l: LocationOption): string {
+  if (!l.hasFee) return `${l.name} (gratis)`;
+  return l.deliveryFee > 0 ? `${l.name} (+${money(l.deliveryFee)})` : `${l.name} (cargo adicional)`;
+}
+
+export default function ReservationForm({
+  reservation,
+  paymentMethods,
+  locations,
+  depositOptions,
+}: Props) {
+  // Correction mode: the reservation was sent, admin asked for a fix, and the
+  // customer is editing again. Detected by the incoming status.
+  const isCorrection = reservation.status === "needs_fix";
+
   const [values, setValues] = React.useState({
     customerName: reservation.customerName,
     email: reservation.email,
@@ -50,11 +91,44 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
     pickupTime: reservation.pickupTime || "10:00",
     dropoffDate: reservation.dropoffDate,
     dropoffTime: reservation.dropoffTime || "10:00",
-    pickupLocation: reservation.pickupLocation,
-    dropoffLocation: reservation.dropoffLocation,
+    // Pre-select the previously chosen locations (correction mode).
+    pickupLocationId: reservation.pickupLocationId || "",
+    dropoffLocationId: reservation.dropoffLocationId || "",
     paymentMethod: "" as "" | PaymentMethod,
-    paymentProofUrl: "",
+    paymentProofUrl: reservation.paymentProofUrl ?? "",
+    // Special request (pre-fill on correction).
+    specialRequest: reservation.specialRequest ?? "",
+    // Flight info (pre-fill on correction).
+    arrivalAirline: reservation.flight.arrivalAirline,
+    arrivalFlightNumber: reservation.flight.arrivalFlightNumber,
+    arrivalAirport: reservation.flight.arrivalAirport,
+    arrivalDate: reservation.flight.arrivalDate,
+    arrivalTime: reservation.flight.arrivalTime,
+    arrivalItineraryUrl: reservation.flight.arrivalItineraryUrl,
+    returnAirline: reservation.flight.returnAirline,
+    returnFlightNumber: reservation.flight.returnFlightNumber,
+    returnAirport: reservation.flight.returnAirport,
+    returnDate: reservation.flight.returnDate,
+    returnTime: reservation.flight.returnTime,
+    returnItineraryUrl: reservation.flight.returnItineraryUrl,
   });
+  // Whether the "special request" section is expanded.
+  const [hasSpecialRequest, setHasSpecialRequest] = React.useState<boolean>(
+    Boolean(reservation.specialRequest)
+  );
+  // Flight toggles.
+  const [hasArrivalFlight, setHasArrivalFlight] = React.useState<boolean>(
+    reservation.flight.hasArrivalFlight
+  );
+  const [hasReturnFlight, setHasReturnFlight] = React.useState<boolean>(
+    reservation.flight.hasReturnFlight
+  );
+  const [uploadingItin, setUploadingItin] = React.useState<"arrival" | "return" | null>(null);
+  const arrivalItinRef = React.useRef<HTMLInputElement>(null);
+  const returnItinRef = React.useRef<HTMLInputElement>(null);
+  // 0 = without deposit; otherwise the chosen amount. Pre-fill with the amount
+  // already paid so a correction resubmit doesn't lose the deposit.
+  const [depositChoice, setDepositChoice] = React.useState<number>(reservation.depositPaid || 0);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -64,6 +138,12 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
 
   const setField = (k: string, v: string) => setValues((s) => ({ ...s, [k]: v }));
 
+  const locOf = (id: string) => locations.find((l) => l.id === id) ?? null;
+  const pickupLoc = locOf(values.pickupLocationId);
+  const dropoffLoc = locOf(values.dropoffLocationId);
+  const pickupFee = pickupLoc?.hasFee ? pickupLoc.deliveryFee : 0;
+  const dropoffFee = dropoffLoc?.hasFee ? dropoffLoc.deliveryFee : 0;
+
   // Live pricing using the shared rental-days rules.
   const days = rentalDays({
     pickupDate: values.pickupDate,
@@ -71,7 +151,10 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
     pickupTime: values.pickupTime,
     dropoffTime: values.dropoffTime,
   });
-  const estimatedTotal = days * reservation.dailyPrice;
+  const subtotalRent = days * reservation.dailyPrice;
+  const total = subtotalRent + pickupFee + dropoffFee;
+  const balanceDue = Math.max(total - depositChoice, 0);
+
   const bothDates = Boolean(values.pickupDate && values.dropoffDate);
   const belowMinimum = bothDates && days > 0 && !meetsMinimumRental(days);
 
@@ -81,6 +164,8 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
     if (m === "cashapp") return Boolean(paymentMethods.cashapp);
     return true; // "otro" always allowed
   });
+
+  const withDeposit = depositChoice > 0;
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,6 +180,23 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
     else setFormError(res.message);
   };
 
+  const handleItinerary = async (
+    which: "arrival" | "return",
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingItin(which);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await uploadFlightItinerary(fd);
+    setUploadingItin(null);
+    const ref = which === "arrival" ? arrivalItinRef : returnItinRef;
+    if (ref.current) ref.current.value = "";
+    if (res.ok) setField(which === "arrival" ? "arrivalItineraryUrl" : "returnItineraryUrl", res.url);
+    else setFormError(res.message);
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -102,7 +204,12 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
     setFieldErrors({});
     const res = await submitReservation(reservation.token, {
       ...values,
-      paymentMethod: values.paymentMethod || undefined,
+      depositChoice,
+      paymentMethod: withDeposit ? values.paymentMethod || undefined : undefined,
+      paymentProofUrl: withDeposit ? values.paymentProofUrl : "",
+      specialRequest: hasSpecialRequest ? values.specialRequest : "",
+      hasArrivalFlight,
+      hasReturnFlight: hasArrivalFlight && hasReturnFlight,
     });
     setSubmitting(false);
     if (res.ok) {
@@ -121,14 +228,15 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
             ¡Solicitud de reserva recibida!
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.7 }}>
-            Hemos recibido correctamente tus datos y tu comprobante de pago.
+            Hemos recibido correctamente tus datos{withDeposit ? " y tu comprobante de pago" : ""}.
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.7 }}>
             Tu reserva se encuentra <strong>pendiente de verificación</strong>. Nuestro equipo
-            revisará la información y el pago enviado.
+            revisará la información{withDeposit ? " y el pago enviado" : ""}.
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 3, lineHeight: 1.7 }}>
-            Recibirás una respuesta dentro de un plazo de 0 a 24 horas.
+            Recibirás una respuesta dentro de un plazo de 0 a 24 horas. Puedes volver a abrir este
+            mismo enlace en cualquier momento para consultar el estado de tu reserva.
           </Typography>
           <Box
             sx={{
@@ -148,6 +256,11 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
               {reservation.code}
             </Typography>
           </Box>
+          <Box sx={{ mt: 3 }}>
+            <Button variant="contained" onClick={() => window.location.reload()}>
+              Ver estado de mi reserva
+            </Button>
+          </Box>
         </CardContent>
       </Card>
     );
@@ -161,6 +274,15 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
       {formError && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {formError}
+        </Alert>
+      )}
+
+      {isCorrection && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          <Typography sx={{ fontWeight: 700, mb: 0.5 }}>Corrige tu información</Typography>
+          {reservation.statusMessageVisible && reservation.statusMessage
+            ? reservation.statusMessage
+            : "Revisa y actualiza los datos de tu reserva, luego vuelve a enviarla."}
         </Alert>
       )}
 
@@ -202,8 +324,21 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
                   onChange={(e) => setField("phone", e.target.value)} error={err("phone")} helperText={help("phone")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="País" value={values.country}
-                  onChange={(e) => setField("country", e.target.value)} error={err("country")} helperText={help("country")} />
+                <Autocomplete
+                  options={COUNTRIES}
+                  value={values.country || null}
+                  onChange={(_, v) => setField("country", v ?? "")}
+                  autoHighlight
+                  fullWidth
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="País"
+                      error={err("country")}
+                      helperText={help("country")}
+                    />
+                  )}
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth label="Identificación o pasaporte" value={values.idOrPassport}
@@ -244,13 +379,38 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
                   onChange={(e) => setField("dropoffTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("dropoffTime")} helperText={help("dropoffTime")} />
               </Grid>
+              {/* Locations as selects from the existing DeliveryLocation list. */}
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Lugar de recogida" value={values.pickupLocation}
-                  onChange={(e) => setField("pickupLocation", e.target.value)} />
+                <TextField
+                  select
+                  fullWidth
+                  label="Lugar de recogida"
+                  value={values.pickupLocationId}
+                  onChange={(e) => setField("pickupLocationId", e.target.value)}
+                >
+                  <MenuItem value="">Sin especificar</MenuItem>
+                  {locations.map((l) => (
+                    <MenuItem key={l.id} value={l.id}>
+                      {locationLabel(l)}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Lugar de devolución" value={values.dropoffLocation}
-                  onChange={(e) => setField("dropoffLocation", e.target.value)} />
+                <TextField
+                  select
+                  fullWidth
+                  label="Lugar de devolución"
+                  value={values.dropoffLocationId}
+                  onChange={(e) => setField("dropoffLocationId", e.target.value)}
+                >
+                  <MenuItem value="">Sin especificar</MenuItem>
+                  {locations.map((l) => (
+                    <MenuItem key={l.id} value={l.id}>
+                      {locationLabel(l)}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
             </Grid>
 
@@ -260,40 +420,240 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
                 de devolución que complete al menos {MIN_RENTAL_DAYS} días de renta.
               </Alert>
             )}
+          </CardContent>
+        </Card>
 
-            {days > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Divider sx={{ mb: 1.5 }} />
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {money(reservation.dailyPrice)} x {days} {days === 1 ? "día" : "días"}
+        {/* Flight information (optional) */}
+        <Card>
+          <CardContent>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+              <FlightTakeoffRoundedIcon color="action" />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                Información de vuelo
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              ¿Llegas en avión?
+            </Typography>
+            <ToggleButtonGroup
+              value={hasArrivalFlight ? "si" : "no"}
+              exclusive
+              onChange={(_, v) => {
+                if (v === null) return;
+                setHasArrivalFlight(v === "si");
+                if (v === "no") setHasReturnFlight(false);
+              }}
+              sx={{ gap: 1, "& .MuiToggleButtonGroup-grouped": { borderRadius: "8px !important", border: "1px solid !important", borderColor: "divider !important" } }}
+            >
+              <ToggleButton value="no" sx={{ px: 3 }}>No</ToggleButton>
+              <ToggleButton value="si" sx={{ px: 3 }}>Sí</ToggleButton>
+            </ToggleButtonGroup>
+
+            {hasArrivalFlight && (
+              <>
+                <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Autocomplete
+                      options={AIRLINES}
+                      value={values.arrivalAirline || null}
+                      onChange={(_, v) => setField("arrivalAirline", v ?? "")}
+                      autoHighlight
+                      fullWidth
+                      renderInput={(params) => <TextField {...params} label="Aerolínea" />}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Número de vuelo"
+                      placeholder="Ej.: AA 987, B6 244"
+                      value={values.arrivalFlightNumber}
+                      onChange={(e) => setField("arrivalFlightNumber", e.target.value)}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Autocomplete
+                      freeSolo
+                      options={locations.map((l) => l.name)}
+                      value={values.arrivalAirport || ""}
+                      onInputChange={(_, v) => setField("arrivalAirport", v ?? "")}
+                      fullWidth
+                      renderInput={(params) => <TextField {...params} label="Aeropuerto de llegada" />}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}>
+                    <TextField fullWidth type="date" label="Fecha de llegada" value={values.arrivalDate}
+                      onChange={(e) => setField("arrivalDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+                  </Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}>
+                    <TextField fullWidth type="time" label="Hora estimada" value={values.arrivalTime}
+                      onChange={(e) => setField("arrivalTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+                  </Grid>
+                </Grid>
+                <Box sx={{ mt: 2 }}>
+                  <input ref={arrivalItinRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden onChange={(e) => handleItinerary("arrival", e)} />
+                  <Button variant="outlined" color="secondary" size="small" onClick={() => arrivalItinRef.current?.click()} disabled={uploadingItin === "arrival"}>
+                    {uploadingItin === "arrival" ? "Subiendo..." : values.arrivalItineraryUrl ? "Itinerario cargado ✓" : "Adjuntar itinerario (opcional)"}
+                  </Button>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                    Imagen, captura o PDF. Opcional.
                   </Typography>
-                  <Typography variant="body2">{money(estimatedTotal)}</Typography>
                 </Box>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
-                  <Typography sx={{ fontWeight: 700 }}>Total estimado</Typography>
-                  <Typography sx={{ fontWeight: 700 }}>{money(estimatedTotal)}</Typography>
+
+                {/* Return flight */}
+                <Box sx={{ mt: 2.5 }}>
+                  <ToggleButtonGroup
+                    value={hasReturnFlight ? "si" : "no"}
+                    exclusive
+                    onChange={(_, v) => {
+                      if (v === null) return;
+                      setHasReturnFlight(v === "si");
+                    }}
+                    size="small"
+                    sx={{ gap: 1, "& .MuiToggleButtonGroup-grouped": { borderRadius: "8px !important", border: "1px solid !important", borderColor: "divider !important" } }}
+                  >
+                    <ToggleButton value="no" sx={{ px: 2 }}>Sin vuelo de regreso</ToggleButton>
+                    <ToggleButton value="si" sx={{ px: 2 }}>Agregar información de vuelo de regreso</ToggleButton>
+                  </ToggleButtonGroup>
                 </Box>
-                {reservation.reservationDeposit > 0 && (
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
-                    <Typography variant="body2" color="text.secondary">Depósito de reserva</Typography>
-                    <Typography variant="body2">{money(reservation.reservationDeposit)}</Typography>
-                  </Box>
+
+                {hasReturnFlight && (
+                  <>
+                    <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Autocomplete
+                          options={AIRLINES}
+                          value={values.returnAirline || null}
+                          onChange={(_, v) => setField("returnAirline", v ?? "")}
+                          autoHighlight
+                          fullWidth
+                          renderInput={(params) => <TextField {...params} label="Aerolínea (regreso)" />}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          fullWidth
+                          label="Número de vuelo (regreso)"
+                          placeholder="Ej.: UA 1471"
+                          value={values.returnFlightNumber}
+                          onChange={(e) => setField("returnFlightNumber", e.target.value)}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Autocomplete
+                          freeSolo
+                          options={locations.map((l) => l.name)}
+                          value={values.returnAirport || ""}
+                          onInputChange={(_, v) => setField("returnAirport", v ?? "")}
+                          fullWidth
+                          renderInput={(params) => <TextField {...params} label="Aeropuerto de salida" />}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 6, sm: 3 }}>
+                        <TextField fullWidth type="date" label="Fecha" value={values.returnDate}
+                          onChange={(e) => setField("returnDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+                      </Grid>
+                      <Grid size={{ xs: 6, sm: 3 }}>
+                        <TextField fullWidth type="time" label="Hora" value={values.returnTime}
+                          onChange={(e) => setField("returnTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+                      </Grid>
+                    </Grid>
+                    <Box sx={{ mt: 2 }}>
+                      <input ref={returnItinRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden onChange={(e) => handleItinerary("return", e)} />
+                      <Button variant="outlined" color="secondary" size="small" onClick={() => returnItinRef.current?.click()} disabled={uploadingItin === "return"}>
+                        {uploadingItin === "return" ? "Subiendo..." : values.returnItineraryUrl ? "Itinerario cargado ✓" : "Adjuntar itinerario de regreso (opcional)"}
+                      </Button>
+                    </Box>
+                  </>
                 )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Special request (optional) */}
+        <Card>
+          <CardContent>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+              ¿Tienes alguna solicitud especial?
+            </Typography>
+            <ToggleButtonGroup
+              value={hasSpecialRequest ? "si" : "no"}
+              exclusive
+              onChange={(_, v) => {
+                if (v === null) return;
+                const yes = v === "si";
+                setHasSpecialRequest(yes);
+                if (!yes) setField("specialRequest", "");
+              }}
+              sx={{ mt: 1, gap: 1, "& .MuiToggleButtonGroup-grouped": { borderRadius: "8px !important", border: "1px solid !important", borderColor: "divider !important" } }}
+            >
+              <ToggleButton value="no" sx={{ px: 3 }}>No</ToggleButton>
+              <ToggleButton value="si" sx={{ px: 3 }}>Sí</ToggleButton>
+            </ToggleButtonGroup>
+
+            {hasSpecialRequest && (
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Cuéntanos cómo podemos ayudarte"
+                  value={values.specialRequest}
+                  onChange={(e) => setField("specialRequest", e.target.value)}
+                  multiline
+                  minRows={3}
+                  placeholder="Ej.: viajo con un niño, evitar ambientadores, etc."
+                />
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
-                  Rentas antes de las 5:00 p. m. se cobran como día completo.
+                  Las solicitudes especiales están sujetas a disponibilidad y confirmación.
                 </Typography>
               </Box>
             )}
           </CardContent>
         </Card>
 
-        {/* Payment */}
-        {availableMethods.length > 0 && (
+        {/* Deposit choice */}
+        <Card>
+          <CardContent>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                Depósito para asegurar tu reserva
+              </Typography>
+              <Tooltip title={DEPOSIT_INFO} enterTouchDelay={0} leaveTouchDelay={6000} arrow>
+                <IconButton size="small" aria-label="Información sobre el depósito">
+                  <InfoOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              El depósito no es obligatorio. Puedes continuar sin depósito y coordinar el pago después.
+            </Typography>
+
+            <ToggleButtonGroup
+              value={depositChoice}
+              exclusive
+              onChange={(_, v) => {
+                if (v !== null) setDepositChoice(v as number);
+              }}
+              sx={{ flexWrap: "wrap", gap: 1, "& .MuiToggleButtonGroup-grouped": { borderRadius: "8px !important", border: "1px solid !important", borderColor: "divider !important" } }}
+            >
+              {depositOptions.map((amount) => (
+                <ToggleButton key={amount} value={amount} sx={{ px: 2.5 }}>
+                  Reservar con {money(amount)}
+                </ToggleButton>
+              ))}
+              <ToggleButton value={0} sx={{ px: 2.5 }}>
+                Continuar sin depósito
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </CardContent>
+        </Card>
+
+        {/* Payment (only when a deposit is chosen and there are enabled methods) */}
+        {withDeposit && availableMethods.length > 0 && (
           <Card>
             <CardContent>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-                Pago del depósito
+                Pago del depósito ({money(depositChoice)})
               </Typography>
 
               {paymentMethods.instructions && (
@@ -310,6 +670,8 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
                     label="Método de pago"
                     value={values.paymentMethod}
                     onChange={(e) => setField("paymentMethod", e.target.value)}
+                    error={err("paymentMethod")}
+                    helperText={help("paymentMethod")}
                   >
                     {availableMethods.map((m) => (
                       <MenuItem key={m} value={m}>
@@ -320,7 +682,6 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
                 </Grid>
               </Grid>
 
-              {/* Payment details for the chosen method */}
               {values.paymentMethod === "zelle" && paymentMethods.zelle && (
                 <Alert severity="info" sx={{ mt: 2 }}>
                   Zelle: {paymentMethods.zelle.name}
@@ -345,13 +706,68 @@ export default function ReservationForm({ reservation, paymentMethods }: Props) 
                 <Button variant="outlined" color="secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
                   {uploading ? "Subiendo..." : values.paymentProofUrl ? "Comprobante cargado ✓" : "Subir comprobante de pago"}
                 </Button>
+                {err("paymentProofUrl") && (
+                  <Typography variant="caption" color="error" sx={{ display: "block", mt: 0.5 }}>
+                    {help("paymentProofUrl")}
+                  </Typography>
+                )}
               </Box>
             </CardContent>
           </Card>
         )}
 
+        {/* Price breakdown */}
+        {days > 0 && (
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+                Resumen
+              </Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {money(reservation.dailyPrice)} x {days} {days === 1 ? "día" : "días"}
+                </Typography>
+                <Typography variant="body2">{money(subtotalRent)}</Typography>
+              </Box>
+              {pickupFee > 0 && (
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary">Cargo de entrega (recogida)</Typography>
+                  <Typography variant="body2">{money(pickupFee)}</Typography>
+                </Box>
+              )}
+              {dropoffFee > 0 && (
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary">Cargo de entrega (devolución)</Typography>
+                  <Typography variant="body2">{money(dropoffFee)}</Typography>
+                </Box>
+              )}
+              <Divider sx={{ my: 1 }} />
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography sx={{ fontWeight: 700 }}>Total</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{money(total)}</Typography>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.75 }}>
+                <Typography variant="body2" color="text.secondary">Monto reservado</Typography>
+                <Typography variant="body2">{money(depositChoice)}</Typography>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
+                <Typography sx={{ fontWeight: 700 }}>Saldo pendiente</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{money(balanceDue)}</Typography>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                El depósito forma parte del total; no es un cargo adicional. Rentas antes de las
+                5:00 p. m. se cobran como día completo.
+              </Typography>
+            </CardContent>
+          </Card>
+        )}
+
         <Button type="submit" variant="contained" size="large" disabled={submitting || belowMinimum}>
-          {submitting ? "Enviando..." : "Enviar reserva"}
+          {submitting
+            ? "Enviando..."
+            : isCorrection
+              ? "Reenviar solicitud corregida"
+              : "Enviar solicitud de reserva"}
         </Button>
       </Stack>
     </Box>

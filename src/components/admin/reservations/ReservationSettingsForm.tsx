@@ -17,6 +17,8 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import { reservationSettingsSchema } from "@/lib/validations/reservation";
 import { updateReservationSettings } from "@/features/reservations/actions";
 import type { ReservationSettingsData } from "@/features/reservations/data";
@@ -34,6 +36,65 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
           {hint}
         </Typography>
       )}
+    </Box>
+  );
+}
+
+/** Editable list of deposit amounts, shown as removable chips + an adder. */
+function DepositOptionsEditor({
+  value,
+  onChange,
+}: {
+  value: number[];
+  onChange: (v: number[]) => void;
+}) {
+  const [draft, setDraft] = React.useState("");
+
+  const add = () => {
+    const n = Math.round(Number(draft));
+    if (!Number.isFinite(n) || n <= 0) return;
+    if (value.includes(n)) {
+      setDraft("");
+      return;
+    }
+    onChange([...value, n].sort((a, b) => a - b));
+    setDraft("");
+  };
+
+  const remove = (n: number) => onChange(value.filter((x) => x !== n));
+
+  return (
+    <Box>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: value.length ? 2 : 0 }}>
+        {value.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            Sin montos configurados. El cliente solo podrá continuar sin depósito.
+          </Typography>
+        ) : (
+          value.map((n) => (
+            <Chip key={n} label={`US$${n.toLocaleString("en-US")}`} onDelete={() => remove(n)} />
+          ))
+        )}
+      </Box>
+      <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", maxWidth: 320 }}>
+        <TextField
+          type="number"
+          size="small"
+          label="Agregar monto"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          slotProps={{ input: { startAdornment: <InputAdornment position="start">US$</InputAdornment> } }}
+        />
+        <Button variant="outlined" color="secondary" startIcon={<AddRoundedIcon />} onClick={add} sx={{ mt: 0.25 }}>
+          Agregar
+        </Button>
+      </Box>
     </Box>
   );
 }
@@ -145,6 +206,23 @@ export default function ReservationSettingsForm({
                   />
                 </Grid>
               </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Deposit amounts */}
+          <Card>
+            <CardContent>
+              <SectionHeading
+                title="Montos para reservar"
+                hint="Montos (US$) que el cliente podrá elegir para asegurar su reserva. El cliente siempre puede continuar sin depósito."
+              />
+              <Box sx={{ mt: 2 }}>
+                <Controller
+                  name="depositOptions"
+                  control={control}
+                  render={({ field }) => <DepositOptionsEditor value={field.value ?? []} onChange={field.onChange} />}
+                />
+              </Box>
             </CardContent>
           </Card>
 

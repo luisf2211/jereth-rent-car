@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "Reservation" ADD COLUMN     "arrivalAirline" TEXT,
+ADD COLUMN     "arrivalAirport" TEXT,
+ADD COLUMN     "arrivalDate" TIMESTAMP(3),
+ADD COLUMN     "arrivalFlightNumber" TEXT,
+ADD COLUMN     "arrivalItineraryUrl" TEXT,
+ADD COLUMN     "arrivalTime" TEXT,
+ADD COLUMN     "hasArrivalFlight" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "hasReturnFlight" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "returnAirline" TEXT,
+ADD COLUMN     "returnAirport" TEXT,
+ADD COLUMN     "returnDate" TIMESTAMP(3),
+ADD COLUMN     "returnFlightNumber" TEXT,
+ADD COLUMN     "returnItineraryUrl" TEXT,
+ADD COLUMN     "returnTime" TEXT;

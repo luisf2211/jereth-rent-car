@@ -16,12 +16,15 @@ import Divider from "@mui/material/Divider";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import Dialog from "@mui/material/Dialog";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
 import IconButton from "@mui/material/IconButton";
 import Link from "@mui/material/Link";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import { updateReservationStatus } from "@/features/reservations/actions";
 import {
   RESERVATION_STATUSES,
@@ -76,21 +79,75 @@ function isImageUrl(url: string): boolean {
   return /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(url);
 }
 
+/** One flight leg (arrival or return) rendered as labelled fields. */
+function FlightLeg({
+  title,
+  airline,
+  flightNumber,
+  airport,
+  date,
+  time,
+  itineraryUrl,
+}: {
+  title: string;
+  airline: string;
+  flightNumber: string;
+  airport: string;
+  date: string;
+  time: string;
+  itineraryUrl: string;
+}) {
+  return (
+    <Box>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+        {title}
+      </Typography>
+      <Grid container spacing={2.5}>
+        <Grid size={{ xs: 12, sm: 6 }}><Field label="Aerolínea" value={airline} /></Grid>
+        <Grid size={{ xs: 12, sm: 6 }}><Field label="Número de vuelo" value={flightNumber} /></Grid>
+        <Grid size={{ xs: 12, sm: 6 }}><Field label="Aeropuerto" value={airport} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><Field label="Fecha" value={date} /></Grid>
+        <Grid size={{ xs: 6, sm: 3 }}><Field label="Hora" value={time} /></Grid>
+      </Grid>
+      {itineraryUrl && (
+        <Button
+          href={itineraryUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          size="small"
+          color="secondary"
+          startIcon={<OpenInNewRoundedIcon />}
+          sx={{ mt: 1 }}
+        >
+          Ver itinerario
+        </Button>
+      )}
+    </Box>
+  );
+}
+
 export default function ReservationDetail({ reservation: r, canEdit }: Props) {
   const router = useRouter();
   const [status, setStatus] = React.useState<ReservationStatus>(r.status);
-  const [rejectionReason, setRejectionReason] = React.useState(r.rejectionReason ?? "");
+  const [statusMessage, setStatusMessage] = React.useState(r.statusMessage ?? "");
+  const [statusMessageVisible, setStatusMessageVisible] = React.useState(r.statusMessageVisible);
   const [saving, setSaving] = React.useState(false);
   const [snack, setSnack] = React.useState<{ msg: string; error?: boolean } | null>(null);
   const [proofOpen, setProofOpen] = React.useState(false);
 
-  const dirty = status !== r.status || (status === "rejected" && rejectionReason !== (r.rejectionReason ?? ""));
+  // The message + visibility apply to "rejected" and "needs_fix".
+  const usesMessage = status === "rejected" || status === "needs_fix";
+  const dirty =
+    status !== r.status ||
+    (usesMessage &&
+      (statusMessage !== (r.statusMessage ?? "") || statusMessageVisible !== r.statusMessageVisible));
 
   const saveStatus = async () => {
     setSaving(true);
     const res = await updateReservationStatus(r.id, {
       status,
-      rejectionReason: status === "rejected" ? rejectionReason : "",
+      statusMessage: usesMessage ? statusMessage : "",
+      statusMessageVisible: usesMessage ? statusMessageVisible : false,
     });
     setSaving(false);
     setSnack({ msg: res.message ?? "", error: !res.ok });
@@ -116,13 +173,30 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
                   </Typography>
                   <Chip label={RESERVATION_STATUS_LABELS[r.status]} color={STATUS_COLOR[r.status]} size="small" />
                   <Chip label={RESERVATION_SOURCE_LABELS[r.source]} variant="outlined" size="small" />
+                  <Chip
+                    label={r.depositPaid > 0 ? `Con depósito (${money(r.depositPaid)})` : "Sin depósito"}
+                    size="small"
+                    variant="outlined"
+                    color={r.depositPaid > 0 ? "success" : "default"}
+                  />
                 </Box>
                 <Typography variant="body2" color="text.secondary">
                   Creada el {dateTimeLabel(r.createdAt)} · Última actualización {dateTimeLabel(r.updatedAt)}
                 </Typography>
-                {r.status === "rejected" && r.rejectionReason && (
-                  <Alert severity="error" sx={{ mt: 2 }}>
-                    <strong>Motivo del rechazo:</strong> {r.rejectionReason}
+                {(r.status === "rejected" || r.status === "needs_fix") && r.statusMessage && (
+                  <Alert severity={r.status === "rejected" ? "error" : "warning"} sx={{ mt: 2 }}>
+                    <strong>
+                      {r.status === "rejected" ? "Motivo del rechazo" : "Corrección solicitada"}:
+                    </strong>{" "}
+                    {r.statusMessage}
+                    <Typography variant="caption" sx={{ display: "block", mt: 0.5 }}>
+                      {r.statusMessageVisible ? "Visible para el cliente" : "Nota interna (no visible al cliente)"}
+                    </Typography>
+                  </Alert>
+                )}
+                {r.specialRequest && (
+                  <Alert severity="warning" icon={false} sx={{ mt: 2 }}>
+                    <strong>⚠ Solicitud especial del cliente:</strong> {r.specialRequest}
                   </Alert>
                 )}
               </CardContent>
@@ -164,8 +238,12 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
                 <Grid container spacing={2.5}>
                   <Grid size={{ xs: 6, sm: 3 }}><Field label="Precio por día" value={money(r.dailyPrice)} /></Grid>
                   <Grid size={{ xs: 6, sm: 3 }}><Field label="Días cobrados" value={String(r.billedDays)} /></Grid>
-                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Total de la renta" value={money(r.estimatedTotal)} /></Grid>
-                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Depósito de reserva" value={money(r.reservationDeposit)} /></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Subtotal renta" value={money(r.subtotalRent || r.dailyPrice * r.billedDays)} /></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Cargo entrega (recogida)" value={money(r.pickupFee)} /></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Cargo entrega (devolución)" value={money(r.dropoffFee)} /></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Total" value={money(r.estimatedTotal)} /></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Monto reservado" value={money(r.depositPaid)} /></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Saldo pendiente" value={money(r.balanceDue)} /></Grid>
                 </Grid>
               </CardContent>
             </Card>
@@ -244,6 +322,44 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
                 )}
               </CardContent>
             </Card>
+
+            {/* Flight information */}
+            {(r.flight.hasArrivalFlight || r.flight.hasReturnFlight) && (
+              <Card>
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
+                    Información de vuelo
+                  </Typography>
+                  <Stack spacing={2.5}>
+                    {r.flight.hasArrivalFlight && (
+                      <FlightLeg
+                        title="Llegada"
+                        airline={r.flight.arrivalAirline}
+                        flightNumber={r.flight.arrivalFlightNumber}
+                        airport={r.flight.arrivalAirport}
+                        date={r.flight.arrivalDate}
+                        time={r.flight.arrivalTime}
+                        itineraryUrl={r.flight.arrivalItineraryUrl}
+                      />
+                    )}
+                    {r.flight.hasReturnFlight && (
+                      <>
+                        <Divider />
+                        <FlightLeg
+                          title="Regreso"
+                          airline={r.flight.returnAirline}
+                          flightNumber={r.flight.returnFlightNumber}
+                          airport={r.flight.returnAirport}
+                          date={r.flight.returnDate}
+                          time={r.flight.returnTime}
+                          itineraryUrl={r.flight.returnItineraryUrl}
+                        />
+                      </>
+                    )}
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
           </Stack>
         </Grid>
 
@@ -271,18 +387,40 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
                 ))}
               </TextField>
 
-              {status === "rejected" && (
-                <TextField
-                  fullWidth
-                  label="Motivo del rechazo (opcional)"
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  multiline
-                  minRows={3}
-                  disabled={!canEdit}
-                  helperText="Se guardará para usarlo en las notificaciones al cliente."
-                  sx={{ mb: 2 }}
-                />
+              {usesMessage && (
+                <>
+                  <TextField
+                    fullWidth
+                    label={status === "rejected" ? "Motivo del rechazo" : "Qué debe corregir el cliente"}
+                    value={statusMessage}
+                    onChange={(e) => setStatusMessage(e.target.value)}
+                    multiline
+                    minRows={3}
+                    disabled={!canEdit}
+                    helperText={
+                      status === "needs_fix"
+                        ? "Instrucciones de lo que el cliente debe corregir."
+                        : "Motivo de por qué no se aprobó la solicitud."
+                    }
+                    sx={{ mb: 1 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={statusMessageVisible}
+                        onChange={(e) => setStatusMessageVisible(e.target.checked)}
+                        disabled={!canEdit}
+                      />
+                    }
+                    label="Mostrar este mensaje al cliente"
+                    sx={{ mb: 1 }}
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+                    {statusMessageVisible
+                      ? "El cliente verá este mensaje en su portal."
+                      : "Nota interna: el cliente no verá este mensaje."}
+                  </Typography>
+                </>
               )}
 
               {canEdit && (
@@ -305,6 +443,17 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
                       onClick={() => setStatus("confirmed")}
                     >
                       Marcar como confirmada
+                    </Button>
+                  )}
+                  {status !== "needs_fix" && (
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      startIcon={<EditNoteRoundedIcon />}
+                      disabled={saving}
+                      onClick={() => setStatus("needs_fix")}
+                    >
+                      Requiere corrección
                     </Button>
                   )}
                   {status !== "rejected" && (

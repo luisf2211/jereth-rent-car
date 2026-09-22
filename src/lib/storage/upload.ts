@@ -71,3 +71,39 @@ export async function uploadImage(folder: StorageFolder, file: File): Promise<Up
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return { ok: true, url: data.publicUrl, path };
 }
+
+
+/**
+ * Uploads a document (image OR PDF) to the same Storage bucket/folders as
+ * uploadImage. Used for flight itineraries, which may be a photo, screenshot
+ * or PDF ticket. Reuses the existing storage infrastructure.
+ */
+const ALLOWED_DOC_MIME = [...ALLOWED_MIME, "application/pdf"];
+
+export async function uploadDocument(folder: StorageFolder, file: File): Promise<UploadResult> {
+  if (!ALLOWED_DOC_MIME.includes(file.type)) {
+    return { ok: false, error: "Formato no permitido. Usa PNG, JPG, WEBP, GIF o PDF." };
+  }
+  if (file.size > MAX_BYTES) {
+    return { ok: false, error: "El archivo supera el máximo de 5MB." };
+  }
+
+  const supabase = createAdminClient();
+  const ext = file.type === "application/pdf" ? "pdf" : extensionFor(file.type);
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  const path = `${folder}/${filename}`;
+
+  const arrayBuffer = await file.arrayBuffer();
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, arrayBuffer, { contentType: file.type, upsert: false });
+
+  if (error) {
+    console.error("uploadDocument failed:", error);
+    return { ok: false, error: "No se pudo subir el archivo." };
+  }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { ok: true, url: data.publicUrl, path };
+}

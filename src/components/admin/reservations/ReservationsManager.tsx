@@ -21,6 +21,8 @@ import Grid from "@mui/material/Grid";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import Divider from "@mui/material/Divider";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -29,17 +31,39 @@ import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   createReservationLink,
-  updateReservationStatus,
   deleteReservation,
 } from "@/features/reservations/actions";
 import {
-  RESERVATION_STATUSES,
   RESERVATION_STATUS_LABELS,
   RESERVATION_SOURCE_LABELS,
   ADMIN_SOURCE_OPTIONS,
   type ReservationStatus,
 } from "@/lib/validations/reservation";
 import type { AdminReservation } from "@/features/reservations/data";
+
+/**
+ * Tabs are filters over the existing reservation list — no copies or separate
+ * tables. Each tab maps to a set of statuses.
+ *  - todas: everything
+ *  - por_revisar: needs admin attention (pending, needs_fix, link_created)
+ *  - confirmadas: confirmed (a confirmed reservation can still be a future rental)
+ *  - finalizadas: prepared for finished rentals (no "finished" status yet → empty)
+ *  - canceladas: cancelled or rejected (process no longer continues)
+ */
+type ReservationTab = "todas" | "por_revisar" | "confirmadas" | "finalizadas" | "canceladas";
+
+const TAB_STATUSES: Record<Exclude<ReservationTab, "todas">, ReservationStatus[]> = {
+  por_revisar: ["pending", "needs_fix", "link_created"],
+  confirmadas: ["confirmed"],
+  // No "finished" status exists yet; this tab is prepared for later.
+  finalizadas: [],
+  canceladas: ["cancelled", "rejected"],
+};
+
+function inTab(r: AdminReservation, tab: ReservationTab): boolean {
+  if (tab === "todas") return true;
+  return TAB_STATUSES[tab].includes(r.status);
+}
 
 interface VehicleOption {
   id: string;
@@ -77,6 +101,22 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
     if (!error) router.refresh();
   };
 
+  // ---- Tabs (filters over the existing list) ----
+  const [tab, setTab] = React.useState<ReservationTab>("todas");
+  const counts = React.useMemo(
+    () => ({
+      todas: reservations.length,
+      por_revisar: reservations.filter((r) => inTab(r, "por_revisar")).length,
+      confirmadas: reservations.filter((r) => inTab(r, "confirmadas")).length,
+      finalizadas: reservations.filter((r) => inTab(r, "finalizadas")).length,
+      canceladas: reservations.filter((r) => inTab(r, "canceladas")).length,
+    }),
+    [reservations]
+  );
+  // The list is already sorted (deposit priority) by the data layer; filtering
+  // preserves that order.
+  const visible = reservations.filter((r) => inTab(r, tab));
+
   // ---- Create link dialog ----
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -94,7 +134,6 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
     pickupLocation: "",
     dropoffLocation: "",
     dailyPrice: "",
-    reservationDeposit: String(defaultDeposit || ""),
   });
 
   const setField = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -110,7 +149,6 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
       pickupLocation: "",
       dropoffLocation: "",
       dailyPrice: "",
-      reservationDeposit: String(defaultDeposit || ""),
     });
     setFormError(null);
     setCreatedUrl(null);
@@ -137,7 +175,6 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
       pickupLocation: form.pickupLocation,
       dropoffLocation: form.dropoffLocation,
       dailyPrice: form.dailyPrice ? Number(form.dailyPrice) : 0,
-      reservationDeposit: form.reservationDeposit ? Number(form.reservationDeposit) : 0,
     });
     setSaving(false);
     if (res.ok) {
@@ -159,11 +196,6 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
     }
   };
 
-  const onStatusChange = async (id: string, status: string) => {
-    const res = await updateReservationStatus(id, status);
-    notify(res.message ?? "", !res.ok);
-  };
-
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     const res = await deleteReservation(deleteTarget.id);
@@ -181,11 +213,30 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
         </Box>
       )}
 
+      {/* Tabs / filters */}
+      <Card sx={{ mb: 2 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v as ReservationTab)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ px: 1, "& .MuiTab-root": { minHeight: 56 } }}
+        >
+          <Tab value="todas" label={`Todas (${counts.todas})`} />
+          <Tab value="por_revisar" label={`Por revisar (${counts.por_revisar})`} />
+          <Tab value="confirmadas" label={`Confirmadas (${counts.confirmadas})`} />
+          <Tab value="finalizadas" label={`Finalizadas (${counts.finalizadas})`} />
+          <Tab value="canceladas" label={`Canceladas / Rechazadas (${counts.canceladas})`} />
+        </Tabs>
+      </Card>
+
       {reservations.length === 0 ? (
         <EmptyState title="Aún no hay reservas. Crea un enlace para enviar a un cliente." />
+      ) : visible.length === 0 ? (
+        <EmptyState title="No hay reservas en esta categoría." />
       ) : (
         <Stack spacing={1.5}>
-          {reservations.map((r) => (
+          {visible.map((r) => (
             <Card key={r.id}>
               <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
@@ -204,12 +255,29 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
                       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                         {r.code}
                       </Typography>
+                      {/* Current status (label only — no changing from the list) */}
                       <Chip
                         label={RESERVATION_STATUS_LABELS[r.status]}
                         size="small"
                         color={STATUS_COLOR[r.status]}
                       />
+                      {/* Origin — separate from deposit, both stay visible */}
                       <Chip label={RESERVATION_SOURCE_LABELS[r.source]} size="small" variant="outlined" />
+                      {/* Deposit indicator (money received) */}
+                      <Chip
+                        label={r.depositPaid > 0 ? `Con depósito · ${money(r.depositPaid)}` : "Sin depósito"}
+                        size="small"
+                        color={r.depositPaid > 0 ? "success" : "default"}
+                        variant={r.depositPaid > 0 ? "filled" : "outlined"}
+                      />
+                      {/* Special request warning */}
+                      {r.specialRequest && (
+                        <Chip label="⚠ Solicitud especial" size="small" color="warning" />
+                      )}
+                      {/* Flight info indicator */}
+                      {(r.flight.hasArrivalFlight || r.flight.hasReturnFlight) && (
+                        <Chip label="✈ Vuelo registrado" size="small" variant="outlined" color="info" />
+                      )}
                     </Box>
                     <Typography variant="body2" color="text.secondary">
                       {r.vehicleTitle}
@@ -230,6 +298,8 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
                   </Box>
 
                   <Stack spacing={1} sx={{ minWidth: 200 }}>
+                    {/* State changes happen inside "Ver reserva" (expediente),
+                        forcing a review of data + proof before deciding. */}
                     <Button
                       size="small"
                       variant="contained"
@@ -238,20 +308,6 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
                     >
                       Ver reserva
                     </Button>
-                    <TextField
-                      select
-                      size="small"
-                      label="Estado"
-                      value={r.status}
-                      onChange={(e) => onStatusChange(r.id, e.target.value)}
-                      disabled={!canEdit}
-                    >
-                      {RESERVATION_STATUSES.map((s) => (
-                        <MenuItem key={s} value={s}>
-                          {RESERVATION_STATUS_LABELS[s]}
-                        </MenuItem>
-                      ))}
-                    </TextField>
                     <Box sx={{ display: "flex", gap: 1 }}>
                       <Button
                         size="small"
@@ -405,7 +461,7 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
                   onChange={(e) => setField("dropoffLocation", e.target.value)}
                 />
               </Grid>
-              <Grid size={{ xs: 6 }}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   type="number"
                   fullWidth
@@ -413,16 +469,7 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
                   value={form.dailyPrice}
                   onChange={(e) => setField("dailyPrice", e.target.value)}
                   slotProps={{ input: { startAdornment: <InputAdornment position="start">US$</InputAdornment> } }}
-                />
-              </Grid>
-              <Grid size={{ xs: 6 }}>
-                <TextField
-                  type="number"
-                  fullWidth
-                  label="Depósito"
-                  value={form.reservationDeposit}
-                  onChange={(e) => setField("reservationDeposit", e.target.value)}
-                  slotProps={{ input: { startAdornment: <InputAdornment position="start">US$</InputAdornment> } }}
+                  helperText="El cliente elegirá el monto de depósito al completar el formulario."
                 />
               </Grid>
             </Grid>

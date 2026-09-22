@@ -6,6 +6,24 @@ import type {
   PaymentMethod,
 } from "@/lib/validations/reservation";
 
+/** Flight fields shared by the admin + form/portal view models. */
+export interface FlightFields {
+  hasArrivalFlight: boolean;
+  arrivalAirline: string;
+  arrivalFlightNumber: string;
+  arrivalAirport: string;
+  arrivalDate: string; // YYYY-MM-DD
+  arrivalTime: string;
+  arrivalItineraryUrl: string;
+  hasReturnFlight: boolean;
+  returnAirline: string;
+  returnFlightNumber: string;
+  returnAirport: string;
+  returnDate: string; // YYYY-MM-DD
+  returnTime: string;
+  returnItineraryUrl: string;
+}
+
 /** Admin list/detail view model for a reservation. */
 export interface AdminReservation {
   id: string;
@@ -27,15 +45,24 @@ export interface AdminReservation {
   dropoffLocation: string | null;
   dailyPrice: number;
   billedDays: number;
+  subtotalRent: number;
+  pickupFee: number;
+  dropoffFee: number;
   estimatedTotal: number;
   reservationDeposit: number;
+  depositPaid: number;
+  balanceDue: number;
   paymentMethod: PaymentMethod | null;
   paymentProofUrl: string | null;
   source: ReservationSource;
   status: ReservationStatus;
   rejectionReason: string | null;
+  statusMessage: string | null;
+  statusMessageVisible: boolean;
+  specialRequest: string | null;
   createdAt: string;
   updatedAt: string;
+  flight: FlightFields;
 }
 
 /** Data needed to render the shared digital reservation form for a token. */
@@ -60,12 +87,32 @@ export interface ReservationFormData {
   dailyPrice: number;
   reservationDeposit: number;
   status: ReservationStatus;
+  /** True once the customer has submitted (status left "link_created"). */
+  submitted: boolean;
+  // Pricing snapshot (for the tracking view).
+  billedDays: number;
+  subtotalRent: number;
+  pickupFee: number;
+  dropoffFee: number;
+  estimatedTotal: number;
+  depositPaid: number;
+  balanceDue: number;
+  rejectionReason: string | null;
+  statusMessage: string | null;
+  statusMessageVisible: boolean;
+  specialRequest: string | null;
+  paymentProofUrl: string | null;
+  // Chosen location IDs (to pre-select the selectors in correction mode).
+  pickupLocationId: string;
+  dropoffLocationId: string;
+  flight: FlightFields;
 }
 
 /** Public settings view (Configuración de reservas). */
 export interface ReservationSettingsData {
   digitalEnabled: boolean;
   defaultDeposit: number;
+  depositOptions: number[];
   paymentInstructions: string;
   zelleEnabled: boolean;
   zelleName: string;
@@ -81,6 +128,7 @@ export interface ReservationSettingsData {
 const EMPTY_SETTINGS: ReservationSettingsData = {
   digitalEnabled: false,
   defaultDeposit: 0,
+  depositOptions: [100, 150],
   paymentInstructions: "",
   zelleEnabled: false,
   zelleName: "",
@@ -99,6 +147,46 @@ function toISODate(d: Date | null): string | null {
 
 function vehicleTitleOf(v: { brand: string; model: string; year: number }): string {
   return `${v.brand} ${v.model} ${v.year}`;
+}
+
+/** Prisma flight columns → FlightFields view model. */
+function flightFieldsOf(r: {
+  hasArrivalFlight: boolean;
+  arrivalAirline: string | null;
+  arrivalFlightNumber: string | null;
+  arrivalAirport: string | null;
+  arrivalDate: Date | null;
+  arrivalTime: string | null;
+  arrivalItineraryUrl: string | null;
+  hasReturnFlight: boolean;
+  returnAirline: string | null;
+  returnFlightNumber: string | null;
+  returnAirport: string | null;
+  returnDate: Date | null;
+  returnTime: string | null;
+  returnItineraryUrl: string | null;
+}): FlightFields {
+  return {
+    hasArrivalFlight: r.hasArrivalFlight,
+    arrivalAirline: r.arrivalAirline ?? "",
+    arrivalFlightNumber: r.arrivalFlightNumber ?? "",
+    arrivalAirport: r.arrivalAirport ?? "",
+    arrivalDate: toISODate(r.arrivalDate) ?? "",
+    arrivalTime: r.arrivalTime ?? "",
+    arrivalItineraryUrl: r.arrivalItineraryUrl ?? "",
+    hasReturnFlight: r.hasReturnFlight,
+    returnAirline: r.returnAirline ?? "",
+    returnFlightNumber: r.returnFlightNumber ?? "",
+    returnAirport: r.returnAirport ?? "",
+    returnDate: toISODate(r.returnDate) ?? "",
+    returnTime: r.returnTime ?? "",
+    returnItineraryUrl: r.returnItineraryUrl ?? "",
+  };
+}
+
+/** True when a reservation has any flight info registered. */
+export function hasFlightInfo(f: FlightFields): boolean {
+  return f.hasArrivalFlight || f.hasReturnFlight;
 }
 
 /** Prisma row (with vehicle) → AdminReservation view model. */
@@ -122,13 +210,35 @@ type ReservationRowWithVehicle = {
   dropoffLocation: string | null;
   dailyPrice: number;
   billedDays: number;
+  subtotalRent: number;
+  pickupFee: number;
+  dropoffFee: number;
   estimatedTotal: number;
   reservationDeposit: number;
+  depositPaid: number;
+  balanceDue: number;
   paymentMethod: PaymentMethod | null;
   paymentProofUrl: string | null;
   source: ReservationSource;
   status: ReservationStatus;
   rejectionReason: string | null;
+  statusMessage: string | null;
+  statusMessageVisible: boolean;
+  specialRequest: string | null;
+  hasArrivalFlight: boolean;
+  arrivalAirline: string | null;
+  arrivalFlightNumber: string | null;
+  arrivalAirport: string | null;
+  arrivalDate: Date | null;
+  arrivalTime: string | null;
+  arrivalItineraryUrl: string | null;
+  hasReturnFlight: boolean;
+  returnAirline: string | null;
+  returnFlightNumber: string | null;
+  returnAirport: string | null;
+  returnDate: Date | null;
+  returnTime: string | null;
+  returnItineraryUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -154,25 +264,49 @@ function toAdminReservation(r: ReservationRowWithVehicle): AdminReservation {
     dropoffLocation: r.dropoffLocation,
     dailyPrice: r.dailyPrice,
     billedDays: r.billedDays,
+    subtotalRent: r.subtotalRent,
+    pickupFee: r.pickupFee,
+    dropoffFee: r.dropoffFee,
     estimatedTotal: r.estimatedTotal,
     reservationDeposit: r.reservationDeposit,
+    depositPaid: r.depositPaid,
+    balanceDue: r.balanceDue,
     paymentMethod: r.paymentMethod,
     source: r.source,
     status: r.status,
     rejectionReason: r.rejectionReason,
+    statusMessage: r.statusMessage,
+    statusMessageVisible: r.statusMessageVisible,
+    specialRequest: r.specialRequest,
     paymentProofUrl: r.paymentProofUrl,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
+    flight: flightFieldsOf(r),
   };
 }
 
-/** All reservations for the admin list, newest first. */
+/**
+ * All reservations for the admin list. Active reservations WITH a deposit are
+ * prioritized (money received), then everything else — all newest-first within
+ * each group. Status is independent from this ordering; the deposit is only a
+ * visual/priority signal.
+ */
 export async function listReservationsAdmin(): Promise<AdminReservation[]> {
   const rows = await prisma.reservation.findMany({
     orderBy: { createdAt: "desc" },
     include: { vehicle: { select: { brand: true, model: true, year: true } } },
   });
-  return rows.map(toAdminReservation);
+  const items = rows.map(toAdminReservation);
+
+  // "Active" = not rejected/cancelled. A paid, active reservation floats to top.
+  const isActive = (s: AdminReservation["status"]) => s !== "rejected" && s !== "cancelled";
+  const priority = (r: AdminReservation) => (r.depositPaid > 0 && isActive(r.status) ? 0 : 1);
+
+  // Stable sort: keep newest-first (already ordered) within each priority band.
+  return items
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => priority(a.r) - priority(b.r) || a.i - b.i)
+    .map(({ r }) => r);
 }
 
 /** Single reservation for the admin detail/expediente view. */
@@ -184,7 +318,7 @@ export async function getReservationById(id: string): Promise<AdminReservation |
   return r ? toAdminReservation(r) : null;
 }
 
-/** Load a reservation by its shareable token, for the digital form. */
+/** Load a reservation by its shareable token, for the digital form/portal. */
 export async function getReservationByToken(token: string): Promise<ReservationFormData | null> {
   const r = await prisma.reservation.findUnique({
     where: { token },
@@ -193,6 +327,15 @@ export async function getReservationByToken(token: string): Promise<ReservationF
     },
   });
   if (!r) return null;
+
+  // Resolve stored location NAMES back to IDs so the form selectors can be
+  // pre-selected in correction mode. Best-effort: unmatched names stay empty.
+  const names = [r.pickupLocation, r.dropoffLocation].filter(Boolean) as string[];
+  const locs = names.length
+    ? await prisma.deliveryLocation.findMany({ where: { name: { in: names } }, select: { id: true, name: true } })
+    : [];
+  const idByName = new Map(locs.map((l) => [l.name, l.id]));
+
   return {
     code: r.code,
     token: r.token,
@@ -214,6 +357,23 @@ export async function getReservationByToken(token: string): Promise<ReservationF
     dailyPrice: r.dailyPrice,
     reservationDeposit: r.reservationDeposit,
     status: r.status,
+    // Once submitted the reservation leaves "link_created".
+    submitted: r.status !== "link_created",
+    billedDays: r.billedDays,
+    subtotalRent: r.subtotalRent,
+    pickupFee: r.pickupFee,
+    dropoffFee: r.dropoffFee,
+    estimatedTotal: r.estimatedTotal,
+    depositPaid: r.depositPaid,
+    balanceDue: r.balanceDue,
+    rejectionReason: r.rejectionReason,
+    statusMessage: r.statusMessage,
+    statusMessageVisible: r.statusMessageVisible,
+    specialRequest: r.specialRequest,
+    paymentProofUrl: r.paymentProofUrl,
+    pickupLocationId: (r.pickupLocation && idByName.get(r.pickupLocation)) || "",
+    dropoffLocationId: (r.dropoffLocation && idByName.get(r.dropoffLocation)) || "",
+    flight: flightFieldsOf(r),
   };
 }
 
@@ -227,6 +387,8 @@ export const getReservationSettings = cache(async (): Promise<ReservationSetting
   return {
     digitalEnabled: row.digitalEnabled,
     defaultDeposit: row.defaultDeposit,
+    // Fall back to the default options when none are configured yet.
+    depositOptions: row.depositOptions.length > 0 ? row.depositOptions : [100, 150],
     paymentInstructions: row.paymentInstructions ?? "",
     zelleEnabled: row.zelleEnabled,
     zelleName: row.zelleName ?? "",

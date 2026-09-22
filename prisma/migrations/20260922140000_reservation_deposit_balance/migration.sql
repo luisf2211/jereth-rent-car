@@ -1,0 +1,9 @@
+-- AlterTable
+ALTER TABLE "Reservation" ADD COLUMN     "balanceDue" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "depositPaid" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "dropoffFee" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "pickupFee" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "subtotalRent" INTEGER NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "ReservationSettings" ADD COLUMN     "depositOptions" INTEGER[] DEFAULT ARRAY[]::INTEGER[];

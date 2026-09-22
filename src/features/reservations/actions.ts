@@ -131,7 +131,9 @@ export async function createReservationLink(
 /**
  * Saves the CUSTOMER's submission of the digital form (from the link). Moves
  * the reservation to "pending". Recomputes days/total from the submitted
- * dates using the shared rental-days rules. Does not require admin auth — the
+ * dates using the shared rental-days rules, resolves the chosen delivery
+ * locations (name + fee) from the existing DeliveryLocation table, and
+ * computes the deposit/balance breakdown. Does not require admin auth — the
  * secret token authorizes the write.
  */
 export async function submitReservation(token: string, input: unknown): Promise<ActionResult> {
@@ -144,13 +146,50 @@ export async function submitReservation(token: string, input: unknown): Promise<
   }
   const d = parsed.data;
 
+  // --- Rent subtotal (shared rental-days rules) ---
   const billedDays = rentalDays({
     pickupDate: d.pickupDate,
     dropoffDate: d.dropoffDate,
     pickupTime: d.pickupTime,
     dropoffTime: d.dropoffTime,
   });
-  const estimatedTotal = billedDays * reservation.dailyPrice;
+  const subtotalRent = billedDays * reservation.dailyPrice;
+
+  // --- Resolve delivery locations (name + fee) from the existing table ---
+  const ids = [d.pickupLocationId, d.dropoffLocationId].filter(Boolean) as string[];
+  const locations = ids.length
+    ? await prisma.deliveryLocation.findMany({ where: { id: { in: ids } } })
+    : [];
+  const locOf = (id: string) => locations.find((l) => l.id === id) ?? null;
+  const pickupLoc = d.pickupLocationId ? locOf(d.pickupLocationId) : null;
+  const dropoffLoc = d.dropoffLocationId ? locOf(d.dropoffLocationId) : null;
+  // A location only adds a fee when hasFee is true (reuse existing logic).
+  const pickupFee = pickupLoc?.hasFee ? pickupLoc.deliveryFee : 0;
+  const dropoffFee = dropoffLoc?.hasFee ? dropoffLoc.deliveryFee : 0;
+
+  // --- Grand total (deposit is PART of this, never added on top) ---
+  const estimatedTotal = subtotalRent + pickupFee + dropoffFee;
+
+  // --- Deposit / balance ---
+  // Validate the chosen deposit against the configured options (0 = allowed).
+  const settingsRow = await prisma.reservationSettings.findFirst({ orderBy: { createdAt: "asc" } });
+  const allowedOptions = settingsRow && settingsRow.depositOptions.length > 0
+    ? settingsRow.depositOptions
+    : [100, 150];
+  const depositPaid = d.depositChoice > 0 ? d.depositChoice : 0;
+  if (depositPaid > 0 && !allowedOptions.includes(depositPaid)) {
+    return { ok: false, message: "El monto de depósito seleccionado no es válido." };
+  }
+  // When a deposit is chosen, a payment method + proof are expected.
+  if (depositPaid > 0) {
+    if (!d.paymentMethod) {
+      return { ok: false, message: "Selecciona un método de pago.", fieldErrors: { paymentMethod: "Requerido con depósito" } };
+    }
+    if (!d.paymentProofUrl) {
+      return { ok: false, message: "Sube el comprobante de pago.", fieldErrors: { paymentProofUrl: "Requerido con depósito" } };
+    }
+  }
+  const balanceDue = Math.max(estimatedTotal - depositPaid, 0);
 
   try {
     await prisma.reservation.update({
@@ -166,14 +205,43 @@ export async function submitReservation(token: string, input: unknown): Promise<
         pickupTime: d.pickupTime,
         dropoffDate: parseDate(d.dropoffDate),
         dropoffTime: d.dropoffTime,
-        pickupLocation: d.pickupLocation || null,
-        dropoffLocation: d.dropoffLocation || null,
-        paymentMethod: d.paymentMethod ?? null,
-        paymentProofUrl: d.paymentProofUrl || null,
-        billedDays,
+        // Store the resolved location NAMES (readable in admin + tracking).
+        pickupLocation: pickupLoc?.name ?? null,
+        dropoffLocation: dropoffLoc?.name ?? null,
+        pickupFee,
+        dropoffFee,
+        subtotalRent,
         estimatedTotal,
-        // Customer-submitted reservations move to "pending" for review.
+        // Only keep payment info when a deposit was actually chosen.
+        paymentMethod: depositPaid > 0 ? d.paymentMethod ?? null : null,
+        paymentProofUrl: depositPaid > 0 ? d.paymentProofUrl || null : null,
+        depositPaid,
+        balanceDue,
+        billedDays,
+        // Optional special request (empty = none).
+        specialRequest: d.specialRequest || null,
+        // --- Flight info (only persisted when the customer opted in) ---
+        hasArrivalFlight: d.hasArrivalFlight,
+        arrivalAirline: d.hasArrivalFlight ? d.arrivalAirline || null : null,
+        arrivalFlightNumber: d.hasArrivalFlight ? d.arrivalFlightNumber || null : null,
+        arrivalAirport: d.hasArrivalFlight ? d.arrivalAirport || null : null,
+        arrivalDate: d.hasArrivalFlight ? parseDate(d.arrivalDate) : null,
+        arrivalTime: d.hasArrivalFlight ? d.arrivalTime || null : null,
+        arrivalItineraryUrl: d.hasArrivalFlight ? d.arrivalItineraryUrl || null : null,
+        hasReturnFlight: d.hasReturnFlight,
+        returnAirline: d.hasReturnFlight ? d.returnAirline || null : null,
+        returnFlightNumber: d.hasReturnFlight ? d.returnFlightNumber || null : null,
+        returnAirport: d.hasReturnFlight ? d.returnAirport || null : null,
+        returnDate: d.hasReturnFlight ? parseDate(d.returnDate) : null,
+        returnTime: d.hasReturnFlight ? d.returnTime || null : null,
+        returnItineraryUrl: d.hasReturnFlight ? d.returnItineraryUrl || null : null,
+        // All submissions start (or return to) pending, regardless of deposit.
+        // This also covers the "needs_fix" correction resubmit flow.
         status: "pending",
+        // Clear any prior correction/rejection message so the customer no
+        // longer sees a stale "please fix" note after resubmitting.
+        statusMessage: null,
+        statusMessageVisible: false,
       },
     });
   } catch (error) {
@@ -182,7 +250,7 @@ export async function submitReservation(token: string, input: unknown): Promise<
   }
 
   revalidateReservations(token);
-  return { ok: true, message: "Reserva enviada. Nos pondremos en contacto contigo." };
+  return { ok: true, message: "Solicitud de reserva recibida." };
 }
 
 /* ----------------------------- Update status ------------------------------ */
@@ -198,22 +266,27 @@ export async function updateReservationStatus(
   }
 
   // Accept either a bare status string (backwards compatible) or an object
-  // { status, rejectionReason } from the detail view.
+  // { status, statusMessage, statusMessageVisible } from the detail view.
   const raw = typeof input === "string" ? { status: input } : input;
   const parsed = updateStatusSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, message: "Estado inválido.", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
-  const { status, rejectionReason } = parsed.data;
+  const { status, statusMessage, statusMessageVisible } = parsed.data;
+
+  // The message + visibility apply to "rejected" and "needs_fix". For any
+  // other status we clear them so no stale message lingers.
+  const keepsMessage = status === "rejected" || status === "needs_fix";
 
   try {
     await prisma.reservation.update({
       where: { id },
       data: {
         status,
-        // Store the reason only when rejecting; clear it otherwise so a later
-        // status change doesn't keep a stale reason.
-        rejectionReason: status === "rejected" ? rejectionReason || null : null,
+        statusMessage: keepsMessage ? statusMessage || null : null,
+        statusMessageVisible: keepsMessage ? statusMessageVisible : false,
+        // Keep legacy field in sync for rejected (used elsewhere historically).
+        rejectionReason: status === "rejected" ? statusMessage || null : null,
       },
     });
   } catch (error) {
@@ -268,6 +341,8 @@ export async function updateReservationSettings(input: unknown): Promise<ActionR
   const data = {
     digitalEnabled: d.digitalEnabled,
     defaultDeposit: d.defaultDeposit,
+    // De-duplicate and sort the configurable deposit amounts.
+    depositOptions: Array.from(new Set(d.depositOptions)).sort((a, b) => a - b),
     paymentInstructions: orNull(d.paymentInstructions),
     zelleEnabled: d.zelleEnabled,
     zelleName: orNull(d.zelleName),
@@ -310,6 +385,28 @@ export async function uploadPaymentProof(
   const res = await uploadImage(STORAGE_FOLDERS.clients, file);
   if (!res.ok || !res.url) {
     return { ok: false, message: res.error ?? "No se pudo subir el comprobante." };
+  }
+  return { ok: true, url: res.url };
+}
+
+/* ----------------------- Upload flight itinerary -------------------------- */
+
+/**
+ * Uploads a flight itinerary (image or PDF) to Storage; returns its public URL.
+ * Reuses the shared storage infrastructure (clients/ folder), same as the
+ * payment proof, but also accepts PDF.
+ */
+export async function uploadFlightItinerary(
+  formData: FormData
+): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Selecciona un archivo." };
+  }
+  const { uploadDocument, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
+  const res = await uploadDocument(STORAGE_FOLDERS.clients, file);
+  if (!res.ok || !res.url) {
+    return { ok: false, message: res.error ?? "No se pudo subir el archivo." };
   }
   return { ok: true, url: res.url };
 }

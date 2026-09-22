@@ -324,8 +324,20 @@ model Reservation {
   // --- Pricing (USD, integers) ---
   dailyPrice         Int               @default(0)
   billedDays         Int               @default(0)
+  // Rent-only subtotal (dailyPrice * billedDays), before delivery fees.
+  subtotalRent       Int               @default(0)
+  // Delivery fees resolved from the chosen pickup/dropoff locations.
+  pickupFee          Int               @default(0)
+  dropoffFee         Int               @default(0)
+  // Grand total = subtotalRent + pickupFee + dropoffFee. The deposit is PART
+  // of this total, never added on top.
   estimatedTotal     Int               @default(0)
+  // Suggested/legacy deposit field (kept for compatibility).
   reservationDeposit Int               @default(0)
+  // Amount the customer chose to pay now to secure the reservation (0 = none).
+  depositPaid        Int               @default(0)
+  // Remaining balance = estimatedTotal - depositPaid.
+  balanceDue         Int               @default(0)
 
   // --- Payment ---
   paymentMethod      ReservationPaymentMethod?
@@ -335,8 +347,36 @@ model Reservation {
   status             ReservationStatus @default(link_created)
 
   // Optional reason recorded when a reservation is rejected. Kept for later
-  // use in customer notifications.
+  // use in customer notifications. (Legacy; superseded by statusMessage.)
   rejectionReason    String?
+
+  // Message the admin records when rejecting or requesting a correction. Its
+  // visibility to the customer is controlled by statusMessageVisible: when
+  // false it is an internal note only.
+  statusMessage        String?
+  statusMessageVisible Boolean         @default(false)
+
+  // Optional special request written by the customer (e.g. "traveling with a
+  // child"). Null/empty = none.
+  specialRequest       String?
+
+  // --- Flight information (arrival) — optional, no live tracking yet ---
+  hasArrivalFlight      Boolean        @default(false)
+  arrivalAirline        String?
+  arrivalFlightNumber   String?
+  arrivalAirport        String?
+  arrivalDate           DateTime?
+  arrivalTime           String? // HH:mm
+  arrivalItineraryUrl   String?
+
+  // --- Flight information (return) — optional ---
+  hasReturnFlight       Boolean        @default(false)
+  returnAirline         String?
+  returnFlightNumber    String?
+  returnAirport         String?
+  returnDate            DateTime?
+  returnTime            String? // HH:mm
+  returnItineraryUrl    String?
 
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
@@ -353,8 +393,11 @@ model ReservationSettings {
   // Master switch. When true, the digital flow is used; when false the site
   // keeps the current WhatsApp flow. NOT wired to the public button yet.
   digitalEnabled     Boolean  @default(false)
-  // Default reservation deposit (USD) suggested when creating links.
+  // Default reservation deposit (USD) suggested when creating links (legacy).
   defaultDeposit     Int      @default(0)
+  // Configurable deposit amounts (USD) the customer can choose from, e.g.
+  // [100, 150]. Editable from the admin. Empty = only "without deposit".
+  depositOptions     Int[]    @default([])
   // General payment instructions shown to the customer.
   paymentInstructions String?
 
