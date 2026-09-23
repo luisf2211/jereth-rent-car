@@ -361,6 +361,7 @@ export async function submitReservation(token: string, input: unknown): Promise<
       where: { id: reservation.vehicleId },
       select: { brand: true, model: true, year: true },
     });
+    const vehicleTitle = vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : "—";
     const { sendNewReservationNotification } = await import("@/lib/email/reservation-notifications");
     await sendNewReservationNotification({
       id: reservation.id,
@@ -368,7 +369,7 @@ export async function submitReservation(token: string, input: unknown): Promise<
       customerName: d.customerName,
       phone: d.phone,
       email: d.email,
-      vehicleTitle: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : "—",
+      vehicleTitle,
       pickupDate: parseDate(d.pickupDate),
       pickupTime: d.pickupTime,
       dropoffDate: parseDate(d.dropoffDate),
@@ -376,6 +377,26 @@ export async function submitReservation(token: string, input: unknown): Promise<
       estimatedTotal,
       depositPaid,
       source: reservation.source,
+    });
+
+    // Customer confirmation-of-receipt email ("Solicitud de reserva recibida").
+    // Idempotent + non-throwing, so a resubmit or a mail hiccup never affects
+    // the saved reservation.
+    const { sendCustomerRequestReceived } = await import("@/lib/email/customer-notifications");
+    await sendCustomerRequestReceived({
+      id: reservation.id,
+      code: reservation.code,
+      token: reservation.token,
+      customerName: d.customerName,
+      email: d.email,
+      vehicleTitle,
+      pickupDate: parseDate(d.pickupDate),
+      pickupTime: d.pickupTime,
+      dropoffDate: parseDate(d.dropoffDate),
+      dropoffTime: d.dropoffTime,
+      estimatedTotal,
+      depositPaid,
+      balanceDue,
     });
   } catch (error) {
     // Extra safety net — must never break the reservation flow.
@@ -427,10 +448,209 @@ export async function updateReservationStatus(
     return { ok: false, message: "No se pudo actualizar el estado." };
   }
 
+  // --- Side effects (PDF + customer emails) ---
+  // The status is already persisted (source of truth). Everything below is
+  // best-effort: it NEVER throws back to the caller and NEVER reverts the
+  // status, so a failed PDF or email can't undo a valid confirmation. Errors
+  // are logged and recorded in ReservationEmailLog. All emails are idempotent,
+  // so re-running the same action does not send duplicates.
+  try {
+    await runStatusSideEffects(id, status, {
+      statusMessage: statusMessage || "",
+      statusMessageVisible,
+    });
+  } catch (error) {
+    console.error("reservation status side-effects failed (ignored):", error);
+  }
+
   revalidateReservations();
   const id2 = id;
   revalidatePath(`/admin/reservations/${id2}`);
+  if (status === "confirmed") {
+    // Also refresh the customer portal so the PDF/confirmation shows up.
+    try {
+      const row = await prisma.reservation.findUnique({ where: { id }, select: { token: true } });
+      if (row?.token) revalidatePath(`/reservar/${row.token}`);
+    } catch {
+      /* ignore */
+    }
+  }
   return { ok: true, message: "Estado actualizado." };
+}
+
+/**
+ * Builds the customer-email payload from a reservation row + vehicle title.
+ */
+function toCustomerNotifiable(r: {
+  id: string;
+  code: string;
+  token: string;
+  customerName: string | null;
+  email: string | null;
+  pickupDate: Date | null;
+  pickupTime: string | null;
+  dropoffDate: Date | null;
+  dropoffTime: string | null;
+  estimatedTotal: number;
+  depositPaid: number;
+  balanceDue: number;
+}, vehicleTitle: string) {
+  return {
+    id: r.id,
+    code: r.code,
+    token: r.token,
+    customerName: r.customerName,
+    email: r.email,
+    vehicleTitle,
+    pickupDate: r.pickupDate,
+    pickupTime: r.pickupTime,
+    dropoffDate: r.dropoffDate,
+    dropoffTime: r.dropoffTime,
+    estimatedTotal: r.estimatedTotal,
+    depositPaid: r.depositPaid,
+    balanceDue: r.balanceDue,
+  };
+}
+
+/**
+ * Runs the per-status customer email + (for "confirmed") the official PDF
+ * generation. Best-effort and idempotent. Never throws to the caller.
+ */
+async function runStatusSideEffects(
+  id: string,
+  status: import("@/lib/validations/reservation").ReservationStatus,
+  msg: { statusMessage: string; statusMessageVisible: boolean }
+): Promise<void> {
+  // These statuses have no customer email/PDF side effect.
+  if (status === "link_created" || status === "pending") return;
+
+  const r = await prisma.reservation.findUnique({
+    where: { id },
+    include: { vehicle: true },
+  });
+  if (!r) return;
+  const vehicleTitle = `${r.vehicle.brand} ${r.vehicle.model} ${r.vehicle.year}`;
+  const notifiable = toCustomerNotifiable(r, vehicleTitle);
+
+  if (status === "needs_fix") {
+    // Only send the message to the customer when the admin marked it visible.
+    const visibleMessage = msg.statusMessageVisible ? msg.statusMessage : "";
+    const { sendReservationNeedsFix } = await import("@/lib/email/customer-notifications");
+    await sendReservationNeedsFix(notifiable, visibleMessage);
+    return;
+  }
+
+  if (status === "rejected") {
+    const visibleReason = msg.statusMessageVisible ? msg.statusMessage || null : null;
+    const { sendReservationRejected } = await import("@/lib/email/customer-notifications");
+    await sendReservationRejected(notifiable, visibleReason);
+    return;
+  }
+
+  if (status === "cancelled") {
+    const { sendReservationCancelled } = await import("@/lib/email/customer-notifications");
+    await sendReservationCancelled(notifiable);
+    return;
+  }
+
+  if (status === "confirmed") {
+    await confirmReservationSideEffects(r, vehicleTitle, notifiable);
+  }
+}
+
+/**
+ * Confirmation side effects: generate the official PDF from the REAL data,
+ * store it, persist confirmedAt/confirmationPdfUrl/confirmationSnapshot, and
+ * email it to the customer with a download link. Each step degrades
+ * gracefully: if the PDF can't be produced we still send the confirmation
+ * email (without the attachment) so the customer is informed.
+ */
+async function confirmReservationSideEffects(
+  r: {
+    id: string;
+    code: string;
+    confirmedAt: Date | null;
+    confirmationPdfUrl: string | null;
+    // plus all snapshot fields via the full row
+    [k: string]: unknown;
+  },
+  vehicleTitle: string,
+  notifiable: ReturnType<typeof toCustomerNotifiable>
+): Promise<void> {
+  // The published template is the definitive design of record. Requiring it to
+  // exist keeps the published template provably part of the confirmation path.
+  const { getPublishedReservationTemplate } = await import("@/features/reservation-template/data");
+  const published = await getPublishedReservationTemplate();
+  if (!published) {
+    console.error(`confirm ${r.code}: no published reservation template; skipping PDF.`);
+  }
+
+  const confirmedAt = (r.confirmedAt as Date | null) ?? new Date();
+
+  let pdfBuffer: Buffer | null = null;
+  let pdfUrl: string | null = (r.confirmationPdfUrl as string | null) ?? null;
+
+  if (published) {
+    try {
+      const { getCompanySettings } = await import("@/lib/branding");
+      const { buildConfirmationSnapshot } = await import("@/lib/reservations/pdf/build-snapshot");
+      const { renderConfirmationPdf } = await import("@/lib/reservations/pdf/generate");
+      const { uploadBuffer, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
+
+      const company = await getCompanySettings();
+      const vehicle = (r as unknown as { vehicle: Record<string, unknown> }).vehicle;
+      const snapshot = buildConfirmationSnapshot(
+        {
+          ...(r as unknown as import("@/lib/reservations/pdf/build-snapshot").SnapshotReservation),
+          // policyAccepted defaults to true if the row predates the field.
+          policyAccepted: (r.policyAccepted as boolean) ?? true,
+          policyAcceptedAt: (r.policyAcceptedAt as Date | null) ?? (r.createdAt as Date),
+        },
+        {
+          brand: vehicle.brand as string,
+          model: vehicle.model as string,
+          year: vehicle.year as number,
+          category: vehicle.category as string,
+          transmission: vehicle.transmission as string,
+          passengers: vehicle.passengers as number,
+          imageUrl: vehicle.imageUrl as string,
+          documentImageUrl: (vehicle.documentImageUrl as string | null) ?? null,
+          features: (vehicle.features as string[]) ?? [],
+        },
+        company,
+        confirmedAt
+      );
+
+      pdfBuffer = await renderConfirmationPdf(snapshot);
+
+      const up = await uploadBuffer(new Uint8Array(pdfBuffer), {
+        path: `${STORAGE_FOLDERS.confirmations}/${r.code}.pdf`,
+        contentType: "application/pdf",
+        upsert: true,
+      });
+      if (up.ok && up.url) pdfUrl = up.url;
+
+      // Persist the confirmation artifacts so the portal + future re-sends use
+      // the exact document generated now (immutable snapshot).
+      await prisma.reservation.update({
+        where: { id: r.id },
+        data: {
+          confirmedAt,
+          confirmationPdfUrl: pdfUrl,
+          confirmationSnapshot: snapshot as unknown as object,
+        },
+      });
+    } catch (e) {
+      console.error(`confirm ${r.code}: PDF generation/upload failed (email will still send):`, e);
+    }
+  }
+
+  const { sendReservationConfirmed } = await import("@/lib/email/customer-notifications");
+  await sendReservationConfirmed(
+    notifiable,
+    pdfBuffer ? { filename: `Reserva-${r.code}.pdf`, content: pdfBuffer } : null,
+    pdfUrl
+  );
 }
 
 /* ----------------------------- Delete ------------------------------------- */

@@ -102,6 +102,8 @@ export interface ReservationFormData {
   statusMessageVisible: boolean;
   specialRequest: string | null;
   paymentProofUrl: string | null;
+  /** Official confirmation PDF (set once the admin confirms). */
+  confirmationPdfUrl: string | null;
   // Chosen location IDs (to pre-select the selectors in correction mode).
   pickupLocationId: string;
   dropoffLocationId: string;
@@ -371,6 +373,7 @@ export async function getReservationByToken(token: string): Promise<ReservationF
     statusMessageVisible: r.statusMessageVisible,
     specialRequest: r.specialRequest,
     paymentProofUrl: r.paymentProofUrl,
+    confirmationPdfUrl: r.confirmationPdfUrl,
     pickupLocationId: (r.pickupLocation && idByName.get(r.pickupLocation)) || "",
     dropoffLocationId: (r.dropoffLocation && idByName.get(r.dropoffLocation)) || "",
     flight: flightFieldsOf(r),

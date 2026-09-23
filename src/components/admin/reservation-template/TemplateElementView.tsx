@@ -209,12 +209,40 @@ export default function TemplateElementView({ element: el, snapshot, mode }: Pro
     }
     case "vehicleImage": {
       const src = values["vehicle.image"];
+      // The photo area must blend into the document: no gray fill, border or
+      // radius. It only honors a background if the admin explicitly set one;
+      // otherwise it's transparent so the empty space left by `contain` matches
+      // the page. The image is centered on both axes and scaled to fill the box
+      // (contain = whole vehicle, no crop, no distortion) so it looks as large
+      // as possible for ANY photo aspect ratio.
+      const bg = el.style.background ?? "transparent";
       return (
         <Box style={{ ...style, textAlign: el.style.align }}>
-          <Box sx={{ height: el.height ?? 180, background: el.style.background ?? "#F6F6F7", borderRadius: `${el.style.borderRadius ?? 8}px`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+          <Box
+            sx={{
+              height: el.height ?? 180,
+              background: bg,
+              borderRadius: el.style.borderRadius ? `${el.style.borderRadius}px` : 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+            }}
+          >
             {mode === "preview" && src ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={src} alt="Vehículo" style={{ width: "100%", height: "100%", objectFit: el.fit }} />
+              <img
+                src={src}
+                alt="Vehículo"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  width: el.fit === "cover" ? "100%" : "auto",
+                  height: el.fit === "cover" ? "100%" : "auto",
+                  objectFit: el.fit,
+                  display: "block",
+                }}
+              />
             ) : (
               <span style={{ color: MUTED, fontSize: 10 }}>Foto del vehículo ({el.fit})</span>
             )}

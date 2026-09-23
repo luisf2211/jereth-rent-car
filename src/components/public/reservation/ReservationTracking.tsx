@@ -15,6 +15,7 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import { RESERVATION_STATUS_LABELS, type ReservationStatus } from "@/lib/validations/reservation";
 import type { ReservationFormData } from "@/features/reservations/data";
 import ReservationShareActions from "./ReservationShareActions";
@@ -125,6 +126,22 @@ export default function ReservationTracking({ reservation: r }: { reservation: R
                 startIcon={<EditRoundedIcon />}
               >
                 Corregir información
+              </Button>
+            </Box>
+          )}
+
+          {/* Confirmation PDF download (once confirmed) */}
+          {r.status === "confirmed" && r.confirmationPdfUrl && (
+            <Box sx={{ mt: 3 }}>
+              <Button
+                href={r.confirmationPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="contained"
+                color="success"
+                startIcon={<DownloadRoundedIcon />}
+              >
+                Descargar confirmación PDF
               </Button>
             </Box>
           )}
