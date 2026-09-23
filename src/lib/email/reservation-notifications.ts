@@ -94,7 +94,7 @@ function buildHtml(r: NotifiableReservation, viewUrl: string): string {
       <div style="text-align:center;margin-top:22px">
         <a href="${viewUrl}"
            style="display:inline-block;background:${MAGENTA};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 26px;border-radius:8px">
-          Ver reserva
+          Revisar reserva
         </a>
       </div>
     </div>
