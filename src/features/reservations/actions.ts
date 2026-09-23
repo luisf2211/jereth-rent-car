@@ -594,7 +594,7 @@ async function confirmReservationSideEffects(
     try {
       const { getCompanySettings } = await import("@/lib/branding");
       const { buildConfirmationSnapshot } = await import("@/lib/reservations/pdf/build-snapshot");
-      const { renderConfirmationPdf } = await import("@/lib/reservations/pdf/generate");
+      const { renderConfirmationPdfFromTemplate, renderConfirmationPdf } = await import("@/lib/reservations/pdf/generate");
       const { uploadBuffer, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
 
       const company = await getCompanySettings();
@@ -621,7 +621,15 @@ async function confirmReservationSideEffects(
         confirmedAt
       );
 
-      pdfBuffer = await renderConfirmationPdf(snapshot);
+      // Render the PDF from the PUBLISHED builder template (exact design +
+      // real data). Fall back to the legacy hardcoded layout only if the
+      // template render fails for some reason, so confirmation never breaks.
+      try {
+        pdfBuffer = await renderConfirmationPdfFromTemplate(published.document, snapshot);
+      } catch (tplErr) {
+        console.error(`confirm ${r.code}: template PDF render failed, using legacy layout:`, tplErr);
+        pdfBuffer = await renderConfirmationPdf(snapshot);
+      }
 
       const up = await uploadBuffer(new Uint8Array(pdfBuffer), {
         path: `${STORAGE_FOLDERS.confirmations}/${r.code}.pdf`,

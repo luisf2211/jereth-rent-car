@@ -18,6 +18,8 @@ import IconButton from "@mui/material/IconButton";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Autocomplete from "@mui/material/Autocomplete";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import FlightTakeoffRoundedIcon from "@mui/icons-material/FlightTakeoffRounded";
 import {
@@ -126,6 +128,10 @@ export default function ReservationForm({
     reservation.flight.hasReturnFlight
   );
   const [uploadingItin, setUploadingItin] = React.useState<"arrival" | "return" | null>(null);
+  // Mandatory acceptance of the reservation policy (required server-side). In
+  // correction mode a prior acceptance is assumed so the customer isn't forced
+  // to re-check on every fix.
+  const [policyAccepted, setPolicyAccepted] = React.useState<boolean>(isCorrection);
   // When the rental pickup/dropoff is an airport, the flight airport is
   // pre-filled from it and shown read-only. These flags let the customer opt
   // into editing that airport manually ("Modificar datos de vuelo").
@@ -160,6 +166,44 @@ export default function ReservationForm({
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   const setField = (k: string, v: string) => setValues((s) => ({ ...s, [k]: v }));
+
+  // Refs to each validatable field so we can scroll + focus the first invalid
+  // one after a failed submit. Keyed by the schema field name so server
+  // fieldErrors map 1:1. Works on mobile and desktop.
+  const fieldRefs = React.useRef<Record<string, HTMLElement | null>>({});
+  const registerField = (name: string) => (el: HTMLElement | null) => {
+    fieldRefs.current[name] = el;
+  };
+  // Order used to decide which invalid field to scroll to first (top-down).
+  const FIELD_ORDER = [
+    "customerName",
+    "email",
+    "phone",
+    "country",
+    "idOrPassport",
+    "driverLicense",
+    "pickupDate",
+    "pickupTime",
+    "dropoffDate",
+    "dropoffTime",
+    "paymentMethod",
+    "paymentProofUrl",
+    "policyAccepted",
+  ];
+  const focusFirstError = (errors: Record<string, string>) => {
+    const firstName = FIELD_ORDER.find((n) => errors[n]) ?? Object.keys(errors)[0];
+    if (!firstName) return;
+    const el = fieldRefs.current[firstName];
+    if (!el) return;
+    // Center the field in the viewport, then focus (focusable input inside).
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const focusable =
+      el.matches("input,textarea,select,button")
+        ? (el as HTMLElement)
+        : el.querySelector<HTMLElement>("input,textarea,select,button,[tabindex]");
+    // Delay focus slightly so it doesn't fight the smooth scroll on mobile.
+    window.setTimeout(() => focusable?.focus?.({ preventScroll: true }), 250);
+  };
 
   const locOf = (id: string) => locations.find((l) => l.id === id) ?? null;
   const pickupLoc = locOf(values.pickupLocationId);
@@ -270,14 +314,20 @@ export default function ReservationForm({
       specialRequest: hasSpecialRequest ? values.specialRequest : "",
       hasArrivalFlight,
       hasReturnFlight: hasArrivalFlight && hasReturnFlight,
+      // Mandatory reservation-policy acceptance (validated server-side).
+      policyAccepted,
     });
     setSubmitting(false);
     if (res.ok) {
       setDone(true);
       return;
     }
-    setFieldErrors(res.fieldErrors ?? {});
+    const errors = res.fieldErrors ?? {};
+    setFieldErrors(errors);
     setFormError(res.message);
+    // Scroll to + focus the first invalid field so the customer sees exactly
+    // what to fix (works on mobile and desktop).
+    if (Object.keys(errors).length > 0) focusFirstError(errors);
   };
 
   if (done) {
@@ -372,15 +422,15 @@ export default function ReservationForm({
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Nombre completo" value={values.customerName}
+                <TextField fullWidth label="Nombre completo" value={values.customerName} ref={registerField("customerName")}
                   onChange={(e) => setField("customerName", e.target.value)} error={err("customerName")} helperText={help("customerName")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth type="email" label="Correo electrónico" value={values.email}
+                <TextField fullWidth type="email" label="Correo electrónico" value={values.email} ref={registerField("email")}
                   onChange={(e) => setField("email", e.target.value)} error={err("email")} helperText={help("email")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="WhatsApp / Teléfono" value={values.phone}
+                <TextField fullWidth label="WhatsApp / Teléfono" value={values.phone} ref={registerField("phone")}
                   onChange={(e) => setField("phone", e.target.value)} error={err("phone")} helperText={help("phone")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -394,6 +444,7 @@ export default function ReservationForm({
                     <TextField
                       {...params}
                       label="País"
+                      ref={registerField("country")}
                       error={err("country")}
                       helperText={help("country")}
                     />
@@ -401,11 +452,11 @@ export default function ReservationForm({
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Identificación o pasaporte" value={values.idOrPassport}
+                <TextField fullWidth label="Identificación o pasaporte" value={values.idOrPassport} ref={registerField("idOrPassport")}
                   onChange={(e) => setField("idOrPassport", e.target.value)} error={err("idOrPassport")} helperText={help("idOrPassport")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Licencia de conducir" value={values.driverLicense}
+                <TextField fullWidth label="Licencia de conducir" value={values.driverLicense} ref={registerField("driverLicense")}
                   onChange={(e) => setField("driverLicense", e.target.value)} error={err("driverLicense")} helperText={help("driverLicense")} />
               </Grid>
             </Grid>
@@ -420,22 +471,22 @@ export default function ReservationForm({
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="date" label="Fecha de recogida" value={values.pickupDate}
+                <TextField fullWidth type="date" label="Fecha de recogida" value={values.pickupDate} ref={registerField("pickupDate")}
                   onChange={(e) => setField("pickupDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("pickupDate")} helperText={help("pickupDate")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="time" label="Hora de recogida" value={values.pickupTime}
+                <TextField fullWidth type="time" label="Hora de recogida" value={values.pickupTime} ref={registerField("pickupTime")}
                   onChange={(e) => setField("pickupTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("pickupTime")} helperText={help("pickupTime")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="date" label="Fecha de devolución" value={values.dropoffDate}
+                <TextField fullWidth type="date" label="Fecha de devolución" value={values.dropoffDate} ref={registerField("dropoffDate")}
                   onChange={(e) => setField("dropoffDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("dropoffDate")} helperText={help("dropoffDate")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="time" label="Hora de devolución" value={values.dropoffTime}
+                <TextField fullWidth type="time" label="Hora de devolución" value={values.dropoffTime} ref={registerField("dropoffTime")}
                   onChange={(e) => setField("dropoffTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("dropoffTime")} helperText={help("dropoffTime")} />
               </Grid>
@@ -785,6 +836,7 @@ export default function ReservationForm({
                     fullWidth
                     label="Método de pago"
                     value={values.paymentMethod}
+                    ref={registerField("paymentMethod")}
                     onChange={(e) => setField("paymentMethod", e.target.value)}
                     error={err("paymentMethod")}
                     helperText={help("paymentMethod")}
@@ -817,7 +869,7 @@ export default function ReservationForm({
                 </Alert>
               )}
 
-              <Box sx={{ mt: 2 }}>
+              <Box sx={{ mt: 2 }} ref={registerField("paymentProofUrl")}>
                 <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleFile} />
                 <Button variant="outlined" color="secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
                   {uploading ? "Subiendo..." : values.paymentProofUrl ? "Comprobante cargado ✓" : "Subir comprobante de pago"}
@@ -877,6 +929,50 @@ export default function ReservationForm({
             </CardContent>
           </Card>
         )}
+
+        {/* Mandatory reservation-policy acceptance */}
+        <Card
+          ref={registerField("policyAccepted")}
+          variant="outlined"
+          sx={{
+            borderColor: err("policyAccepted") ? "error.main" : "divider",
+            borderWidth: err("policyAccepted") ? 2 : 1,
+          }}
+        >
+          <CardContent>
+            <FormControlLabel
+              sx={{ alignItems: "flex-start", m: 0 }}
+              control={
+                <Checkbox
+                  checked={policyAccepted}
+                  onChange={(e) => {
+                    setPolicyAccepted(e.target.checked);
+                    if (e.target.checked) {
+                      // Clear the error as soon as the customer accepts.
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.policyAccepted;
+                        return next;
+                      });
+                    }
+                  }}
+                  sx={{ pt: 0.25 }}
+                />
+              }
+              label={
+                <Typography variant="body2" color="text.secondary">
+                  He leído y acepto la política de reserva de JERETH RENT CAR y confirmo que la
+                  información proporcionada es correcta.
+                </Typography>
+              }
+            />
+            {err("policyAccepted") && (
+              <Typography variant="caption" color="error" sx={{ display: "block", mt: 0.5, ml: 4 }}>
+                {help("policyAccepted")}
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
 
         <Button type="submit" variant="contained" size="large" disabled={submitting || belowMinimum}>
           {submitting
