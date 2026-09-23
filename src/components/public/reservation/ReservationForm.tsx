@@ -48,6 +48,8 @@ export interface LocationOption {
   name: string;
   hasFee: boolean;
   deliveryFee: number;
+  /** Airport locations pre-fill the flight arrival/return airport. */
+  isAirport: boolean;
 }
 
 interface Props {
@@ -124,6 +126,27 @@ export default function ReservationForm({
     reservation.flight.hasReturnFlight
   );
   const [uploadingItin, setUploadingItin] = React.useState<"arrival" | "return" | null>(null);
+  // When the rental pickup/dropoff is an airport, the flight airport is
+  // pre-filled from it and shown read-only. These flags let the customer opt
+  // into editing that airport manually ("Modificar datos de vuelo").
+  // In correction mode, if a previously-saved airport differs from the current
+  // airport location, start in manual mode so we don't overwrite their choice.
+  const initPickupLoc = locations.find((l) => l.id === (reservation.pickupLocationId || "")) ?? null;
+  const initDropoffLoc = locations.find((l) => l.id === (reservation.dropoffLocationId || "")) ?? null;
+  const [editArrivalAirport, setEditArrivalAirport] = React.useState<boolean>(
+    Boolean(
+      initPickupLoc?.isAirport &&
+        reservation.flight.arrivalAirport &&
+        reservation.flight.arrivalAirport !== initPickupLoc.name
+    )
+  );
+  const [editReturnAirport, setEditReturnAirport] = React.useState<boolean>(
+    Boolean(
+      initDropoffLoc?.isAirport &&
+        reservation.flight.returnAirport &&
+        reservation.flight.returnAirport !== initDropoffLoc.name
+    )
+  );
   const arrivalItinRef = React.useRef<HTMLInputElement>(null);
   const returnItinRef = React.useRef<HTMLInputElement>(null);
   // 0 = without deposit; otherwise the chosen amount. Pre-fill with the amount
@@ -143,6 +166,43 @@ export default function ReservationForm({
   const dropoffLoc = locOf(values.dropoffLocationId);
   const pickupFee = pickupLoc?.hasFee ? pickupLoc.deliveryFee : 0;
   const dropoffFee = dropoffLoc?.hasFee ? dropoffLoc.deliveryFee : 0;
+
+  // Airport pre-fill: if the chosen rental pickup/dropoff is an airport, the
+  // flight arrival/return airport is that same airport — so the customer never
+  // re-enters what they already picked. The field is shown read-only until they
+  // choose "Modificar datos de vuelo" (which sets editArrival/ReturnAirport).
+  // Airline, flight number, date and time are ALWAYS entered manually.
+  const pickupIsAirport = Boolean(pickupLoc?.isAirport);
+  const dropoffIsAirport = Boolean(dropoffLoc?.isAirport);
+  // Whether the airport field is currently locked to the rental location.
+  const arrivalAirportLocked = pickupIsAirport && !editArrivalAirport;
+  const returnAirportLocked = dropoffIsAirport && !editReturnAirport;
+
+  // Keep the pre-filled airport value in sync with the selected airport
+  // location while it stays locked. When the location is not an airport, or the
+  // customer opted to modify, we leave the field alone (manual entry).
+  React.useEffect(() => {
+    if (hasArrivalFlight && arrivalAirportLocked && pickupLoc && values.arrivalAirport !== pickupLoc.name) {
+      setField("arrivalAirport", pickupLoc.name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasArrivalFlight, arrivalAirportLocked, pickupLoc?.name]);
+
+  React.useEffect(() => {
+    if (hasReturnFlight && returnAirportLocked && dropoffLoc && values.returnAirport !== dropoffLoc.name) {
+      setField("returnAirport", dropoffLoc.name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasReturnFlight, returnAirportLocked, dropoffLoc?.name]);
+
+  // If the rental location stops being an airport (customer changes the pickup/
+  // dropoff to a non-airport), drop the "modify" opt-in so the field returns to
+  // a normal, freely-selectable airport input.
+  React.useEffect(() => {
+    if (!pickupIsAirport && editArrivalAirport) setEditArrivalAirport(false);
+    if (!dropoffIsAirport && editReturnAirport) setEditReturnAirport(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickupIsAirport, dropoffIsAirport]);
 
   // Live pricing using the shared rental-days rules.
   const days = rentalDays({
@@ -472,14 +532,43 @@ export default function ReservationForm({
                     />
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Autocomplete
-                      freeSolo
-                      options={locations.map((l) => l.name)}
-                      value={values.arrivalAirport || ""}
-                      onInputChange={(_, v) => setField("arrivalAirport", v ?? "")}
-                      fullWidth
-                      renderInput={(params) => <TextField {...params} label="Aeropuerto de llegada" />}
-                    />
+                    {arrivalAirportLocked ? (
+                      <TextField
+                        fullWidth
+                        label="Aeropuerto de llegada"
+                        value={values.arrivalAirport || pickupLoc?.name || ""}
+                        slotProps={{ input: { readOnly: true } }}
+                        helperText="Precargado desde tu lugar de recogida."
+                      />
+                    ) : (
+                      <Autocomplete
+                        freeSolo
+                        options={locations.map((l) => l.name)}
+                        value={values.arrivalAirport || ""}
+                        onInputChange={(_, v) => setField("arrivalAirport", v ?? "")}
+                        fullWidth
+                        renderInput={(params) => <TextField {...params} label="Aeropuerto de llegada" />}
+                      />
+                    )}
+                    {pickupIsAirport && (
+                      <Button
+                        size="small"
+                        color="secondary"
+                        sx={{ mt: 0.5, textTransform: "none" }}
+                        onClick={() => {
+                          if (arrivalAirportLocked) {
+                            // Switch to manual: keep the prefilled value as a starting point.
+                            setEditArrivalAirport(true);
+                          } else {
+                            // Back to automatic: restore the airport from the pickup location.
+                            setEditArrivalAirport(false);
+                            if (pickupLoc) setField("arrivalAirport", pickupLoc.name);
+                          }
+                        }}
+                      >
+                        {arrivalAirportLocked ? "Modificar datos de vuelo" : "Usar aeropuerto de recogida"}
+                      </Button>
+                    )}
                   </Grid>
                   <Grid size={{ xs: 6, sm: 3 }}>
                     <TextField fullWidth type="date" label="Fecha de llegada" value={values.arrivalDate}
@@ -540,14 +629,41 @@ export default function ReservationForm({
                         />
                       </Grid>
                       <Grid size={{ xs: 12, sm: 6 }}>
-                        <Autocomplete
-                          freeSolo
-                          options={locations.map((l) => l.name)}
-                          value={values.returnAirport || ""}
-                          onInputChange={(_, v) => setField("returnAirport", v ?? "")}
-                          fullWidth
-                          renderInput={(params) => <TextField {...params} label="Aeropuerto de salida" />}
-                        />
+                        {returnAirportLocked ? (
+                          <TextField
+                            fullWidth
+                            label="Aeropuerto de salida"
+                            value={values.returnAirport || dropoffLoc?.name || ""}
+                            slotProps={{ input: { readOnly: true } }}
+                            helperText="Precargado desde tu lugar de devolución."
+                          />
+                        ) : (
+                          <Autocomplete
+                            freeSolo
+                            options={locations.map((l) => l.name)}
+                            value={values.returnAirport || ""}
+                            onInputChange={(_, v) => setField("returnAirport", v ?? "")}
+                            fullWidth
+                            renderInput={(params) => <TextField {...params} label="Aeropuerto de salida" />}
+                          />
+                        )}
+                        {dropoffIsAirport && (
+                          <Button
+                            size="small"
+                            color="secondary"
+                            sx={{ mt: 0.5, textTransform: "none" }}
+                            onClick={() => {
+                              if (returnAirportLocked) {
+                                setEditReturnAirport(true);
+                              } else {
+                                setEditReturnAirport(false);
+                                if (dropoffLoc) setField("returnAirport", dropoffLoc.name);
+                              }
+                            }}
+                          >
+                            {returnAirportLocked ? "Modificar datos de vuelo" : "Usar aeropuerto de devolución"}
+                          </Button>
+                        )}
                       </Grid>
                       <Grid size={{ xs: 6, sm: 3 }}>
                         <TextField fullWidth type="date" label="Fecha" value={values.returnDate}

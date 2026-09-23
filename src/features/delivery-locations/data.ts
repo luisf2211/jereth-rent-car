@@ -15,6 +15,7 @@ export interface DeliveryLocationItem {
   deliveryFee: number;
   mapUrl: string | null;
   highlighted: boolean;
+  isAirport: boolean;
 }
 
 /** Admin row (all states) for the management screen. */
@@ -27,6 +28,7 @@ export interface AdminDeliveryLocation {
   deliveryFee: number;
   mapUrl: string | null;
   highlighted: boolean;
+  isAirport: boolean;
   sortOrder: number;
   isActive: boolean;
 }
@@ -46,6 +48,7 @@ export async function getDeliveryLocations(): Promise<DeliveryLocationItem[]> {
     deliveryFee: d.deliveryFee,
     mapUrl: d.mapUrl,
     highlighted: d.highlighted,
+    isAirport: d.isAirport,
   }));
 }
 
@@ -61,6 +64,7 @@ export async function listDeliveryLocationsAdmin(): Promise<AdminDeliveryLocatio
     deliveryFee: d.deliveryFee,
     mapUrl: d.mapUrl,
     highlighted: d.highlighted,
+    isAirport: d.isAirport,
     sortOrder: d.sortOrder,
     isActive: d.isActive,
   }));

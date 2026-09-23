@@ -352,6 +352,36 @@ export async function submitReservation(token: string, input: unknown): Promise<
     return { ok: false, message: "No se pudo enviar la reserva." };
   }
 
+  // The reservation is saved correctly. Notify the admin by email (Resend).
+  // Non-blocking + idempotent: any failure is logged and swallowed so the
+  // customer's request is never affected, and no duplicate email is sent on
+  // resubmit / re-open.
+  try {
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: reservation.vehicleId },
+      select: { brand: true, model: true, year: true },
+    });
+    const { sendNewReservationNotification } = await import("@/lib/email/reservation-notifications");
+    await sendNewReservationNotification({
+      id: reservation.id,
+      code: reservation.code,
+      customerName: d.customerName,
+      phone: d.phone,
+      email: d.email,
+      vehicleTitle: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : "—",
+      pickupDate: parseDate(d.pickupDate),
+      pickupTime: d.pickupTime,
+      dropoffDate: parseDate(d.dropoffDate),
+      dropoffTime: d.dropoffTime,
+      estimatedTotal,
+      depositPaid,
+      source: reservation.source,
+    });
+  } catch (error) {
+    // Extra safety net — must never break the reservation flow.
+    console.error("reservation notification failed (ignored):", error);
+  }
+
   revalidateReservations(token);
   return { ok: true, message: "Solicitud de reserva recibida." };
 }

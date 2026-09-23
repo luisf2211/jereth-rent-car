@@ -152,6 +152,10 @@ model Vehicle {
   // (0–100) and zoom is a scale multiplier (1 = fit-width, >1 zooms in).
   // Null means no custom framing has been set (falls back to center/cover).
   imageFits    Json?
+  // Dedicated image for documents (reservation confirmation / PDF). Optional;
+  // PNG/WebP with transparency, shown COMPLETE (not cropped). When empty, the
+  // documents fall back to imageUrl. Independent from the catalog photos.
+  documentImageUrl String?
   // Reservations placed for this vehicle (digital booking system).
   reservations Reservation[]
   createdAt    DateTime        @default(now())
@@ -194,6 +198,10 @@ model DeliveryLocation {
   mapUrl      String?
   // Highlighted locations (e.g. the airport) render more prominently.
   highlighted Boolean  @default(false)
+  // Whether this location is an airport. When true, selecting it as the rental
+  // pickup/dropoff auto-fills the arrival/return flight airport, so the
+  // customer doesn't re-enter it in "Información de vuelo".
+  isAirport   Boolean  @default(false)
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -380,12 +388,54 @@ model Reservation {
   returnTime            String? // HH:mm
   returnItineraryUrl    String?
 
+  // --- Reservation policy acceptance (the RESERVATION policy, NOT a rental
+  //     contract; no digital signature). Validated server-side on submit. ---
+  policyAccepted        Boolean        @default(false)
+  policyAcceptedAt      DateTime?
+
+  // --- Official confirmation (generated ONLY when the admin confirms) ---
+  // Timestamp of the confirmation that produced the current official PDF.
+  confirmedAt           DateTime?
+  // Public URL of the stored confirmation PDF (Supabase Storage).
+  confirmationPdfUrl    String?
+  // Immutable snapshot of the data used to render the PDF at confirmation
+  // time, so the document never silently changes if the reservation is later
+  // edited. Kept as JSON for future revisions/versioning.
+  confirmationSnapshot  Json?
+
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+
+  // Communication history (emails sent for this reservation).
+  emailLogs          ReservationEmailLog[]
 
   @@index([status])
   @@index([vehicleId])
   @@index([createdAt])
+}
+
+// Simple communication log: one row per email attempt for a reservation.
+// Never stores the API key or unnecessary sensitive content — only metadata
+// (type, recipient, subject, result, provider id, optional error).
+model ReservationEmailLog {
+  id            String              @id @default(cuid())
+  reservationId String
+  reservation   Reservation         @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  // Which email this was (request_received, needs_fix, confirmed, rejected, cancelled).
+  type          String
+  // Recipient address at send time.
+  toEmail       String
+  subject       String
+  // "sent" or "error".
+  status        String
+  // Resend message id when available.
+  providerId    String?
+  // Error summary when status = "error" (no secrets).
+  error         String?
+  createdAt     DateTime            @default(now())
+
+  @@index([reservationId])
+  @@index([type])
 }
 
 // Single-row settings table for the digital booking system (mirrors the
@@ -420,4 +470,24 @@ model ReservationSettings {
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+// Visual template for the reservation confirmation PDF, designed with the
+// admin drag & drop builder. The `document` JSON holds the full layout tree
+// (rows → columns → elements) as defined by TemplateDocument in
+// src/features/reservation-template/types.ts. Only ONE row may be "published"
+// at a time (enforced in the server action); a separate "draft" row lets the
+// admin save work in progress. NOT yet wired to PDF generation.
+model ReservationTemplate {
+  id        String   @id @default(cuid())
+  // Human name (e.g. "Plantilla principal").
+  name      String   @default("Plantilla de reserva")
+  // "draft" | "published".
+  status    String   @default("draft")
+  // The layout tree (TemplateDocument) as JSON.
+  document  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
 }

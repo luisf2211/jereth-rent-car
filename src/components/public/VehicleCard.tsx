@@ -20,6 +20,7 @@ import {
   vehicleWhatsAppMessage,
 } from "@/features/vehicles/format";
 import { getFit, fitToStyle } from "@/lib/image-fit";
+import { vehiclePath } from "@/features/vehicles/vehicle-url";
 
 interface VehicleCardProps {
   vehicle: Vehicle;
@@ -49,7 +50,7 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
   const displayTitle = vehicleTitleWithYearSimilar(vehicle);
   const message = vehicleWhatsAppMessage(vehicle);
   const coverFit = getFit(vehicle.imageFits, "cover");
-  const detailHref = `/vehicles/${vehicle.id}`;
+  const detailHref = vehiclePath(vehicle);
 
   const handleCardClick = () => {
     router.push(detailHref);

@@ -12,6 +12,9 @@ export const deliveryLocationSchema = z.object({
   deliveryFee: z.coerce.number().int().min(0, "No puede ser negativo").max(100000).default(0),
   mapUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
   highlighted: z.boolean(),
+  // When true, choosing this location as the rental pickup/dropoff auto-fills
+  // the flight arrival/return airport in the reservation form.
+  isAirport: z.boolean().default(false),
   sortOrder: z.coerce.number().int().min(0).max(999),
   isActive: z.boolean(),
 });

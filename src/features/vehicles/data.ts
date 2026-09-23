@@ -44,6 +44,7 @@ function toVehicle(row: PrismaVehicle): Vehicle {
     imageUrl: row.imageUrl,
     carouselImageUrl: row.carouselImageUrl,
     images: row.images,
+    documentImageUrl: row.documentImageUrl,
     imageFits: parseImageFits(row.imageFits),
     description: row.description,
     features: row.features,

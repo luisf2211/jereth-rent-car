@@ -55,6 +55,9 @@ export default function DeliveryManager({ locations }: Props) {
       showWhen: (v) => v.feeType === "paid",
     },
     { name: "highlighted", label: "Destacado (ej. aeropuerto)", type: "switch", defaultValue: false, half: true },
+    // When on, choosing this location as pickup/dropoff in a reservation
+    // auto-fills the flight arrival/return airport for the customer.
+    { name: "isAirport", label: "Es un aeropuerto (precarga el vuelo)", type: "switch", defaultValue: false, half: true },
     { name: "mapUrl", label: "URL del mapa (Google Maps, opcional)", type: "text" },
     { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
     { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },

@@ -48,6 +48,8 @@ export interface Vehicle {
   imageUrl: string; // cover
   carouselImageUrl: string | null; // hero carousel (falls back to cover)
   images: string[]; // gallery
+  /** Dedicated image for documents (confirmation PDF). Falls back to imageUrl. */
+  documentImageUrl: string | null;
   /** Per-photo framing. null/undefined means no custom framing has been saved. */
   imageFits: ImageFits | null;
   description: string | null;

@@ -20,6 +20,11 @@ function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
 function revalidateVehiclePaths(id?: string) {
   revalidatePath("/admin/vehicles");
   revalidatePath("/", "layout"); // public catalog + featured
+  // The public detail URL is now "/vehicles/<slug>-<cuid>", so the slug can
+  // change on rename. Revalidate the dynamic route itself (covers every slug
+  // variant) instead of a single concrete path.
+  revalidatePath("/vehicles/[id]", "page");
+  // Best-effort: also revalidate a legacy bare-cuid path if one was cached.
   if (id) revalidatePath(`/vehicles/${id}`);
 }
 
@@ -40,6 +45,7 @@ export async function createVehicle(input: unknown): Promise<ActionResult> {
     description: parsed.data.description || null,
     whatsappMessage: parsed.data.whatsappMessage || null,
     carouselImageUrl: parsed.data.carouselImageUrl || null,
+    documentImageUrl: parsed.data.documentImageUrl || null,
     // imageFits: store as-is (Prisma Json field). Empty object means no custom framing.
     imageFits: Object.keys(parsed.data.imageFits ?? {}).length > 0
       ? (parsed.data.imageFits as Prisma.InputJsonValue)
@@ -73,6 +79,7 @@ export async function updateVehicle(id: string, input: unknown): Promise<ActionR
     description: parsed.data.description || null,
     whatsappMessage: parsed.data.whatsappMessage || null,
     carouselImageUrl: parsed.data.carouselImageUrl || null,
+    documentImageUrl: parsed.data.documentImageUrl || null,
     imageFits: Object.keys(parsed.data.imageFits ?? {}).length > 0
       ? (parsed.data.imageFits as Prisma.InputJsonValue)
       : Prisma.JsonNull,
@@ -104,6 +111,34 @@ export async function toggleVehicleActive(id: string, isActive: boolean): Promis
 
   revalidateVehiclePaths(id);
   return { ok: true, message: isActive ? "Vehículo publicado." : "Vehículo ocultado." };
+}
+
+export async function deleteVehicle(id: string): Promise<ActionResult> {
+  try {
+    await requirePermission("vehicles.disable");
+  } catch {
+    return { ok: false, message: "No tienes permiso para eliminar vehículos." };
+  }
+
+  try {
+    await prisma.vehicle.delete({ where: { id } });
+  } catch (error) {
+    // A vehicle that already has reservations can't be hard-deleted because of
+    // the Reservation.vehicleId foreign key. Guide the admin to hide it instead
+    // of losing reservation history.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return {
+        ok: false,
+        message:
+          "No se puede eliminar: el vehículo tiene reservas asociadas. Ocúltalo en su lugar para conservar el historial.",
+      };
+    }
+    console.error("deleteVehicle failed:", error);
+    return { ok: false, message: "No se pudo eliminar el vehículo." };
+  }
+
+  revalidateVehiclePaths(id);
+  return { ok: true, message: "Vehículo eliminado." };
 }
 
 export async function uploadVehicleImage(

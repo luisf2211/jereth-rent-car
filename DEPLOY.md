@@ -32,9 +32,19 @@ En **Project → Settings → Environment Variables** agrega (Production + Previ
 | `AUTH_SECRET` | `openssl rand -base64 32` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `sb_secret_...` (secreta) |
 | `SUPABASE_STORAGE_BUCKET` | `media` |
+| `RESEND_API_KEY` | `re_...` (secreta) — dominio `jerethrentcar.com` |
+| `RESEND_FROM_EMAIL` | *(opcional)* `JERETH RENT CAR <reservas@jerethrentcar.com>` |
+| `RESERVATION_NOTIFICATION_EMAIL` | correo del admin que recibe las nuevas solicitudes de reserva |
+| `NEXT_PUBLIC_SITE_URL` | URL pública del sitio (para el botón "Ver reserva" del correo) |
 
 `AUTH_URL` no suele hacer falta (Auth.js infiere el host en Vercel). Si hay
 problemas de callback, fíjala a la URL pública del sitio.
+
+`RESEND_API_KEY` es secreta: no lleva prefijo `NEXT_PUBLIC_` y nunca se sube al
+repo (`.env*` está en `.gitignore`). El cliente de Resend vive en
+`src/lib/email/resend.ts` (marcado `server-only`), así que la clave solo se usa
+en el servidor. Los correos aún no están implementados; esta variable solo deja
+Resend listo para la próxima fase.
 
 ## 4. Migraciones
 

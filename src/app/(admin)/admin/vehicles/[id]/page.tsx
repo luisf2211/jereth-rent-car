@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Button from "@mui/material/Button";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import PageHeader from "@/components/ui/PageHeader";
 import AccessDenied from "@/components/admin/AccessDenied";
 import VehicleForm from "@/components/admin/vehicles/VehicleForm";
@@ -26,6 +28,14 @@ export default async function EditVehiclePage({ params }: PageProps<"/admin/vehi
 
   return (
     <>
+      <Button
+        href="/admin/vehicles"
+        startIcon={<ArrowBackRoundedIcon />}
+        color="secondary"
+        sx={{ mb: 1 }}
+      >
+        Volver a vehículos
+      </Button>
       <PageHeader title="Editar vehículo" description={vehicleTitleWithYear(vehicle)} />
       <VehicleForm vehicle={vehicle} featureSuggestions={featureSuggestions} />
     </>

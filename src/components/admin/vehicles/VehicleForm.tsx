@@ -23,6 +23,7 @@ import Divider from "@mui/material/Divider";
 import { CATEGORY_ORDER, categoryLabel } from "@/features/vehicles/format";
 import VehicleImageUploader from "./VehicleImageUploader";
 import VehicleGalleryUploader from "./VehicleGalleryUploader";
+import DocumentImageUploader from "./DocumentImageUploader";
 import FeaturesEditor from "./FeaturesEditor";
 import type { ImageFit, ImageFits } from "@/types/vehicle";
 import { DEFAULT_FIT } from "@/lib/image-fit";
@@ -46,6 +47,7 @@ type FormValues = {
   dailyPrice: number;
   imageUrl: string;
   carouselImageUrl: string;
+  documentImageUrl: string;
   images: string[];
   imageFits: ImageFits;
   description: string;
@@ -105,6 +107,7 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
       dailyPrice: vehicle?.dailyPrice ?? 35,
       imageUrl: vehicle?.imageUrl ?? "",
       carouselImageUrl: vehicle?.carouselImageUrl ?? "",
+      documentImageUrl: vehicle?.documentImageUrl ?? "",
       images: vehicle?.images ?? [],
       imageFits: parseImageFits(vehicle?.imageFits),
       description: vehicle?.description ?? "",
@@ -193,6 +196,24 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
               Se muestra en el carrusel del inicio. Si la dejas vacía, se usa la foto de portada.
             </Typography>
+          </Grid>
+
+          {/* ── Documents image (reservation confirmation / PDF) ── */}
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+              Imagen para documentos (reservas / PDF)
+            </Typography>
+            <Controller
+              name="documentImageUrl"
+              control={control}
+              render={({ field }) => (
+                <DocumentImageUploader
+                  value={field.value}
+                  onChange={field.onChange}
+                  error={errors.documentImageUrl?.message}
+                />
+              )}
+            />
           </Grid>
 
           {/* ── Vehicle fields ── */}

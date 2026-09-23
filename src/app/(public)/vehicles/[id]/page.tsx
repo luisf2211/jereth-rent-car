@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
@@ -29,6 +29,7 @@ import VehicleBooking from "@/components/public/vehicle-detail/VehicleBooking";
 import VehicleDescription from "@/components/public/vehicle-detail/VehicleDescription";
 import DetailReviews from "@/components/public/vehicle-detail/DetailReviews";
 import { getVehicleById, getSimilarVehicles, incrementVehicleViews } from "@/features/vehicles/data";
+import { extractVehicleId, vehiclePath } from "@/features/vehicles/vehicle-url";
 import { getCompanySettings } from "@/lib/branding";
 import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import { getReservationSettings } from "@/features/reservations/data";
@@ -51,8 +52,10 @@ import {
 export async function generateMetadata({
   params,
 }: PageProps<"/vehicles/[id]">): Promise<Metadata> {
-  const { id } = await params;
-  const vehicle = await getVehicleById(id);
+  const { id: param } = await params;
+  // The route segment is "<slug>-<cuid>" (or a legacy bare cuid); resolve by
+  // the embedded cuid so renames never break the lookup.
+  const vehicle = await getVehicleById(extractVehicleId(param));
   if (!vehicle) return { title: "Vehículo" };
   return {
     title: vehicleTitle(vehicle),
@@ -61,6 +64,8 @@ export async function generateMetadata({
       `Renta un ${vehicleTitle(vehicle)} en Santo Domingo. ${vehicle.passengers} pasajeros, ${transmissionLabel(
         vehicle.transmission
       )}.`,
+    // Canonical always points to the current pretty slug for this vehicle.
+    alternates: { canonical: vehiclePath(vehicle) },
   };
 }
 
@@ -77,9 +82,21 @@ function SectionBlock({ title, children }: { title: string; children: React.Reac
 }
 
 export default async function VehicleDetailPage({ params }: PageProps<"/vehicles/[id]">) {
-  const { id } = await params;
+  const { id: param } = await params;
+  // Resolve by the embedded cuid (works for the new "<slug>-<cuid>" form and
+  // legacy bare-cuid links alike).
+  const id = extractVehicleId(param);
   const vehicle = await getVehicleById(id);
   if (!vehicle) notFound();
+
+  // Normalize the URL to the current canonical slug. If the incoming segment
+  // doesn't match (legacy bare cuid, or an old slug after a rename), 301 to the
+  // pretty URL. The redirect keeps the same cuid, so nothing breaks.
+  const canonicalPath = vehiclePath(vehicle);
+  if (`/vehicles/${param}` !== canonicalPath) {
+    // 308 permanent redirect so search engines update to the canonical slug.
+    permanentRedirect(canonicalPath);
+  }
 
   // Count this view (best-effort) to drive the "most viewed first" fleet order.
   void incrementVehicleViews(id);

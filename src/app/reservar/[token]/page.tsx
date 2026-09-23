@@ -74,6 +74,7 @@ export default async function ReservarPage({
     name: l.name,
     hasFee: l.hasFee,
     deliveryFee: l.deliveryFee,
+    isAirport: l.isAirport,
   }));
 
   return (

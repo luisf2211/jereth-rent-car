@@ -157,6 +157,12 @@ export const customerReservationSchema = z.object({
   // Optional special request (empty = none).
   specialRequest: z.string().trim().max(1000).optional().or(z.literal("")),
 
+  // Mandatory acceptance of the RESERVATION policy. Enforced server-side
+  // (never trust only the frontend checkbox): must be exactly true.
+  policyAccepted: z
+    .boolean()
+    .refine((v) => v === true, { message: "Debes aceptar la política de reserva." }),
+
   // --- Flight info (all optional; only saved when the customer opts in) ---
   hasArrivalFlight: z.boolean().default(false),
   arrivalAirline: optionalStr(120),

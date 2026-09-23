@@ -10,6 +10,8 @@ export const STORAGE_FOLDERS = {
   vehicles: "vehicles",
   clients: "clients",
   handover: "handover",
+  // Official reservation confirmation PDFs.
+  confirmations: "confirmations",
 } as const;
 
 export type StorageFolder = (typeof STORAGE_FOLDERS)[keyof typeof STORAGE_FOLDERS];
@@ -102,6 +104,44 @@ export async function uploadDocument(folder: StorageFolder, file: File): Promise
   if (error) {
     console.error("uploadDocument failed:", error);
     return { ok: false, error: "No se pudo subir el archivo." };
+  }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { ok: true, url: data.publicUrl, path };
+}
+
+
+/**
+ * Uploads a raw binary buffer (e.g. a generated PDF) to Storage and returns
+ * its public URL. Unlike uploadImage/uploadDocument, this does not take a File
+ * — it's for server-generated content. The caller controls the exact path so
+ * regeneration is idempotent (upsert overwrites the same object instead of
+ * accumulating orphans).
+ *
+ * The path is NOT derived from user input (we pass a reservation code/uuid),
+ * so one reservation's PDF can never collide with or expose another's.
+ */
+export interface UploadBufferOptions {
+  /** Object path relative to the bucket, e.g. "confirmations/JRC-ABCDEF.pdf". */
+  path: string;
+  contentType: string;
+  /** Overwrite an existing object at the same path (default true). */
+  upsert?: boolean;
+}
+
+export async function uploadBuffer(
+  bytes: Uint8Array | ArrayBuffer,
+  { path, contentType, upsert = true }: UploadBufferOptions
+): Promise<UploadResult> {
+  const supabase = createAdminClient();
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, bytes, { contentType, upsert });
+
+  if (error) {
+    console.error("uploadBuffer failed:", error);
+    return { ok: false, error: "No se pudo guardar el archivo generado." };
   }
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);

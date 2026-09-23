@@ -46,6 +46,8 @@ export const vehicleSchema = z.object({
   dailyPrice: z.coerce.number().int("Precio inválido").min(1, "Precio inválido").max(100000),
   imageUrl: z.string().trim().url("Sube una imagen o pega una URL válida").max(500),
   carouselImageUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
+  // Optional dedicated image for documents (confirmation PDF). Empty = fallback.
+  documentImageUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
   images: z.array(z.string().trim().url().max(500)).max(12).default([]),
   // Per-photo framing: keyed by "cover", "carousel", or photo URL.
   imageFits: imageFitsSchema,

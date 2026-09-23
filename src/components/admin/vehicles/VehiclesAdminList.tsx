@@ -22,10 +22,13 @@ import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import Divider from "@mui/material/Divider";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { VehicleAdminItem } from "@/features/vehicles/admin-data";
-import { toggleVehicleActive } from "@/features/vehicles/actions";
+import { toggleVehicleActive, deleteVehicle } from "@/features/vehicles/actions";
+import { LAST_EDITED_VEHICLE_KEY } from "@/features/vehicles/vehicle-url";
 import { formatDailyPrice, transmissionLabel, vehicleTitleWithYear, categoryLabel } from "@/features/vehicles/format";
 
 interface Props {
@@ -35,6 +38,7 @@ interface Props {
 }
 
 type ToggleTarget = { id: string; title: string; nextActive: boolean } | null;
+type DeleteTarget = { id: string; title: string } | null;
 
 function StatusChip({ isActive }: { isActive: boolean }) {
   return (
@@ -59,7 +63,27 @@ export default function VehiclesAdminList({ vehicles, canManage = true }: Props)
   const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
   const [menuItem, setMenuItem] = React.useState<VehicleAdminItem | null>(null);
   const [confirmTarget, setConfirmTarget] = React.useState<ToggleTarget>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<DeleteTarget>(null);
+  const [deleting, setDeleting] = React.useState(false);
   const [snack, setSnack] = React.useState<{ msg: string; error?: boolean } | null>(null);
+
+  // Remember-position: when returning from editing a vehicle, scroll that row
+  // (desktop) or card (mobile) back into view instead of jumping to the top.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const lastId = window.sessionStorage.getItem(LAST_EDITED_VEHICLE_KEY);
+    if (!lastId) return;
+    window.sessionStorage.removeItem(LAST_EDITED_VEHICLE_KEY);
+    // Wait a tick so the grid/cards have rendered.
+    const t = window.setTimeout(() => {
+      // Desktop DataGrid rows carry data-id; mobile cards carry data-vehicle-id.
+      const el =
+        document.querySelector<HTMLElement>(`[data-vehicle-id="${lastId}"]`) ??
+        document.querySelector<HTMLElement>(`.MuiDataGrid-row[data-id="${lastId}"]`);
+      if (el) el.scrollIntoView({ block: "center", behavior: "auto" });
+    }, 150);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const openMenu = (e: React.MouseEvent<HTMLElement>, v: VehicleAdminItem) => {
     setMenuAnchor(e.currentTarget);
@@ -70,8 +94,15 @@ export default function VehiclesAdminList({ vehicles, canManage = true }: Props)
     setMenuItem(null);
   };
 
+  const rememberEditing = (id: string) => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(LAST_EDITED_VEHICLE_KEY, id);
+    }
+  };
+
   const goEdit = (id: string) => {
     closeMenu();
+    rememberEditing(id);
     router.push(`/admin/vehicles/${id}`);
   };
 
@@ -84,6 +115,21 @@ export default function VehiclesAdminList({ vehicles, canManage = true }: Props)
     if (!confirmTarget) return;
     const res = await toggleVehicleActive(confirmTarget.id, confirmTarget.nextActive);
     setConfirmTarget(null);
+    setSnack({ msg: res.message ?? "", error: !res.ok });
+    if (res.ok) router.refresh();
+  };
+
+  const askDelete = (v: VehicleAdminItem) => {
+    setDeleteTarget({ id: v.id, title: vehicleTitleWithYear(v) });
+    closeMenu();
+  };
+
+  const doDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    const res = await deleteVehicle(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
     setSnack({ msg: res.message ?? "", error: !res.ok });
     if (res.ok) router.refresh();
   };
@@ -177,7 +223,7 @@ export default function VehiclesAdminList({ vehicles, canManage = true }: Props)
       ) : (
         <Stack spacing={2}>
           {vehicles.map((v) => (
-            <Card key={v.id}>
+            <Card key={v.id} data-vehicle-id={v.id}>
               <CardContent>
                 <Box sx={{ display: "flex", gap: 2 }}>
                   <Avatar variant="rounded" src={v.imageUrl} alt="" sx={{ width: 72, height: 60 }} />
@@ -226,6 +272,13 @@ export default function VehiclesAdminList({ vehicles, canManage = true }: Props)
           </ListItemIcon>
           {menuItem?.isActive ? "Ocultar" : "Publicar"}
         </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => menuItem && askDelete(menuItem)} sx={{ color: "error.main" }}>
+          <ListItemIcon>
+            <DeleteOutlineRoundedIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          Eliminar
+        </MenuItem>
       </Menu>
 
       <ConfirmDialog
@@ -239,6 +292,20 @@ export default function VehiclesAdminList({ vehicles, canManage = true }: Props)
         confirmColor={confirmTarget?.nextActive ? "primary" : "error"}
         onConfirm={doToggle}
         onCancel={() => setConfirmTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Eliminar vehículo"
+        description={
+          deleteTarget
+            ? `¿Deseas eliminar el ${deleteTarget.title}? Esta acción no se puede deshacer.`
+            : undefined
+        }
+        confirmLabel={deleting ? "Eliminando..." : "Eliminar"}
+        confirmColor="error"
+        onConfirm={doDelete}
+        onCancel={() => (deleting ? undefined : setDeleteTarget(null))}
       />
 
       <Snackbar
