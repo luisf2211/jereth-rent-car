@@ -366,23 +366,50 @@ export async function submitReservation(token: string, input: unknown): Promise<
     // Internal JERETH notification and the customer email are sent
     // INDEPENDENTLY: each is wrapped so a failure in one can never affect the
     // other, and neither can affect the saved reservation.
+    //
+    // Which internal email? If this submission is the customer RESPONDING to a
+    // "Requiere corrección" (the reservation's status BEFORE this update was
+    // needs_fix), send the "corrected reservation" notice instead of the
+    // "new reservation" one — so JERETH knows it's an existing corrected
+    // reservation, not a new request. The customer email is unchanged.
+    const wasNeedsFix = reservation.status === "needs_fix";
     try {
-      const { sendNewReservationNotification } = await import("@/lib/email/reservation-notifications");
-      await sendNewReservationNotification({
-        id: reservation.id,
-        code: reservation.code,
-        customerName: d.customerName,
-        phone: d.phone,
-        email: d.email,
-        vehicleTitle,
-        pickupDate: parseDate(d.pickupDate),
-        pickupTime: d.pickupTime,
-        dropoffDate: parseDate(d.dropoffDate),
-        dropoffTime: d.dropoffTime,
-        estimatedTotal,
-        depositPaid,
-        source: reservation.source,
-      });
+      if (wasNeedsFix) {
+        const { sendCorrectionResubmittedNotification } = await import(
+          "@/lib/email/correction-notifications"
+        );
+        await sendCorrectionResubmittedNotification({
+          id: reservation.id,
+          code: reservation.code,
+          customerName: d.customerName,
+          phone: d.phone,
+          email: d.email,
+          vehicleTitle,
+          pickupDate: parseDate(d.pickupDate),
+          pickupTime: d.pickupTime,
+          dropoffDate: parseDate(d.dropoffDate),
+          dropoffTime: d.dropoffTime,
+          estimatedTotal,
+          depositPaid,
+        });
+      } else {
+        const { sendNewReservationNotification } = await import("@/lib/email/reservation-notifications");
+        await sendNewReservationNotification({
+          id: reservation.id,
+          code: reservation.code,
+          customerName: d.customerName,
+          phone: d.phone,
+          email: d.email,
+          vehicleTitle,
+          pickupDate: parseDate(d.pickupDate),
+          pickupTime: d.pickupTime,
+          dropoffDate: parseDate(d.dropoffDate),
+          dropoffTime: d.dropoffTime,
+          estimatedTotal,
+          depositPaid,
+          source: reservation.source,
+        });
+      }
     } catch (error) {
       console.error("internal reservation notification failed (ignored):", error);
     }
@@ -537,6 +564,20 @@ export async function updateReservationStatus(
   } catch (error) {
     console.error("updateReservationStatus failed:", error);
     return { ok: false, message: "No se pudo actualizar el estado." };
+  }
+
+  // Starting a NEW correction cycle: clear the prior "correction resubmitted"
+  // email log so the next real resubmit sends the internal notice exactly once
+  // again. Best-effort; a failure here must never block the status change.
+  if (status === "needs_fix") {
+    try {
+      const { CORRECTION_EMAIL_TYPE } = await import("@/lib/email/correction-notifications");
+      await prisma.reservationEmailLog.deleteMany({
+        where: { reservationId: id, type: CORRECTION_EMAIL_TYPE },
+      });
+    } catch (error) {
+      console.error("failed to reset correction email log (ignored):", error);
+    }
   }
 
   // --- Side effects (PDF + customer emails) ---
