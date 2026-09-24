@@ -225,6 +225,19 @@ export default function ReservationForm({
 
   const setField = (k: string, v: string) => setValues((s) => ({ ...s, [k]: v }));
 
+  // Smart calendar: when the pickup date changes, drop a now-invalid dropoff
+  // (earlier than the new pickup) so the user re-picks a valid one; a still-
+  // valid dropoff (>= pickup) is left untouched. The dropoff input also uses
+  // min={pickupDate}, so the native picker opens on the pickup month (handles
+  // month/year crossings) and blocks earlier dates.
+  const handlePickupDateChange = (next: string) => {
+    setValues((s) => ({
+      ...s,
+      pickupDate: next,
+      dropoffDate: next && s.dropoffDate && s.dropoffDate < next ? "" : s.dropoffDate,
+    }));
+  };
+
   // Refs to each validatable field so we can scroll + focus the first invalid
   // one after a failed submit. Keyed by the schema field name so server
   // fieldErrors map 1:1. Works on mobile and desktop.
@@ -554,7 +567,7 @@ export default function ReservationForm({
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
                 <TextField fullWidth type="date" label={t("booking.pickupDate")} value={values.pickupDate} ref={registerField("pickupDate")}
-                  onChange={(e) => setField("pickupDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(e) => handlePickupDateChange(e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("pickupDate")} helperText={help("pickupDate")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
@@ -564,7 +577,8 @@ export default function ReservationForm({
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <TextField fullWidth type="date" label={t("booking.dropoffDate")} value={values.dropoffDate} ref={registerField("dropoffDate")}
-                  onChange={(e) => setField("dropoffDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(e) => setField("dropoffDate", e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: values.pickupDate || undefined } }}
                   error={err("dropoffDate")} helperText={help("dropoffDate")} />
               </Grid>
               <Grid size={{ xs: 6 }}>

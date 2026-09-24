@@ -2,12 +2,15 @@
  * Rental day calculation shared by the booking tarifario.
  *
  * Business rules (requested by the owner):
- *  - The base number of days is the calendar difference between the pickup
- *    date and the return date (dropoff − pickup).
+ *  - Both the pickup day and the return day count, so the base number of days
+ *    is the calendar difference PLUS ONE: (dropoff − pickup) + 1. Example:
+ *    Sep 30 → Oct 5 is 6 days (Sep 30, Oct 1, 2, 3, 4, 5).
  *  - PICKUP TIME rule (5:00 pm cutoff):
- *      · Pickup BEFORE 5:00 pm  → the pickup day counts as a rental day.
+ *      · Pickup BEFORE 5:00 pm  → the pickup day IS charged (full day).
  *      · Pickup AT/AFTER 5:00 pm → the pickup day is NOT charged; billing
  *        starts the next day (one day is subtracted).
+ *    So Sep 30 → Oct 5 is 6 days when picking up before 5pm, and 5 days when
+ *    picking up at/after 5pm.
  *  - RETURN TIME does NOT affect the number of billed days. Only the return
  *    DATE matters.
  *  - The minimum billable rental is 3 days; this is validated on the real
@@ -65,7 +68,9 @@ export function rentalDays({
   const calendarDays = Math.round((b.getTime() - a.getTime()) / dayMs);
   if (calendarDays <= 0) return 0;
 
-  let days = calendarDays;
+  // Both endpoints count: the pickup day AND the return day are rental days,
+  // so the base is the calendar span plus one. (Sep 30 → Oct 5 = 6 days.)
+  let days = calendarDays + 1;
 
   // 5:00 pm pickup rule: a pickup at/after 17:00 doesn't charge the pickup
   // day, so billing starts the next day → subtract one day.

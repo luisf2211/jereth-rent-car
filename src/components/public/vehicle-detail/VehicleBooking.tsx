@@ -86,6 +86,18 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
   const pickupLoc = findLoc(pickupLocationId);
   const dropoffLoc = findLoc(dropoffLocationId);
 
+  // Smart calendar: when the pickup date changes, drop a now-invalid dropoff
+  // (one that is earlier than the new pickup) so the user re-picks a valid
+  // date. A dropoff that is still >= pickup is kept untouched. The dropoff
+  // input also gets min={pickupDate}, so the native picker opens on the pickup
+  // month (Oct → Oct, Nov → Nov, crossing years too) and blocks earlier dates.
+  const handlePickupDateChange = (next: string) => {
+    setPickupDate(next);
+    if (next && dropoffDate && dropoffDate < next) {
+      setDropoffDate("");
+    }
+  };
+
   const days = rentalDays({ pickupDate, dropoffDate, pickupTime, dropoffTime });
   const rentalSubtotal = days * dailyPrice;
   const pickupFee = pickupLoc?.deliveryFee ?? 0;
@@ -195,7 +207,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
           label={t("booking.pickupShort")}
           size="small"
           value={pickupDate}
-          onChange={(e) => setPickupDate(e.target.value)}
+          onChange={(e) => handlePickupDateChange(e.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
           sx={{ flex: "1 1 140px" }}
         />
@@ -216,7 +228,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
           size="small"
           value={dropoffDate}
           onChange={(e) => setDropoffDate(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }}
+          slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: pickupDate || undefined } }}
           sx={{ flex: "1 1 140px" }}
         />
         <TextField
