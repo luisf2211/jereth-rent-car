@@ -107,26 +107,46 @@ export default function VehiclesCarousel({ vehicles, whatsappNumber, digitalEnab
   }, [applyTransform]);
 
   // ---- Pointer drag ----
-  const onPointerDown = (e: React.PointerEvent) => {
-    // Don't intercept clicks on interactive elements (buttons, links, cards with role=link).
-    const interactive = (e.target as HTMLElement).closest(
-      "a, button, [role='button'], [role='link']"
-    );
-    if (interactive) return;
+  // Movement (px) beyond which a press is treated as a DRAG rather than a tap.
+  // Below this, the press is a normal click/tap so the WhatsApp/Reservar
+  // buttons and card navigation keep working untouched.
+  const DRAG_THRESHOLD = 8;
 
+  // Start dragging on ANY press over the carousel (including on cards and
+  // buttons). We never block the press here: whether it ends up being a tap
+  // (click passes through) or a drag (click suppressed) is decided by how far
+  // the pointer moves, in onPointerMove/onClickCapture below.
+  const onPointerDown = (e: React.PointerEvent) => {
+    // Only react to primary button / touch / pen, not right-click etc.
+    if (e.button !== undefined && e.button !== 0) return;
     draggingRef.current = true;
     movedRef.current = false;
     dragStartXRef.current = e.clientX;
     dragStartOffsetRef.current = offsetRef.current;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // Note: the auto-drift tick already pauses while draggingRef is true, so we
+    // don't touch pausedRef here (that flag stays dedicated to hover-pause).
   };
+
   const onPointerMove = (e: React.PointerEvent) => {
     if (!draggingRef.current) return;
     const dx = e.clientX - dragStartXRef.current;
-    if (Math.abs(dx) > 8) movedRef.current = true;
-    offsetRef.current = dragStartOffsetRef.current - dx;
-    applyTransform();
+    if (!movedRef.current && Math.abs(dx) > DRAG_THRESHOLD) {
+      movedRef.current = true;
+      // First real horizontal movement: capture the pointer so the whole
+      // gesture (left AND right, past card/button edges) stays with us.
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {
+        /* capture may be unavailable; dragging still works */
+      }
+    }
+    if (movedRef.current) {
+      // Free two-way movement: dragging right advances, left retreats.
+      offsetRef.current = dragStartOffsetRef.current - dx;
+      applyTransform();
+    }
   };
+
   const endDrag = (e: React.PointerEvent) => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
@@ -135,11 +155,16 @@ export default function VehiclesCarousel({ vehicles, whatsappNumber, digitalEnab
     } catch {
       /* pointer may already be released */
     }
-    // Reset moved flag after a short delay so onClickCapture can read it first.
-    setTimeout(() => { movedRef.current = false; }, 50);
+    // draggingRef is now false, so the tick resumes the infinite drift
+    // automatically (subject to hover-pause on desktop). Keep movedRef true
+    // briefly so onClickCapture can suppress the click that fires right after a
+    // drag; then reset.
+    if (movedRef.current) setTimeout(() => { movedRef.current = false; }, 0);
   };
 
-  // Prevent accidental card navigation right after a real drag (>8px moved).
+  // A real drag (>threshold) must not trigger card navigation NOR a button
+  // click. This runs in the capture phase, before the click reaches the
+  // card/anchor/button, and cancels it only when the user actually dragged.
   const onClickCapture = (e: React.MouseEvent) => {
     if (movedRef.current) {
       e.preventDefault();
@@ -175,6 +200,10 @@ export default function VehiclesCarousel({ vehicles, whatsappNumber, digitalEnab
           gap: `${gap}px`,
           willChange: "transform",
           width: "max-content",
+          // Vertical page scroll stays with the browser; horizontal swipes are
+          // handled here as manual drag (set on the track too, so the touch
+          // that starts on a card reliably yields horizontal control to us).
+          touchAction: "pan-y",
           // Until measured, keep the track from forcing intrinsic width.
           visibility: cardWidth ? "visible" : "hidden",
         }}
