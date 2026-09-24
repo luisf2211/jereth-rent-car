@@ -21,7 +21,7 @@ import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { formatDailyPrice } from "@/features/vehicles/format";
 import { rentalDays, meetsMinimumRental, MIN_RENTAL_DAYS } from "@/utils/rental-days";
 import { trackEvent } from "@/lib/analytics";
-import { startWebReservation } from "@/features/reservations/actions";
+
 
 /** Delivery location option. `hasFee` marks a paid location; `deliveryFee`
  *  is the amount (may be 0 = "Cargo adicional" label without a price). */
@@ -145,39 +145,28 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
     });
   };
 
-  // Digital flow: create the reservation row (carrying the current selection)
-  // and send the customer to the existing form at /reservar/<token>. The
-  // server recomputes price/days/fees — nothing here is trusted for billing.
-  const startDigital = async () => {
+  // Digital flow: open the reservation FORM (no DB write yet) carrying the
+  // current selection as query params. The reservation is created ONLY when
+  // the customer submits the form (create mode), so abandoning it leaves no
+  // "ghost" reservation. The server still recomputes price/days/fees on submit.
+  const startDigital = () => {
     if (starting) return;
     setStarting(true);
     setStartError(null);
-    try {
-      const res = await startWebReservation({
-        vehicleId,
-        pickupDate,
-        pickupTime,
-        dropoffDate,
-        dropoffTime,
-        pickupLocationId,
-        dropoffLocationId,
-      });
-      if (!res.ok) {
-        setStartError(res.message);
-        setStarting(false);
-        return;
-      }
-      trackEvent("reservation_start", {
-        vehicle: vehicleTitle,
-        days,
-        daily_price: dailyPrice,
-        value: total,
-      });
-      router.push(`/reservar/${res.token}`);
-    } catch {
-      setStartError("No se pudo iniciar la reserva. Intenta de nuevo.");
-      setStarting(false);
-    }
+    trackEvent("reservation_start", {
+      vehicle: vehicleTitle,
+      days,
+      daily_price: dailyPrice,
+      value: total,
+    });
+    const params = new URLSearchParams({ vehicleId });
+    if (pickupDate) params.set("pickupDate", pickupDate);
+    if (pickupTime) params.set("pickupTime", pickupTime);
+    if (dropoffDate) params.set("dropoffDate", dropoffDate);
+    if (dropoffTime) params.set("dropoffTime", dropoffTime);
+    if (pickupLocationId) params.set("pickupLocationId", pickupLocationId);
+    if (dropoffLocationId) params.set("dropoffLocationId", dropoffLocationId);
+    router.push(`/reservar/nuevo?${params.toString()}`);
   };
 
   const locationLabel = (l: BookingLocation) => {

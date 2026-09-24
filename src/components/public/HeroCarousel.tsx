@@ -15,7 +15,6 @@ import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import type { Vehicle } from "@/types/vehicle";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
-import { startWebReservation } from "@/features/reservations/actions";
 import {
   categoryLabel,
   formatDailyPrice,
@@ -70,25 +69,14 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
   const carouselFit = getFit(v.imageFits, carouselFitKey);
   const detailHref = vehiclePath(v);
 
-  // Digital reservation for the CURRENT slide's vehicle: create the reservation
-  // and go straight to the existing /reservar/<token> flow (dates/locations are
-  // chosen there). The server recomputes price/fees and re-checks the ON/OFF
-  // switch. On any failure, fall back to the vehicle detail page.
-  const handleReservar = async () => {
+  // Digital reservation for the CURRENT slide's vehicle: open the reservation
+  // FORM (no DB write yet) with the vehicle preselected; dates/locations are
+  // chosen there and the reservation is only created on final submit. This
+  // avoids "ghost" reservations when the customer abandons the form.
+  const handleReservar = () => {
     if (starting) return;
     setStarting(true);
-    try {
-      const res = await startWebReservation({ vehicleId: v.id });
-      if (res.ok) {
-        router.push(`/reservar/${res.token}`);
-        return;
-      }
-      router.push(detailHref);
-    } catch {
-      router.push(detailHref);
-    } finally {
-      setStarting(false);
-    }
+    router.push(`/reservar/nuevo?vehicleId=${encodeURIComponent(v.id)}`);
   };
 
   return (

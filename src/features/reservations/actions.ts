@@ -419,6 +419,85 @@ export async function submitReservation(token: string, input: unknown): Promise<
   return { ok: true, message: "Solicitud de reserva recibida." };
 }
 
+/* -------- Create + submit a PUBLIC reservation in ONE step (web flow) ------ */
+
+/**
+ * PUBLIC action for the web flow. Unlike the old startWebReservation (which
+ * persisted a "link_created" row as soon as the form opened, leaving "ghost"
+ * reservations when the customer abandoned), this action ONLY persists when
+ * the customer completes and submits the form.
+ *
+ * It creates a minimal reservation row and immediately runs the SAME
+ * submitReservation logic (validations, server-side recompute, emails, status
+ * → pending). If the submission is invalid, the just-created row is deleted so
+ * NO ghost reservation remains. On success it returns the token + code so the
+ * customer is sent to the permanent tracking portal (/reservar/<token>).
+ *
+ * Manual admin links are unaffected: they keep using createReservationLink +
+ * submitReservation(token, ...).
+ */
+export async function createAndSubmitWebReservation(
+  input: unknown
+): Promise<ActionResult & { token?: string; code?: string }> {
+  // Gate: digital flow must be enabled (same source of truth as elsewhere).
+  const settings = await prisma.reservationSettings.findFirst({ orderBy: { createdAt: "asc" } });
+  if (!settings?.digitalEnabled) {
+    return { ok: false, message: "La reserva digital no está disponible en este momento." };
+  }
+
+  // Validate the customer payload up front (same schema submitReservation uses)
+  // so we never create a row for an invalid submission.
+  const parsed = customerReservationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+  const d = parsed.data;
+
+  // The vehicleId travels on the payload (added by the public "create" form).
+  const vehicleId = typeof (input as { vehicleId?: unknown })?.vehicleId === "string"
+    ? (input as { vehicleId: string }).vehicleId
+    : "";
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+  if (!vehicle) {
+    return { ok: false, message: "El vehículo seleccionado no existe." };
+  }
+
+  // Create a minimal row (real vehicle price; days/fees/total are recomputed by
+  // submitReservation). source "web", status "link_created" (does not block).
+  const token = generateToken();
+  const code = generateCode();
+  try {
+    await prisma.reservation.create({
+      data: {
+        code,
+        token,
+        vehicleId: vehicle.id,
+        source: "web",
+        status: "link_created",
+        dailyPrice: vehicle.dailyPrice,
+      },
+    });
+  } catch (error) {
+    console.error("createAndSubmitWebReservation create failed:", error);
+    return { ok: false, message: "No se pudo iniciar la reserva." };
+  }
+
+  // Run the EXACT existing submit logic against the freshly created row.
+  const result = await submitReservation(token, input);
+
+  // If the submission was rejected, roll back the row so no ghost remains.
+  if (!result.ok) {
+    try {
+      await prisma.reservation.delete({ where: { token } });
+    } catch (error) {
+      console.error("rollback of unsubmitted web reservation failed:", error);
+    }
+    return result;
+  }
+
+  return { ...result, token, code };
+}
+
 /* ----------------------------- Update status ------------------------------ */
 
 export async function updateReservationStatus(

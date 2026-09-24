@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -24,6 +25,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import FlightTakeoffRoundedIcon from "@mui/icons-material/FlightTakeoffRounded";
 import {
   submitReservation,
+  createAndSubmitWebReservation,
   uploadPaymentProof,
   uploadFlightItinerary,
 } from "@/features/reservations/actions";
@@ -59,6 +61,14 @@ interface Props {
   paymentMethods: PaymentMethodsView;
   locations: LocationOption[];
   depositOptions: number[];
+  /**
+   * When true, this is the PUBLIC web flow rendered from /reservar/nuevo with
+   * NO persisted reservation yet. On submit it CREATES the reservation (one
+   * shot) and redirects to the permanent /reservar/<token> portal. When false
+   * (default), it updates the existing reservation identified by its token
+   * (manual admin links + correction flow).
+   */
+  createMode?: boolean;
 }
 
 const DEPOSIT_INFO =
@@ -79,7 +89,9 @@ export default function ReservationForm({
   paymentMethods,
   locations,
   depositOptions,
+  createMode = false,
 }: Props) {
+  const router = useRouter();
   // Correction mode: the reservation was sent, admin asked for a fix, and the
   // customer is editing again. Detected by the incoming status.
   const isCorrection = reservation.status === "needs_fix";
@@ -306,7 +318,7 @@ export default function ReservationForm({
     setSubmitting(true);
     setFormError(null);
     setFieldErrors({});
-    const res = await submitReservation(reservation.token, {
+    const payload = {
       ...values,
       depositChoice,
       paymentMethod: withDeposit ? values.paymentMethod || undefined : undefined,
@@ -316,7 +328,25 @@ export default function ReservationForm({
       hasReturnFlight: hasArrivalFlight && hasReturnFlight,
       // Mandatory reservation-policy acceptance (validated server-side).
       policyAccepted,
-    });
+    };
+
+    // Create mode (public web flow): persist ONLY now, creating the reservation
+    // in one shot, then go to the permanent tracking portal. Token mode:
+    // update the existing reservation (manual links + correction).
+    const res = createMode
+      ? await createAndSubmitWebReservation({ ...payload, vehicleId: reservation.vehicleId })
+      : await submitReservation(reservation.token, payload);
+
+    if (res.ok && createMode) {
+      const token = (res as { token?: string }).token;
+      if (token) {
+        // Redirect to the permanent portal so the customer sees the tracking
+        // view with their new code/link (same UX as a submitted reservation).
+        router.replace(`/reservar/${token}`);
+        return;
+      }
+    }
+
     setSubmitting(false);
     if (res.ok) {
       setDone(true);

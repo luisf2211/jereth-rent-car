@@ -13,7 +13,6 @@ import Button from "@mui/material/Button";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import type { Vehicle } from "@/types/vehicle";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
-import { startWebReservation } from "@/features/reservations/actions";
 import {
   categoryLabel,
   formatDailyPrice,
@@ -62,27 +61,14 @@ export default function VehicleCard({ vehicle, whatsappNumber, digitalEnabled = 
     router.push(detailHref);
   };
 
-  // Digital reservation: create the reservation for THIS vehicle and go
-  // straight to the existing /reservar/<token> flow (dates/locations are
-  // chosen there). Mirrors the vehicle-detail "Reservar" behavior. The server
-  // recomputes price/fees and re-checks the digital ON/OFF switch.
-  const handleReservar = async () => {
+  // Digital reservation: open the reservation FORM (no DB write yet) with THIS
+  // vehicle preselected; dates/locations are chosen in the form and the
+  // reservation is created only on final submit. Avoids "ghost" reservations
+  // when the customer abandons the form.
+  const handleReservar = () => {
     if (starting) return;
     setStarting(true);
-    try {
-      const res = await startWebReservation({ vehicleId: vehicle.id });
-      if (res.ok) {
-        router.push(`/reservar/${res.token}`);
-        return;
-      }
-      // Digital flow unavailable/failed: fall back to the detail page so the
-      // customer can still proceed (never a dead end).
-      router.push(detailHref);
-    } catch {
-      router.push(detailHref);
-    } finally {
-      setStarting(false);
-    }
+    router.push(`/reservar/nuevo?vehicleId=${encodeURIComponent(vehicle.id)}`);
   };
 
   return (
