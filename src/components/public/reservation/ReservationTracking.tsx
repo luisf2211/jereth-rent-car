@@ -16,54 +16,64 @@ import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import { RESERVATION_STATUS_LABELS, type ReservationStatus } from "@/lib/validations/reservation";
+import { type ReservationStatus } from "@/lib/validations/reservation";
 import type { ReservationFormData } from "@/features/reservations/data";
+import { getI18n } from "@/i18n/server";
+import type { TFunction } from "@/i18n/translate";
 import ReservationShareActions from "./ReservationShareActions";
 
 function money(n: number) {
   return `US$${n.toLocaleString("en-US")}`;
 }
 
-/** Customer-facing presentation for each status (no internal admin data). */
-const STATUS_VIEW: Record<
+/**
+ * Customer-facing presentation for each status. The visual attributes (color,
+ * icon) are static; the title/description come from the dictionary via the
+ * status.* keys, and the status chip label from status.label_*.
+ */
+const STATUS_META: Record<
   ReservationStatus,
-  { title: string; description: string; color: "info" | "warning" | "success" | "error"; icon: React.ReactNode }
+  { titleKey: string; descKey: string; labelKey: string; color: "info" | "warning" | "success" | "error"; icon: React.ReactNode }
 > = {
   link_created: {
-    title: "Reserva iniciada",
-    description: "Completa el formulario para enviar tu solicitud.",
+    titleKey: "status.link_created_title",
+    descKey: "status.link_created_desc",
+    labelKey: "status.label_link_created",
     color: "info",
     icon: <EditNoteRoundedIcon />,
   },
   pending: {
-    title: "Pendiente de verificación",
-    description:
-      "Hemos recibido tu solicitud. Nuestro equipo está revisando la información. Recibirás una respuesta dentro de un plazo de 0 a 24 horas.",
+    titleKey: "status.pending_title",
+    descKey: "status.pending_desc",
+    labelKey: "status.label_pending",
     color: "warning",
     icon: <HourglassTopRoundedIcon />,
   },
   confirmed: {
-    title: "Reserva confirmada",
-    description: "¡Tu reserva está confirmada! Te esperamos. Cualquier duda, contáctanos.",
+    titleKey: "status.confirmed_title",
+    descKey: "status.confirmed_desc",
+    labelKey: "status.label_confirmed",
     color: "success",
     icon: <CheckCircleRoundedIcon />,
   },
   needs_fix: {
-    title: "Requiere corrección",
-    description: "Necesitamos que revises algunos datos de tu reserva.",
+    titleKey: "status.needs_fix_title",
+    descKey: "status.needs_fix_desc",
+    labelKey: "status.label_needs_fix",
     color: "warning",
     icon: <EditNoteRoundedIcon />,
   },
   rejected: {
-    title: "Solicitud no aprobada",
-    description:
-      "Lamentablemente no pudimos aprobar esta solicitud. Puedes contactar a JERETH RENT CAR para más información.",
+    titleKey: "status.rejected_title",
+    descKey: "status.rejected_desc",
+    labelKey: "status.label_rejected",
     color: "error",
     icon: <BlockRoundedIcon />,
   },
   cancelled: {
-    title: "Reserva cancelada",
-    description: "Esta reserva ha sido cancelada. Si crees que es un error, contáctanos.",
+    titleKey: "status.cancelled_title",
+    descKey: "status.cancelled_desc",
+    labelKey: "status.label_cancelled",
     color: "error",
     icon: <CancelRoundedIcon />,
   },
@@ -88,8 +98,9 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
  * only customer-relevant info (no admin internals). The same URL renders this
  * and updates as the admin changes the status.
  */
-export default function ReservationTracking({ reservation: r }: { reservation: ReservationFormData }) {
-  const view = STATUS_VIEW[r.status];
+export default async function ReservationTracking({ reservation: r }: { reservation: ReservationFormData }) {
+  const { t } = await getI18n();
+  const meta = STATUS_META[r.status];
   const pickup = [r.pickupDate, r.pickupTime].filter(Boolean).join(" ");
   const dropoff = [r.dropoffDate, r.dropoffTime].filter(Boolean).join(" ");
 
@@ -101,13 +112,13 @@ export default function ReservationTracking({ reservation: r }: { reservation: R
       {/* Status banner */}
       <Card>
         <CardContent sx={{ textAlign: "center", py: { xs: 4, md: 5 } }}>
-          <Box sx={{ color: `${view.color}.main`, "& svg": { fontSize: 56 }, mb: 1 }}>{view.icon}</Box>
-          <Chip label={RESERVATION_STATUS_LABELS[r.status]} color={view.color} sx={{ mb: 2, fontWeight: 700 }} />
+          <Box sx={{ color: `${meta.color}.main`, "& svg": { fontSize: 56 }, mb: 1 }}>{meta.icon}</Box>
+          <Chip label={t(meta.labelKey)} color={meta.color} sx={{ mb: 2, fontWeight: 700 }} />
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-            {view.title}
+            {t(meta.titleKey)}
           </Typography>
           <Typography color="text.secondary" sx={{ maxWidth: 520, mx: "auto", lineHeight: 1.7 }}>
-            {view.description}
+            {t(meta.descKey)}
           </Typography>
 
           {/* Admin message (only if marked visible) */}
@@ -125,7 +136,7 @@ export default function ReservationTracking({ reservation: r }: { reservation: R
                 variant="contained"
                 startIcon={<EditRoundedIcon />}
               >
-                Corregir información
+                {t("tracking.correctInfo")}
               </Button>
             </Box>
           )}
@@ -141,7 +152,7 @@ export default function ReservationTracking({ reservation: r }: { reservation: R
                 color="success"
                 startIcon={<DownloadRoundedIcon />}
               >
-                Descargar confirmación PDF
+                {t("tracking.downloadPdf")}
               </Button>
             </Box>
           )}
@@ -159,7 +170,7 @@ export default function ReservationTracking({ reservation: r }: { reservation: R
             }}
           >
             <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-              Número de reserva
+              {t("tracking.reservationNumber")}
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "0.02em" }}>
               {r.code}
@@ -183,17 +194,17 @@ export default function ReservationTracking({ reservation: r }: { reservation: R
                 {r.vehicleTitle}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {money(r.dailyPrice)} / día
+                {money(r.dailyPrice)} {t("common.perDay")}
               </Typography>
             </Box>
           </Box>
 
           <Divider sx={{ mb: 1.5 }} />
 
-          <Row label="Recogida" value={pickup || "—"} />
-          <Row label="Devolución" value={dropoff || "—"} />
-          <Row label="Lugar de recogida" value={r.pickupLocation || "—"} />
-          <Row label="Lugar de devolución" value={r.dropoffLocation || "—"} />
+          <Row label={t("tracking.pickup")} value={pickup || "—"} />
+          <Row label={t("tracking.dropoff")} value={dropoff || "—"} />
+          <Row label={t("tracking.pickupLocation")} value={r.pickupLocation || "—"} />
+          <Row label={t("tracking.dropoffLocation")} value={r.dropoffLocation || "—"} />
         </CardContent>
       </Card>
 
@@ -201,22 +212,27 @@ export default function ReservationTracking({ reservation: r }: { reservation: R
       <Card>
         <CardContent>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-            Resumen de pago
+            {t("tracking.paymentSummary")}
           </Typography>
-          <Row label={`Renta (${r.billedDays} ${r.billedDays === 1 ? "día" : "días"})`} value={money(r.subtotalRent)} />
-          {r.pickupFee > 0 && <Row label="Cargo de entrega (recogida)" value={money(r.pickupFee)} />}
-          {r.dropoffFee > 0 && <Row label="Cargo de entrega (devolución)" value={money(r.dropoffFee)} />}
+          <Row
+            label={t("tracking.rentDays", {
+              n: r.billedDays,
+              unit: r.billedDays === 1 ? t("tracking.dayUnitOne") : t("tracking.dayUnitMany"),
+            })}
+            value={money(r.subtotalRent)}
+          />
+          {r.pickupFee > 0 && <Row label={t("booking.pickupFee")} value={money(r.pickupFee)} />}
+          {r.dropoffFee > 0 && <Row label={t("booking.dropoffFee")} value={money(r.dropoffFee)} />}
           <Divider sx={{ my: 1 }} />
-          <Row label="Total" value={money(r.estimatedTotal)} strong />
-          <Row label="Monto reservado" value={money(r.depositPaid)} />
-          <Row label="Saldo pendiente" value={money(r.balanceDue)} strong />
+          <Row label={t("tracking.total")} value={money(r.estimatedTotal)} strong />
+          <Row label={t("tracking.reservedAmount")} value={money(r.depositPaid)} />
+          <Row label={t("tracking.balanceDue")} value={money(r.balanceDue)} strong />
         </CardContent>
       </Card>
 
       {r.status === "pending" && (
         <Alert severity="info">
-          Guarda este enlace: puedes volver a abrirlo en cualquier momento para consultar el estado
-          de tu reserva.
+          {t("tracking.saveLinkNote")}
         </Alert>
       )}
     </Stack>

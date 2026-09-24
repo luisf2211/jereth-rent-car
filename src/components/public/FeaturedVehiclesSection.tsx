@@ -8,6 +8,7 @@ import VehiclesCarousel from "@/components/public/VehiclesCarousel";
 import { getVehicles } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
 import { getReservationSettings } from "@/features/reservations/data";
+import { getI18n } from "@/i18n/server";
 
 /**
  * Featured vehicles. Editorial header row (title left, "ver todos" right on
@@ -15,10 +16,11 @@ import { getReservationSettings } from "@/features/reservations/data";
  * Renders nothing if there are no published vehicles.
  */
 export default async function FeaturedVehiclesSection() {
-  const [vehicles, { whatsappNumber }, reservationSettings] = await Promise.all([
+  const [vehicles, { whatsappNumber }, reservationSettings, { t }] = await Promise.all([
     getVehicles(),
     getCompanySettings(),
     getReservationSettings(),
+    getI18n(),
   ]);
 
   if (vehicles.length === 0) return null;
@@ -38,10 +40,10 @@ export default async function FeaturedVehiclesSection() {
         >
           <Box>
             <Typography variant="h3" component="h2" sx={{ mb: 1 }}>
-              Elige tu próximo viaje
+              {t("featured.title")}
             </Typography>
             <Typography variant="subtitle1" color="text.secondary">
-              Una selección de nuestros vehículos más solicitados.
+              {t("featured.subtitle")}
             </Typography>
           </Box>
           <Button
@@ -50,7 +52,7 @@ export default async function FeaturedVehiclesSection() {
             endIcon={<ArrowForwardRoundedIcon />}
             sx={{ alignSelf: { xs: "flex-start", sm: "flex-end" } }}
           >
-            Ver toda la flota
+            {t("featured.seeAll")}
           </Button>
         </Box>
 

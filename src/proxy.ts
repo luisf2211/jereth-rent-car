@@ -1,6 +1,27 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import NextAuth from "next-auth";
 import { authConfig } from "@/auth.config";
+import {
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE,
+  resolveLocaleFromAcceptLanguage,
+} from "@/i18n/config";
+
+/**
+ * On first visit, stamp the NEXT_LOCALE cookie from the browser's
+ * Accept-Language so server components render in the right language. A manual
+ * ES/EN selection in the header overwrites this cookie and wins from then on,
+ * so we never override an existing cookie here.
+ */
+function ensureLocaleCookie(req: NextRequest, res: NextResponse) {
+  if (req.cookies.get(LOCALE_COOKIE)) return; // already set / manual choice — leave it.
+  const locale = resolveLocaleFromAcceptLanguage(req.headers.get("accept-language"));
+  res.cookies.set(LOCALE_COOKIE, locale, {
+    path: "/",
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: "lax",
+  });
+}
 
 /**
  * Route protection + canonical host redirect (Next.js 16 "proxy" convention,
@@ -49,7 +70,10 @@ export default auth((req) => {
     return NextResponse.redirect(adminUrl);
   }
 
-  return NextResponse.next();
+  // Normal pass-through: make sure the locale cookie exists for the public site.
+  const res = NextResponse.next();
+  ensureLocaleCookie(req, res);
+  return res;
 });
 
 export const config = {

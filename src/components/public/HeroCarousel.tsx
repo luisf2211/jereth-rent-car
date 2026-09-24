@@ -15,13 +15,14 @@ import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import type { Vehicle } from "@/types/vehicle";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { formatDailyPrice } from "@/features/vehicles/format";
+import { useI18n } from "@/i18n/LanguageProvider";
 import {
-  categoryLabel,
-  formatDailyPrice,
-  transmissionLabel,
-  vehicleTitle,
-  vehicleWhatsAppMessage,
-} from "@/features/vehicles/format";
+  categoryLabelI18n,
+  transmissionLabelI18n,
+  vehicleTitleI18n,
+  vehicleWhatsAppMessageI18n,
+} from "@/i18n/vehicle-labels";
 import { getFit, fitToStyle } from "@/lib/image-fit";
 import { vehiclePath } from "@/features/vehicles/vehicle-url";
 
@@ -40,6 +41,7 @@ interface Props {
  */
 export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled = false }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
   const [index, setIndex] = React.useState(0);
   const [paused, setPaused] = React.useState(false);
   const [starting, setStarting] = React.useState(false);
@@ -60,7 +62,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
 
   const v = vehicles[index];
   const href = whatsappNumber
-    ? buildWhatsAppUrl(whatsappNumber, vehicleWhatsAppMessage(v))
+    ? buildWhatsAppUrl(whatsappNumber, vehicleWhatsAppMessageI18n(t, v))
     : undefined;
   const carouselImage = v.carouselImageUrl || v.imageUrl;
   // Use "carousel" framing when a dedicated carousel photo exists, otherwise
@@ -97,7 +99,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
         <Box
           component={NextLink}
           href={detailHref}
-          aria-label={`Ver ${vehicleTitle(v)}`}
+          aria-label={t("hero.viewVehicle", { title: vehicleTitleI18n(t, v) })}
           sx={{
             display: "block",
             aspectRatio: { xs: "16 / 10", md: "16 / 9" },
@@ -107,7 +109,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
           <Image
             key={v.id}
             src={carouselImage}
-            alt={vehicleTitle(v)}
+            alt={vehicleTitleI18n(t, v)}
             fill
             // The hero is above the fold and is the likely LCP element, so the
             // FIRST slide is prioritized; the rest load on demand.
@@ -121,7 +123,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
         {count > 1 && (
           <>
             <IconButton
-              aria-label="Anterior"
+              aria-label={t("hero.prev")}
               onClick={() => go(-1)}
               sx={{
                 position: "absolute",
@@ -135,7 +137,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
               <ChevronLeftRoundedIcon />
             </IconButton>
             <IconButton
-              aria-label="Siguiente"
+              aria-label={t("hero.next")}
               onClick={() => go(1)}
               sx={{
                 position: "absolute",
@@ -174,7 +176,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
             variant="overline"
             sx={{ color: "text.secondary", letterSpacing: "0.14em", lineHeight: 1.6 }}
           >
-            {categoryLabel(v.category)}
+            {categoryLabelI18n(t, v.category)}
           </Typography>
           <Typography
             sx={{
@@ -185,17 +187,20 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
               color: "text.primary",
             }}
           >
-            {vehicleTitle(v)}
+            {vehicleTitleI18n(t, v)}
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            {v.passengers} pasajeros · {transmissionLabel(v.transmission)}
+            {t("hero.specsLine", {
+              passengers: v.passengers,
+              transmission: transmissionLabelI18n(t, v.transmission),
+            })}
           </Typography>
           <Typography variant="body2" sx={{ color: "text.primary", mt: 0.25 }}>
-            desde{" "}
+            {t("hero.fromLabel")}{" "}
             <Box component="span" sx={{ fontWeight: 800 }}>
               {formatDailyPrice(v.dailyPrice)}
             </Box>{" "}
-            / día
+            {t("hero.perDay")}
           </Typography>
         </Box>
 
@@ -212,11 +217,11 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
             variant={digitalEnabled ? "outlined" : "contained"}
             startIcon={<WhatsAppIcon />}
             data-wa-source="hero"
-            data-wa-context={vehicleTitle(v)}
+            data-wa-context={vehicleTitleI18n(t, v)}
             disabled={!href}
             sx={{ flexShrink: 0 }}
           >
-            Rentar
+            {t("hero.rent")}
           </Button>
           {digitalEnabled && (
             <Button
@@ -226,7 +231,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
               disabled={starting}
               sx={{ flexShrink: 0 }}
             >
-              {starting ? "Iniciando…" : "Reservar"}
+              {starting ? t("vehicle.starting") : t("vehicle.reserve")}
             </Button>
           )}
         </Stack>
@@ -240,7 +245,7 @@ export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled 
               key={veh.id}
               component="button"
               type="button"
-              aria-label={`Ver ${vehicleTitle(veh)}`}
+              aria-label={t("hero.viewVehicle", { title: vehicleTitleI18n(t, veh) })}
               onClick={() => setIndex(i)}
               sx={{
                 p: 0,

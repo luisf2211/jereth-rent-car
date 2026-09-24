@@ -32,12 +32,13 @@ import {
 import { rentalDays, meetsMinimumRental, MIN_RENTAL_DAYS } from "@/utils/rental-days";
 import {
   PAYMENT_METHODS,
-  PAYMENT_METHOD_LABELS,
   type PaymentMethod,
 } from "@/lib/validations/reservation";
 import { COUNTRIES } from "@/lib/countries";
 import { AIRLINES } from "@/lib/airlines";
 import type { ReservationFormData } from "@/features/reservations/data";
+import { useI18n } from "@/i18n/LanguageProvider";
+import type { TFunction } from "@/i18n/translate";
 
 interface PaymentMethodsView {
   zelle: { name: string; email: string; phone: string } | null;
@@ -71,17 +72,61 @@ interface Props {
   createMode?: boolean;
 }
 
-const DEPOSIT_INFO =
-  "El depósito no es obligatorio para enviar tu solicitud. Realizar un depósito permite asegurar tu reserva. En caso de que el vehículo reservado no esté disponible, JERETH RENT CAR podrá proporcionar un vehículo similar o de categoría superior, sujeto a disponibilidad y manteniendo las condiciones acordadas.";
-
 function money(n: number) {
   return `US$${n.toLocaleString("en-US")}`;
 }
 
 /** Label for a location option, showing the fee when it applies. */
-function locationLabel(l: LocationOption): string {
-  if (!l.hasFee) return `${l.name} (gratis)`;
-  return l.deliveryFee > 0 ? `${l.name} (+${money(l.deliveryFee)})` : `${l.name} (cargo adicional)`;
+function locationLabel(t: TFunction, l: LocationOption): string {
+  if (!l.hasFee) return t("booking.locationFree", { name: l.name });
+  return l.deliveryFee > 0
+    ? t("booking.locationPaid", { name: l.name, amount: money(l.deliveryFee) })
+    : t("booking.locationExtra", { name: l.name });
+}
+
+/**
+ * Map a server field-error key to a localized message. The server validates in
+ * Spanish (Zod); for the customer-facing form we re-map by field name to the
+ * dictionary so the message follows the active locale. Fields without a
+ * specific key fall back to the server message.
+ */
+const FIELD_ERROR_KEY: Record<string, string> = {
+  customerName: "validation.nameRequired",
+  email: "validation.emailInvalid",
+  phone: "validation.phoneRequired",
+  country: "validation.countryRequired",
+  idOrPassport: "validation.idRequired",
+  driverLicense: "validation.licenseRequired",
+  pickupDate: "validation.pickupDateRequired",
+  pickupTime: "validation.pickupTimeRequired",
+  dropoffDate: "validation.dropoffDateRequired",
+  dropoffTime: "validation.dropoffTimeRequired",
+  policyAccepted: "validation.policyRequired",
+  paymentMethod: "validation.paymentMethodRequired",
+  paymentProofUrl: "validation.proofRequired",
+};
+
+function localizeErrors(t: TFunction, errors: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [field, serverMsg] of Object.entries(errors)) {
+    const key = FIELD_ERROR_KEY[field];
+    out[field] = key ? t(key) : serverMsg;
+  }
+  return out;
+}
+
+/** Localized label for a payment method. */
+function paymentMethodLabel(t: TFunction, m: PaymentMethod): string {
+  switch (m) {
+    case "zelle":
+      return t("reservationForm.paymentMethodZelle");
+    case "paypal":
+      return t("reservationForm.paymentMethodPaypal");
+    case "cashapp":
+      return t("reservationForm.paymentMethodCashapp");
+    default:
+      return t("reservationForm.paymentMethodOther");
+  }
 }
 
 export default function ReservationForm({
@@ -92,6 +137,7 @@ export default function ReservationForm({
   createMode = false,
 }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
   // Correction mode: the reservation was sent, admin asked for a fix, and the
   // customer is editing again. Detected by the incoming status.
   const isCorrection = reservation.status === "needs_fix";
@@ -352,9 +398,13 @@ export default function ReservationForm({
       setDone(true);
       return;
     }
-    const errors = res.fieldErrors ?? {};
+    const rawErrors = res.fieldErrors ?? {};
+    // Localize the customer-facing field messages to the active locale.
+    const errors = localizeErrors(t, rawErrors);
     setFieldErrors(errors);
-    setFormError(res.message);
+    // The top-level form error is shown as a localized generic message so the
+    // customer never sees a raw Spanish server string in English mode.
+    setFormError(res.message ? t("reservationForm.genericError") : null);
     // Scroll to + focus the first invalid field so the customer sees exactly
     // what to fix (works on mobile and desktop).
     if (Object.keys(errors).length > 0) focusFirstError(errors);
@@ -365,18 +415,20 @@ export default function ReservationForm({
       <Card>
         <CardContent sx={{ textAlign: "center", py: { xs: 5, md: 6 }, px: { xs: 3, md: 5 } }}>
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 2 }}>
-            ¡Solicitud de reserva recibida!
+            {t("reservationForm.receivedTitle")}
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.7 }}>
-            Hemos recibido correctamente tus datos{withDeposit ? " y tu comprobante de pago" : ""}.
+            {t("reservationForm.receivedBody", {
+              withProof: withDeposit ? t("reservationForm.receivedProof") : "",
+            })}
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.7 }}>
-            Tu reserva se encuentra <strong>pendiente de verificación</strong>. Nuestro equipo
-            revisará la información{withDeposit ? " y el pago enviado" : ""}.
+            {t("reservationForm.receivedPending", {
+              withPayment: withDeposit ? t("reservationForm.receivedPayment") : "",
+            })}
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 3, lineHeight: 1.7 }}>
-            Recibirás una respuesta dentro de un plazo de 0 a 24 horas. Puedes volver a abrir este
-            mismo enlace en cualquier momento para consultar el estado de tu reserva.
+            {t("reservationForm.receivedTimeframe")}
           </Typography>
           <Box
             sx={{
@@ -390,7 +442,7 @@ export default function ReservationForm({
             }}
           >
             <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-              Número de reserva
+              {t("reservationForm.reservationNumber")}
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "0.02em" }}>
               {reservation.code}
@@ -398,7 +450,7 @@ export default function ReservationForm({
           </Box>
           <Box sx={{ mt: 3 }}>
             <Button variant="contained" onClick={() => window.location.reload()}>
-              Ver estado de mi reserva
+              {t("reservationForm.viewStatus")}
             </Button>
           </Box>
         </CardContent>
@@ -419,10 +471,10 @@ export default function ReservationForm({
 
       {isCorrection && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          <Typography sx={{ fontWeight: 700, mb: 0.5 }}>Corrige tu información</Typography>
+          <Typography sx={{ fontWeight: 700, mb: 0.5 }}>{t("reservationForm.fixTitle")}</Typography>
           {reservation.statusMessageVisible && reservation.statusMessage
             ? reservation.statusMessage
-            : "Revisa y actualiza los datos de tu reserva, luego vuelve a enviarla."}
+            : t("reservationForm.fixDefault")}
         </Alert>
       )}
 
@@ -438,7 +490,7 @@ export default function ReservationForm({
                 {reservation.vehicleTitle}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {money(reservation.dailyPrice)} / día
+                {money(reservation.dailyPrice)} {t("common.perDay")}
               </Typography>
             </Box>
           </CardContent>
@@ -448,19 +500,19 @@ export default function ReservationForm({
         <Card>
           <CardContent>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-              Tus datos
+              {t("reservationForm.sectionYourData")}
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Nombre completo" value={values.customerName} ref={registerField("customerName")}
+                <TextField fullWidth label={t("reservationForm.fullName")} value={values.customerName} ref={registerField("customerName")}
                   onChange={(e) => setField("customerName", e.target.value)} error={err("customerName")} helperText={help("customerName")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth type="email" label="Correo electrónico" value={values.email} ref={registerField("email")}
+                <TextField fullWidth type="email" label={t("reservationForm.email")} value={values.email} ref={registerField("email")}
                   onChange={(e) => setField("email", e.target.value)} error={err("email")} helperText={help("email")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="WhatsApp / Teléfono" value={values.phone} ref={registerField("phone")}
+                <TextField fullWidth label={t("reservationForm.phone")} value={values.phone} ref={registerField("phone")}
                   onChange={(e) => setField("phone", e.target.value)} error={err("phone")} helperText={help("phone")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -473,7 +525,7 @@ export default function ReservationForm({
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="País"
+                      label={t("reservationForm.country")}
                       ref={registerField("country")}
                       error={err("country")}
                       helperText={help("country")}
@@ -482,11 +534,11 @@ export default function ReservationForm({
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Identificación o pasaporte" value={values.idOrPassport} ref={registerField("idOrPassport")}
+                <TextField fullWidth label={t("reservationForm.idOrPassport")} value={values.idOrPassport} ref={registerField("idOrPassport")}
                   onChange={(e) => setField("idOrPassport", e.target.value)} error={err("idOrPassport")} helperText={help("idOrPassport")} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Licencia de conducir" value={values.driverLicense} ref={registerField("driverLicense")}
+                <TextField fullWidth label={t("reservationForm.driverLicense")} value={values.driverLicense} ref={registerField("driverLicense")}
                   onChange={(e) => setField("driverLicense", e.target.value)} error={err("driverLicense")} helperText={help("driverLicense")} />
               </Grid>
             </Grid>
@@ -497,26 +549,26 @@ export default function ReservationForm({
         <Card>
           <CardContent>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-              Detalles de la renta
+              {t("reservationForm.sectionRentalDetails")}
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="date" label="Fecha de recogida" value={values.pickupDate} ref={registerField("pickupDate")}
+                <TextField fullWidth type="date" label={t("booking.pickupDate")} value={values.pickupDate} ref={registerField("pickupDate")}
                   onChange={(e) => setField("pickupDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("pickupDate")} helperText={help("pickupDate")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="time" label="Hora de recogida" value={values.pickupTime} ref={registerField("pickupTime")}
+                <TextField fullWidth type="time" label={t("booking.pickupTime")} value={values.pickupTime} ref={registerField("pickupTime")}
                   onChange={(e) => setField("pickupTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("pickupTime")} helperText={help("pickupTime")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="date" label="Fecha de devolución" value={values.dropoffDate} ref={registerField("dropoffDate")}
+                <TextField fullWidth type="date" label={t("booking.dropoffDate")} value={values.dropoffDate} ref={registerField("dropoffDate")}
                   onChange={(e) => setField("dropoffDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("dropoffDate")} helperText={help("dropoffDate")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="time" label="Hora de devolución" value={values.dropoffTime} ref={registerField("dropoffTime")}
+                <TextField fullWidth type="time" label={t("booking.dropoffTime")} value={values.dropoffTime} ref={registerField("dropoffTime")}
                   onChange={(e) => setField("dropoffTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
                   error={err("dropoffTime")} helperText={help("dropoffTime")} />
               </Grid>
@@ -525,14 +577,14 @@ export default function ReservationForm({
                 <TextField
                   select
                   fullWidth
-                  label="Lugar de recogida"
+                  label={t("booking.pickupLocation")}
                   value={values.pickupLocationId}
                   onChange={(e) => setField("pickupLocationId", e.target.value)}
                 >
-                  <MenuItem value="">Sin especificar</MenuItem>
+                  <MenuItem value="">{t("reservationForm.unspecified")}</MenuItem>
                   {locations.map((l) => (
                     <MenuItem key={l.id} value={l.id}>
-                      {locationLabel(l)}
+                      {locationLabel(t, l)}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -541,14 +593,14 @@ export default function ReservationForm({
                 <TextField
                   select
                   fullWidth
-                  label="Lugar de devolución"
+                  label={t("booking.dropoffLocation")}
                   value={values.dropoffLocationId}
                   onChange={(e) => setField("dropoffLocationId", e.target.value)}
                 >
-                  <MenuItem value="">Sin especificar</MenuItem>
+                  <MenuItem value="">{t("reservationForm.unspecified")}</MenuItem>
                   {locations.map((l) => (
                     <MenuItem key={l.id} value={l.id}>
-                      {locationLabel(l)}
+                      {locationLabel(t, l)}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -557,8 +609,7 @@ export default function ReservationForm({
 
             {belowMinimum && (
               <Alert severity="warning" sx={{ mt: 2 }}>
-                La renta mínima permitida es de {MIN_RENTAL_DAYS} días. Por favor, selecciona una fecha
-                de devolución que complete al menos {MIN_RENTAL_DAYS} días de renta.
+                {t("booking.minimumRentalFull", { days: MIN_RENTAL_DAYS })}
               </Alert>
             )}
           </CardContent>
@@ -570,11 +621,11 @@ export default function ReservationForm({
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
               <FlightTakeoffRoundedIcon color="action" />
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Información de vuelo
+                {t("reservationForm.sectionFlight")}
               </Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              ¿Llegas en avión?
+              {t("reservationForm.arrivesByPlane")}
             </Typography>
             <ToggleButtonGroup
               value={hasArrivalFlight ? "si" : "no"}
@@ -586,8 +637,8 @@ export default function ReservationForm({
               }}
               sx={{ gap: 1, "& .MuiToggleButtonGroup-grouped": { borderRadius: "8px !important", border: "1px solid !important", borderColor: "divider !important" } }}
             >
-              <ToggleButton value="no" sx={{ px: 3 }}>No</ToggleButton>
-              <ToggleButton value="si" sx={{ px: 3 }}>Sí</ToggleButton>
+              <ToggleButton value="no" sx={{ px: 3 }}>{t("common.no")}</ToggleButton>
+              <ToggleButton value="si" sx={{ px: 3 }}>{t("common.yes")}</ToggleButton>
             </ToggleButtonGroup>
 
             {hasArrivalFlight && (
@@ -600,14 +651,14 @@ export default function ReservationForm({
                       onChange={(_, v) => setField("arrivalAirline", v ?? "")}
                       autoHighlight
                       fullWidth
-                      renderInput={(params) => <TextField {...params} label="Aerolínea" />}
+                      renderInput={(params) => <TextField {...params} label={t("reservationForm.airline")} />}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       fullWidth
-                      label="Número de vuelo"
-                      placeholder="Ej.: AA 987, B6 244"
+                      label={t("reservationForm.flightNumber")}
+                      placeholder={t("reservationForm.flightNumberPlaceholderArrival")}
                       value={values.arrivalFlightNumber}
                       onChange={(e) => setField("arrivalFlightNumber", e.target.value)}
                     />
@@ -616,10 +667,10 @@ export default function ReservationForm({
                     {arrivalAirportLocked ? (
                       <TextField
                         fullWidth
-                        label="Aeropuerto de llegada"
+                        label={t("reservationForm.arrivalAirport")}
                         value={values.arrivalAirport || pickupLoc?.name || ""}
                         slotProps={{ input: { readOnly: true } }}
-                        helperText="Precargado desde tu lugar de recogida."
+                        helperText={t("reservationForm.prefilledFromPickup")}
                       />
                     ) : (
                       <Autocomplete
@@ -628,7 +679,7 @@ export default function ReservationForm({
                         value={values.arrivalAirport || ""}
                         onInputChange={(_, v) => setField("arrivalAirport", v ?? "")}
                         fullWidth
-                        renderInput={(params) => <TextField {...params} label="Aeropuerto de llegada" />}
+                        renderInput={(params) => <TextField {...params} label={t("reservationForm.arrivalAirport")} />}
                       />
                     )}
                     {pickupIsAirport && (
@@ -647,26 +698,26 @@ export default function ReservationForm({
                           }
                         }}
                       >
-                        {arrivalAirportLocked ? "Modificar datos de vuelo" : "Usar aeropuerto de recogida"}
+                        {arrivalAirportLocked ? t("reservationForm.modifyFlight") : t("reservationForm.usePickupAirport")}
                       </Button>
                     )}
                   </Grid>
                   <Grid size={{ xs: 6, sm: 3 }}>
-                    <TextField fullWidth type="date" label="Fecha de llegada" value={values.arrivalDate}
+                    <TextField fullWidth type="date" label={t("reservationForm.arrivalDate")} value={values.arrivalDate}
                       onChange={(e) => setField("arrivalDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
                   </Grid>
                   <Grid size={{ xs: 6, sm: 3 }}>
-                    <TextField fullWidth type="time" label="Hora estimada" value={values.arrivalTime}
+                    <TextField fullWidth type="time" label={t("reservationForm.estimatedTime")} value={values.arrivalTime}
                       onChange={(e) => setField("arrivalTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
                   </Grid>
                 </Grid>
                 <Box sx={{ mt: 2 }}>
                   <input ref={arrivalItinRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden onChange={(e) => handleItinerary("arrival", e)} />
                   <Button variant="outlined" color="secondary" size="small" onClick={() => arrivalItinRef.current?.click()} disabled={uploadingItin === "arrival"}>
-                    {uploadingItin === "arrival" ? "Subiendo..." : values.arrivalItineraryUrl ? "Itinerario cargado ✓" : "Adjuntar itinerario (opcional)"}
+                    {uploadingItin === "arrival" ? t("reservationForm.uploading") : values.arrivalItineraryUrl ? t("reservationForm.itineraryLoaded") : t("reservationForm.attachItinerary")}
                   </Button>
                   <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                    Imagen, captura o PDF. Opcional.
+                    {t("reservationForm.itineraryHelp")}
                   </Typography>
                 </Box>
 
@@ -682,8 +733,8 @@ export default function ReservationForm({
                     size="small"
                     sx={{ gap: 1, "& .MuiToggleButtonGroup-grouped": { borderRadius: "8px !important", border: "1px solid !important", borderColor: "divider !important" } }}
                   >
-                    <ToggleButton value="no" sx={{ px: 2 }}>Sin vuelo de regreso</ToggleButton>
-                    <ToggleButton value="si" sx={{ px: 2 }}>Agregar información de vuelo de regreso</ToggleButton>
+                    <ToggleButton value="no" sx={{ px: 2 }}>{t("reservationForm.noReturnFlight")}</ToggleButton>
+                    <ToggleButton value="si" sx={{ px: 2 }}>{t("reservationForm.addReturnFlight")}</ToggleButton>
                   </ToggleButtonGroup>
                 </Box>
 
@@ -697,14 +748,14 @@ export default function ReservationForm({
                           onChange={(_, v) => setField("returnAirline", v ?? "")}
                           autoHighlight
                           fullWidth
-                          renderInput={(params) => <TextField {...params} label="Aerolínea (regreso)" />}
+                          renderInput={(params) => <TextField {...params} label={t("reservationForm.airlineReturn")} />}
                         />
                       </Grid>
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           fullWidth
-                          label="Número de vuelo (regreso)"
-                          placeholder="Ej.: UA 1471"
+                          label={t("reservationForm.flightNumberReturn")}
+                          placeholder={t("reservationForm.flightNumberPlaceholderReturn")}
                           value={values.returnFlightNumber}
                           onChange={(e) => setField("returnFlightNumber", e.target.value)}
                         />
@@ -713,10 +764,10 @@ export default function ReservationForm({
                         {returnAirportLocked ? (
                           <TextField
                             fullWidth
-                            label="Aeropuerto de salida"
+                            label={t("reservationForm.departureAirport")}
                             value={values.returnAirport || dropoffLoc?.name || ""}
                             slotProps={{ input: { readOnly: true } }}
-                            helperText="Precargado desde tu lugar de devolución."
+                            helperText={t("reservationForm.prefilledFromDropoff")}
                           />
                         ) : (
                           <Autocomplete
@@ -725,7 +776,7 @@ export default function ReservationForm({
                             value={values.returnAirport || ""}
                             onInputChange={(_, v) => setField("returnAirport", v ?? "")}
                             fullWidth
-                            renderInput={(params) => <TextField {...params} label="Aeropuerto de salida" />}
+                            renderInput={(params) => <TextField {...params} label={t("reservationForm.departureAirport")} />}
                           />
                         )}
                         {dropoffIsAirport && (
@@ -742,23 +793,23 @@ export default function ReservationForm({
                               }
                             }}
                           >
-                            {returnAirportLocked ? "Modificar datos de vuelo" : "Usar aeropuerto de devolución"}
+                            {returnAirportLocked ? t("reservationForm.modifyFlight") : t("reservationForm.useDropoffAirport")}
                           </Button>
                         )}
                       </Grid>
                       <Grid size={{ xs: 6, sm: 3 }}>
-                        <TextField fullWidth type="date" label="Fecha" value={values.returnDate}
+                        <TextField fullWidth type="date" label={t("reservationForm.date")} value={values.returnDate}
                           onChange={(e) => setField("returnDate", e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
                       </Grid>
                       <Grid size={{ xs: 6, sm: 3 }}>
-                        <TextField fullWidth type="time" label="Hora" value={values.returnTime}
+                        <TextField fullWidth type="time" label={t("reservationForm.time")} value={values.returnTime}
                           onChange={(e) => setField("returnTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
                       </Grid>
                     </Grid>
                     <Box sx={{ mt: 2 }}>
                       <input ref={returnItinRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden onChange={(e) => handleItinerary("return", e)} />
                       <Button variant="outlined" color="secondary" size="small" onClick={() => returnItinRef.current?.click()} disabled={uploadingItin === "return"}>
-                        {uploadingItin === "return" ? "Subiendo..." : values.returnItineraryUrl ? "Itinerario cargado ✓" : "Adjuntar itinerario de regreso (opcional)"}
+                        {uploadingItin === "return" ? t("reservationForm.uploading") : values.returnItineraryUrl ? t("reservationForm.itineraryLoaded") : t("reservationForm.attachReturnItinerary")}
                       </Button>
                     </Box>
                   </>
@@ -772,7 +823,7 @@ export default function ReservationForm({
         <Card>
           <CardContent>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-              ¿Tienes alguna solicitud especial?
+              {t("reservationForm.specialRequestTitle")}
             </Typography>
             <ToggleButtonGroup
               value={hasSpecialRequest ? "si" : "no"}
@@ -785,23 +836,23 @@ export default function ReservationForm({
               }}
               sx={{ mt: 1, gap: 1, "& .MuiToggleButtonGroup-grouped": { borderRadius: "8px !important", border: "1px solid !important", borderColor: "divider !important" } }}
             >
-              <ToggleButton value="no" sx={{ px: 3 }}>No</ToggleButton>
-              <ToggleButton value="si" sx={{ px: 3 }}>Sí</ToggleButton>
+              <ToggleButton value="no" sx={{ px: 3 }}>{t("common.no")}</ToggleButton>
+              <ToggleButton value="si" sx={{ px: 3 }}>{t("common.yes")}</ToggleButton>
             </ToggleButtonGroup>
 
             {hasSpecialRequest && (
               <Box sx={{ mt: 2 }}>
                 <TextField
                   fullWidth
-                  label="Cuéntanos cómo podemos ayudarte"
+                  label={t("reservationForm.specialRequestLabel")}
                   value={values.specialRequest}
                   onChange={(e) => setField("specialRequest", e.target.value)}
                   multiline
                   minRows={3}
-                  placeholder="Ej.: viajo con un niño, evitar ambientadores, etc."
+                  placeholder={t("reservationForm.specialRequestPlaceholder")}
                 />
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
-                  Las solicitudes especiales están sujetas a disponibilidad y confirmación.
+                  {t("reservationForm.specialRequestNote")}
                 </Typography>
               </Box>
             )}
@@ -813,16 +864,16 @@ export default function ReservationForm({
           <CardContent>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Depósito para asegurar tu reserva
+                {t("reservationForm.depositTitle")}
               </Typography>
-              <Tooltip title={DEPOSIT_INFO} enterTouchDelay={0} leaveTouchDelay={6000} arrow>
-                <IconButton size="small" aria-label="Información sobre el depósito">
+              <Tooltip title={t("reservationForm.depositInfo")} enterTouchDelay={0} leaveTouchDelay={6000} arrow>
+                <IconButton size="small" aria-label={t("reservationForm.depositInfoAria")}>
                   <InfoOutlinedIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              El depósito no es obligatorio. Puedes continuar sin depósito y coordinar el pago después.
+              {t("reservationForm.depositIntro")}
             </Typography>
 
             <ToggleButtonGroup
@@ -835,11 +886,11 @@ export default function ReservationForm({
             >
               {depositOptions.map((amount) => (
                 <ToggleButton key={amount} value={amount} sx={{ px: 2.5 }}>
-                  Reservar con {money(amount)}
+                  {t("reservationForm.reserveWith", { amount: money(amount) })}
                 </ToggleButton>
               ))}
               <ToggleButton value={0} sx={{ px: 2.5 }}>
-                Continuar sin depósito
+                {t("reservationForm.continueWithoutDeposit")}
               </ToggleButton>
             </ToggleButtonGroup>
           </CardContent>
@@ -850,7 +901,7 @@ export default function ReservationForm({
           <Card>
             <CardContent>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-                Pago del depósito ({money(depositChoice)})
+                {t("reservationForm.paymentTitle", { amount: money(depositChoice) })}
               </Typography>
 
               {paymentMethods.instructions && (
@@ -864,7 +915,7 @@ export default function ReservationForm({
                   <TextField
                     select
                     fullWidth
-                    label="Método de pago"
+                    label={t("reservationForm.paymentMethod")}
                     value={values.paymentMethod}
                     ref={registerField("paymentMethod")}
                     onChange={(e) => setField("paymentMethod", e.target.value)}
@@ -873,7 +924,7 @@ export default function ReservationForm({
                   >
                     {availableMethods.map((m) => (
                       <MenuItem key={m} value={m}>
-                        {PAYMENT_METHOD_LABELS[m]}
+                        {paymentMethodLabel(t, m)}
                       </MenuItem>
                     ))}
                   </TextField>
@@ -902,7 +953,7 @@ export default function ReservationForm({
               <Box sx={{ mt: 2 }} ref={registerField("paymentProofUrl")}>
                 <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleFile} />
                 <Button variant="outlined" color="secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                  {uploading ? "Subiendo..." : values.paymentProofUrl ? "Comprobante cargado ✓" : "Subir comprobante de pago"}
+                  {uploading ? t("reservationForm.uploading") : values.paymentProofUrl ? t("reservationForm.proofLoaded") : t("reservationForm.uploadProof")}
                 </Button>
                 {err("paymentProofUrl") && (
                   <Typography variant="caption" color="error" sx={{ display: "block", mt: 0.5 }}>
@@ -919,42 +970,44 @@ export default function ReservationForm({
           <Card>
             <CardContent>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
-                Resumen
+                {t("reservationForm.summary")}
               </Typography>
               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                 <Typography variant="body2" color="text.secondary">
-                  {money(reservation.dailyPrice)} x {days} {days === 1 ? "día" : "días"}
+                  {t(days === 1 ? "reservationForm.subtotalDaysOne" : "reservationForm.subtotalDaysMany", {
+                    price: money(reservation.dailyPrice),
+                    days,
+                  })}
                 </Typography>
                 <Typography variant="body2">{money(subtotalRent)}</Typography>
               </Box>
               {pickupFee > 0 && (
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                  <Typography variant="body2" color="text.secondary">Cargo de entrega (recogida)</Typography>
+                  <Typography variant="body2" color="text.secondary">{t("booking.pickupFee")}</Typography>
                   <Typography variant="body2">{money(pickupFee)}</Typography>
                 </Box>
               )}
               {dropoffFee > 0 && (
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                  <Typography variant="body2" color="text.secondary">Cargo de entrega (devolución)</Typography>
+                  <Typography variant="body2" color="text.secondary">{t("booking.dropoffFee")}</Typography>
                   <Typography variant="body2">{money(dropoffFee)}</Typography>
                 </Box>
               )}
               <Divider sx={{ my: 1 }} />
               <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={{ fontWeight: 700 }}>Total</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{t("reservationForm.total")}</Typography>
                 <Typography sx={{ fontWeight: 700 }}>{money(total)}</Typography>
               </Box>
               <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.75 }}>
-                <Typography variant="body2" color="text.secondary">Monto reservado</Typography>
+                <Typography variant="body2" color="text.secondary">{t("reservationForm.reservedAmount")}</Typography>
                 <Typography variant="body2">{money(depositChoice)}</Typography>
               </Box>
               <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
-                <Typography sx={{ fontWeight: 700 }}>Saldo pendiente</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{t("reservationForm.balanceDue")}</Typography>
                 <Typography sx={{ fontWeight: 700 }}>{money(balanceDue)}</Typography>
               </Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                El depósito forma parte del total; no es un cargo adicional. Rentas antes de las
-                5:00 p. m. se cobran como día completo.
+                {t("reservationForm.depositNote")}
               </Typography>
             </CardContent>
           </Card>
@@ -991,8 +1044,7 @@ export default function ReservationForm({
               }
               label={
                 <Typography variant="body2" color="text.secondary">
-                  He leído y acepto la política de reserva de JERETH RENT CAR y confirmo que la
-                  información proporcionada es correcta.
+                  {t("reservationForm.policyAccept")}
                 </Typography>
               }
             />
@@ -1006,10 +1058,10 @@ export default function ReservationForm({
 
         <Button type="submit" variant="contained" size="large" disabled={submitting || belowMinimum}>
           {submitting
-            ? "Enviando..."
+            ? t("common.sending")
             : isCorrection
-              ? "Reenviar solicitud corregida"
-              : "Enviar solicitud de reserva"}
+              ? t("reservationForm.resubmit")
+              : t("reservationForm.submit")}
         </Button>
       </Stack>
     </Box>

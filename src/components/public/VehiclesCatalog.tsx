@@ -13,7 +13,9 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import VehicleCard from "@/components/public/VehicleCard";
 import EmptyState from "@/components/ui/EmptyState";
 import type { Vehicle, VehicleCategory } from "@/types/vehicle";
-import { CATEGORY_ORDER, categoryLabel } from "@/features/vehicles/format";
+import { CATEGORY_ORDER } from "@/features/vehicles/format";
+import { useI18n } from "@/i18n/LanguageProvider";
+import { categoryLabelI18n } from "@/i18n/vehicle-labels";
 
 interface Props {
   vehicles: Vehicle[];
@@ -29,6 +31,7 @@ type SortKey = "relevance" | "price_asc" | "price_desc";
  * over the already-loaded list — no extra requests, instant feedback.
  */
 export default function VehiclesCatalog({ vehicles, whatsappNumber, digitalEnabled = false }: Props) {
+  const { t } = useI18n();
   const [category, setCategory] = React.useState<VehicleCategory | "all">("all");
   const [transmission, setTransmission] = React.useState<"all" | "automatic" | "manual">("all");
   const [minPassengers, setMinPassengers] = React.useState<number>(0);
@@ -67,7 +70,7 @@ export default function VehiclesCatalog({ vehicles, whatsappNumber, digitalEnabl
       {/* Category chips */}
       <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1, mb: 2.5 }}>
         <Chip
-          label="Todos"
+          label={t("catalog.all")}
           onClick={() => setCategory("all")}
           color={category === "all" ? "primary" : "default"}
           variant={category === "all" ? "filled" : "outlined"}
@@ -75,7 +78,7 @@ export default function VehiclesCatalog({ vehicles, whatsappNumber, digitalEnabl
         {availableCategories.map((c) => (
           <Chip
             key={c}
-            label={categoryLabel(c)}
+            label={categoryLabelI18n(t, c)}
             onClick={() => setCategory(c)}
             color={category === c ? "primary" : "default"}
             variant={category === c ? "filled" : "outlined"}
@@ -96,22 +99,22 @@ export default function VehiclesCatalog({ vehicles, whatsappNumber, digitalEnabl
         <TextField
           select
           size="small"
-          label="Transmisión"
+          label={t("catalog.transmission")}
           value={transmission}
           onChange={(e) => setTransmission(e.target.value as typeof transmission)}
         >
-          <MenuItem value="all">Todas</MenuItem>
-          <MenuItem value="automatic">Automático</MenuItem>
-          <MenuItem value="manual">Manual</MenuItem>
+          <MenuItem value="all">{t("catalog.transmissionAll")}</MenuItem>
+          <MenuItem value="automatic">{t("catalog.automatic")}</MenuItem>
+          <MenuItem value="manual">{t("catalog.manual")}</MenuItem>
         </TextField>
         <TextField
           select
           size="small"
-          label="Pasajeros"
+          label={t("catalog.passengers")}
           value={minPassengers}
           onChange={(e) => setMinPassengers(Number(e.target.value))}
         >
-          <MenuItem value={0}>Cualquiera</MenuItem>
+          <MenuItem value={0}>{t("catalog.passengersAny")}</MenuItem>
           <MenuItem value={2}>2+</MenuItem>
           <MenuItem value={4}>4+</MenuItem>
           <MenuItem value={5}>5+</MenuItem>
@@ -120,34 +123,36 @@ export default function VehiclesCatalog({ vehicles, whatsappNumber, digitalEnabl
         <TextField
           select
           size="small"
-          label="Ordenar"
+          label={t("catalog.sort")}
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
         >
-          <MenuItem value="relevance">Recomendados</MenuItem>
-          <MenuItem value="price_asc">Precio: menor a mayor</MenuItem>
-          <MenuItem value="price_desc">Precio: mayor a menor</MenuItem>
+          <MenuItem value="relevance">{t("catalog.sortRelevance")}</MenuItem>
+          <MenuItem value="price_asc">{t("catalog.sortPriceAsc")}</MenuItem>
+          <MenuItem value="price_desc">{t("catalog.sortPriceDesc")}</MenuItem>
         </TextField>
         <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" }, gridColumn: { xs: "1 / -1", md: "auto" } }}>
           {hasActiveFilters && (
             <Button onClick={reset} startIcon={<RestartAltRoundedIcon />} color="secondary" size="small">
-              Limpiar filtros
+              {t("catalog.clearFilters")}
             </Button>
           )}
         </Box>
       </Box>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {filtered.length} {filtered.length === 1 ? "vehículo" : "vehículos"}
+        {filtered.length === 1
+          ? t("catalog.countOne", { n: filtered.length })
+          : t("catalog.countMany", { n: filtered.length })}
       </Typography>
 
       {filtered.length === 0 ? (
         <EmptyState
-          title="No encontramos vehículos con esos filtros"
-          description="Ajusta los filtros o escríbenos por WhatsApp para más opciones."
+          title={t("catalog.emptyTitle")}
+          description={t("catalog.emptyDescription")}
           action={
             <Button onClick={reset} variant="outlined" color="secondary">
-              Limpiar filtros
+              {t("catalog.clearFilters")}
             </Button>
           }
         />

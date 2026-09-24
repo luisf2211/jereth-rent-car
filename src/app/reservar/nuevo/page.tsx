@@ -9,11 +9,15 @@ import { getReservationSettings } from "@/features/reservations/data";
 import { getVehicleById } from "@/features/vehicles/data";
 import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import { vehicleTitle } from "@/features/vehicles/format";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Reserva",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return {
+    title: t("reservationForm.metaTitle"),
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * PUBLIC "new reservation" form. Renders the SAME digital form pre-filled with
@@ -41,10 +45,11 @@ export default async function NuevaReservaPage({
   const vehicleId = sp.vehicleId ?? "";
   if (!vehicleId) notFound();
 
-  const [settings, vehicle, locations] = await Promise.all([
+  const [settings, vehicle, locations, { t }] = await Promise.all([
     getReservationSettings(),
     getVehicleById(vehicleId),
     getDeliveryLocations(),
+    getI18n(),
   ]);
 
   // Respect the digital ON/OFF switch: if disabled, there is no digital form
@@ -137,7 +142,7 @@ export default async function NuevaReservaPage({
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: { xs: 3, md: 4 } }}>
           <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
-            Completa tu reserva
+            {t("reservationForm.pageHeading")}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
             {draft.vehicleTitle}

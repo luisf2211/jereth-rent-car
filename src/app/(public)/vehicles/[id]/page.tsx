@@ -39,31 +39,35 @@ import {
   getInclusions,
   getReviews,
 } from "@/features/content/data";
+import { formatDailyPrice } from "@/features/vehicles/format";
+import { getI18n } from "@/i18n/server";
 import {
-  categoryLabel,
-  formatDailyPrice,
-  fuelLabel,
-  transmissionLabel,
-  vehicleTitle,
-  vehicleTitleWithYear,
-  vehicleWhatsAppMessage,
-} from "@/features/vehicles/format";
+  categoryLabelI18n,
+  fuelLabelI18n,
+  transmissionLabelI18n,
+  vehicleTitleI18n,
+  vehicleTitleWithYearI18n,
+  vehicleWhatsAppMessageI18n,
+} from "@/i18n/vehicle-labels";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/vehicles/[id]">): Promise<Metadata> {
   const { id: param } = await params;
+  const { t } = await getI18n();
   // The route segment is "<slug>-<cuid>" (or a legacy bare cuid); resolve by
   // the embedded cuid so renames never break the lookup.
   const vehicle = await getVehicleById(extractVehicleId(param));
-  if (!vehicle) return { title: "Vehículo" };
+  if (!vehicle) return { title: t("vehicleDetail.metaFallbackTitle") };
   return {
-    title: vehicleTitle(vehicle),
+    title: vehicleTitleI18n(t, vehicle),
     description:
       vehicle.description ??
-      `Renta un ${vehicleTitle(vehicle)} en Santo Domingo. ${vehicle.passengers} pasajeros, ${transmissionLabel(
-        vehicle.transmission
-      )}.`,
+      t("vehicleDetail.metaDescription", {
+        title: vehicleTitleI18n(t, vehicle),
+        passengers: vehicle.passengers,
+        transmission: transmissionLabelI18n(t, vehicle.transmission),
+      }),
     // Canonical always points to the current pretty slug for this vehicle.
     alternates: { canonical: vehiclePath(vehicle) },
   };
@@ -110,6 +114,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
     reviews,
     similar,
     reservationSettings,
+    { t },
   ] = await Promise.all([
     getCompanySettings(),
     getRequirements(),
@@ -119,18 +124,19 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
     getReviews(),
     getSimilarVehicles(vehicle),
     getReservationSettings(),
+    getI18n(),
   ]);
 
-  const title = vehicleTitle(vehicle);
+  const title = vehicleTitleI18n(t, vehicle);
   const gallery = [vehicle.imageUrl, ...vehicle.images].filter(Boolean);
-  const finalMessage = vehicleWhatsAppMessage(vehicle);
+  const finalMessage = vehicleWhatsAppMessageI18n(t, vehicle);
 
   const summary = [
-    { icon: <PeopleAltRoundedIcon />, label: `${vehicle.passengers} pasajeros` },
-    { icon: <SettingsSuggestRoundedIcon />, label: transmissionLabel(vehicle.transmission) },
-    { icon: <LocalGasStationRoundedIcon />, label: fuelLabel(vehicle.fuelType) },
-    { icon: <SensorDoorRoundedIcon />, label: `${vehicle.doors} puertas` },
-    { icon: <DirectionsCarFilledRoundedIcon />, label: categoryLabel(vehicle.category) },
+    { icon: <PeopleAltRoundedIcon />, label: t("vehicleDetail.passengers", { n: vehicle.passengers }) },
+    { icon: <SettingsSuggestRoundedIcon />, label: transmissionLabelI18n(t, vehicle.transmission) },
+    { icon: <LocalGasStationRoundedIcon />, label: fuelLabelI18n(t, vehicle.fuelType) },
+    { icon: <SensorDoorRoundedIcon />, label: t("vehicleDetail.doors", { n: vehicle.doors }) },
+    { icon: <DirectionsCarFilledRoundedIcon />, label: categoryLabelI18n(t, vehicle.category) },
     { icon: <CalendarMonthRoundedIcon />, label: String(vehicle.year) },
   ];
 
@@ -143,19 +149,19 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
         {/* Breadcrumb */}
         <Box sx={{ mb: 2, fontSize: 14 }}>
           <Link href="/" underline="hover" color="text.secondary">
-            Inicio
+            {t("vehicleDetail.breadcrumbHome")}
           </Link>
           <Box component="span" sx={{ color: "text.disabled", mx: 1 }}>
             /
           </Box>
           <Link href="/vehicles" underline="hover" color="text.secondary">
-            Vehículos
+            {t("vehicleDetail.breadcrumbVehicles")}
           </Link>
           <Box component="span" sx={{ color: "text.disabled", mx: 1 }}>
             /
           </Box>
           <Box component="span" sx={{ color: "text.primary" }}>
-            {vehicleTitleWithYear(vehicle)}
+            {vehicleTitleWithYearI18n(t, vehicle)}
           </Box>
         </Box>
 
@@ -170,16 +176,18 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                 ★ {avgRating.toFixed(1)}
                 <Box component="span" sx={{ color: "text.secondary", fontWeight: 400 }}>
                   {" "}
-                  · {reviews.length} {reviews.length === 1 ? "reseña" : "reseñas"}
+                  · {reviews.length === 1
+                    ? t("vehicleDetail.reviewCountOne", { n: reviews.length })
+                    : t("vehicleDetail.reviewCountMany", { n: reviews.length })}
                 </Box>
               </Box>
             )}
-            <Typography variant="body2">{categoryLabel(vehicle.category)}</Typography>
+            <Typography variant="body2">{categoryLabelI18n(t, vehicle.category)}</Typography>
             <Typography variant="body2">·</Typography>
-            <Typography variant="body2">{transmissionLabel(vehicle.transmission)}</Typography>
+            <Typography variant="body2">{transmissionLabelI18n(t, vehicle.transmission)}</Typography>
             <Typography variant="body2">·</Typography>
-            <Typography variant="body2">{vehicle.passengers} pasajeros</Typography>
-            <Chip label="Disponible" size="small" color="success" variant="outlined" sx={{ ml: { sm: 1 } }} />
+            <Typography variant="body2">{t("vehicleDetail.passengers", { n: vehicle.passengers })}</Typography>
+            <Chip label={t("vehicleDetail.available")} size="small" color="success" variant="outlined" sx={{ ml: { sm: 1 } }} />
           </Box>
         </Box>
 
@@ -210,13 +218,13 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
             </Box>
 
             {vehicle.description && (
-              <SectionBlock title="Sobre este vehículo">
+              <SectionBlock title={t("vehicleDetail.aboutThis")}>
                 <VehicleDescription text={vehicle.description} />
               </SectionBlock>
             )}
 
             {vehicle.features.length > 0 && (
-              <SectionBlock title="Características">
+              <SectionBlock title={t("vehicleDetail.features")}>
                 <Grid container spacing={1.5}>
                   {vehicle.features.map((f) => (
                     <Grid key={f} size={{ xs: 12, sm: 6 }}>
@@ -231,7 +239,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
             )}
 
             {inclusions.length > 0 && (
-              <SectionBlock title="Tu renta incluye">
+              <SectionBlock title={t("vehicleDetail.included")}>
                 <Grid container spacing={1.5}>
                   {inclusions.map((i) => (
                     <Grid key={i.id} size={{ xs: 12, sm: 6 }}>
@@ -246,7 +254,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
             )}
 
             {requirements.length > 0 && (
-              <SectionBlock title="Requisitos para rentar">
+              <SectionBlock title={t("vehicleDetail.requirements")}>
                 <Stack spacing={1.25}>
                   {requirements.map((r) => (
                     <Box key={r.id} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -259,7 +267,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
             )}
 
             {deliveryLocations.length > 0 && (
-              <SectionBlock title="Recogida y entrega">
+              <SectionBlock title={t("vehicleDetail.pickupDelivery")}>
                 <Stack spacing={1.5}>
                   {deliveryLocations.map((loc) => (
                     <Box key={loc.id} sx={{ display: "flex", alignItems: "flex-start", gap: 1.25 }}>
@@ -276,10 +284,10 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                             variant="outlined"
                             label={
                               !loc.hasFee
-                                ? "Gratis"
+                                ? t("vehicleDetail.locationFree")
                                 : loc.deliveryFee > 0
                                   ? `+${formatDailyPrice(loc.deliveryFee)}`
-                                  : "Cargo adicional"
+                                  : t("vehicleDetail.locationExtra")
                             }
                             color={loc.hasFee ? "default" : "success"}
                           />
@@ -298,7 +306,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                             variant="body2"
                             sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, mt: 0.25 }}
                           >
-                            <PlaceRoundedIcon sx={{ fontSize: 16 }} /> Ver en el mapa
+                            <PlaceRoundedIcon sx={{ fontSize: 16 }} /> {t("vehicleDetail.viewOnMap")}
                           </Link>
                         )}
                       </Box>
@@ -309,14 +317,14 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
             )}
 
             {policies.length > 0 && (
-              <SectionBlock title="Políticas del vehículo">
+              <SectionBlock title={t("vehicleDetail.policiesTitle")}>
                 <Accordion
                   disableGutters
                   elevation={0}
                   sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, "&:before": { display: "none" } }}
                 >
                   <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
-                    <Typography sx={{ fontWeight: 600 }}>Ver políticas</Typography>
+                    <Typography sx={{ fontWeight: 600 }}>{t("vehicleDetail.viewPolicies")}</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Stack spacing={1}>
@@ -332,7 +340,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
             )}
 
             {reviews.length > 0 && (
-              <SectionBlock title="Lo que dicen nuestros clientes">
+              <SectionBlock title={t("vehicleDetail.reviewsTitle")}>
                 <DetailReviews reviews={reviews} />
               </SectionBlock>
             )}
@@ -362,7 +370,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
         <Box sx={{ bgcolor: "grey.50", py: { xs: 6, md: 8 } }}>
           <Container>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-              También te pueden interesar
+              {t("vehicleDetail.alsoInterested")}
             </Typography>
             <Grid container spacing={{ xs: 2.5, md: 3 }} sx={{ alignItems: "stretch" }}>
               {similar.map((s) => (
@@ -379,15 +387,15 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
       <Container sx={{ py: { xs: 6, md: 9 } }}>
         <Box sx={{ textAlign: "center", maxWidth: 560, mx: "auto" }}>
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-            ¿Listo para tu próximo viaje?
+            {t("vehicleDetail.ctaTitle")}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Reserva tu vehículo de forma rápida y sencilla por WhatsApp.
+            {t("vehicleDetail.ctaSubtitle")}
           </Typography>
           <WhatsAppButton
             phoneNumber={settings.whatsappNumber}
             message={finalMessage}
-            label="Reservar por WhatsApp"
+            label={t("vehicleDetail.ctaReserveWhatsapp")}
             source="final_cta"
             context={title}
             size="large"

@@ -13,19 +13,20 @@ import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getCompanySettings } from "@/lib/branding";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { getI18n } from "@/i18n/server";
 
 /**
  * Contacto. Each channel renders only if configured (no invented data).
  */
 export default async function ContactSection() {
-  const s = await getCompanySettings();
+  const [s, { t }] = await Promise.all([getCompanySettings(), getI18n()]);
 
   const channels: { icon: React.ReactNode; label: string; href: string; source?: string }[] = [];
   if (s.whatsappNumber) {
     channels.push({
       icon: <WhatsAppIcon />,
       label: "WhatsApp",
-      href: buildWhatsAppUrl(s.whatsappNumber, "Hola Jereth Rent Car, quisiera más información."),
+      href: buildWhatsAppUrl(s.whatsappNumber, t("contact.inquiry")),
       source: "contact",
     });
   }
@@ -40,7 +41,7 @@ export default async function ContactSection() {
   return (
     <Box id="contacto" sx={{ py: { xs: 6, md: 9 } }}>
       <Container>
-        <SectionTitle title="Contacto" subtitle="Estamos para ayudarte a encontrar tu vehículo." align="center" />
+        <SectionTitle title={t("contact.title")} subtitle={t("contact.subtitle")} align="center" />
 
         <Grid container spacing={2} sx={{ mt: 2, justifyContent: "center" }}>
           {channels.map((c) => (
@@ -79,7 +80,7 @@ export default async function ContactSection() {
               variant="text"
               startIcon={<PlaceRoundedIcon />}
             >
-              Ver ubicación en Google Maps
+              {t("contact.viewOnMaps")}
             </Button>
           </Box>
         )}

@@ -14,18 +14,22 @@ import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
 import Logo from "@/components/ui/Logo";
 import type { CompanySettings } from "@/types/branding";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { getI18n } from "@/i18n/server";
 import { PUBLIC_NAV_LINKS } from "./nav-links";
 
 /**
  * Public footer with logo, links, contact and social media.
- * Rendered on a dark surface for contrast. Server Component.
+ * Rendered on a dark surface for contrast. Server Component — reads the active
+ * locale from the cookie, so it re-translates on router.refresh() when the
+ * language changes.
  */
-export default function PublicFooter({ settings }: { settings: CompanySettings }) {
+export default async function PublicFooter({ settings }: { settings: CompanySettings }) {
+  const { t } = await getI18n();
   const { companyName, logoUrl, footerLogoUrl, logoScale, whatsappNumber, contactEmail, socialLinks } = settings;
   // Footer uses its own logo when set; otherwise falls back to the navbar logo,
   // then to the text wordmark (handled inside <Logo>).
   const footerLogo = footerLogoUrl || logoUrl;
-  const whatsappUrl = buildWhatsAppUrl(whatsappNumber, "Hola, quiero información sobre alquiler de vehículos.");
+  const whatsappUrl = buildWhatsAppUrl(whatsappNumber, t("whatsapp.footerInquiry"));
   const year = new Date().getFullYear();
 
   return (
@@ -42,13 +46,13 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
               baseHeight={110}
             />
             <Typography variant="body2" sx={{ mt: 2, color: "grey.400", maxWidth: 360 }}>
-              Renta el vehículo perfecto para tu próximo viaje. Atención rápida y cercana por WhatsApp.
+              {t("footer.tagline")}
             </Typography>
           </Grid>
 
           <Grid size={{ xs: 6, md: 3 }}>
             <Typography variant="subtitle2" sx={{ color: "common.white", mb: 1.5 }}>
-              Navegación
+              {t("footer.navigation")}
             </Typography>
             <Stack spacing={1}>
               {PUBLIC_NAV_LINKS.map((link) => (
@@ -59,7 +63,7 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
                   underline="hover"
                   sx={{ color: "grey.400", "&:hover": { color: "common.white" } }}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </Link>
               ))}
             </Stack>
@@ -67,7 +71,7 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
 
           <Grid size={{ xs: 12, md: 4 }}>
             <Typography variant="subtitle2" sx={{ color: "common.white", mb: 1.5 }}>
-              Contacto
+              {t("footer.contact")}
             </Typography>
             <Stack spacing={1.5}>
               <Box
@@ -122,7 +126,7 @@ export default function PublicFooter({ settings }: { settings: CompanySettings }
 
         <Divider sx={{ my: 4, borderColor: "grey.800" }} />
         <Typography variant="body2" sx={{ color: "grey.500" }}>
-          © {year} {companyName}. Todos los derechos reservados.
+          © {year} {companyName}. {t("footer.rights")}
         </Typography>
       </Container>
     </Box>

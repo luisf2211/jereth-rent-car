@@ -6,6 +6,7 @@ import WhatsAppButton from "@/components/ui/WhatsAppButton";
 import DeliveryLocationsCarousel from "./DeliveryLocationsCarousel";
 import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import { getCompanySettings } from "@/lib/branding";
+import { getI18n } from "@/i18n/server";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
 /**
@@ -18,13 +19,14 @@ import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
  * Component to a Client Component (MUI Button) violates RSC serialisation rules.
  */
 export default async function DeliveryLocationsSection() {
-  const [locations, { whatsappNumber }] = await Promise.all([
+  const [locations, { whatsappNumber }, { t }] = await Promise.all([
     getDeliveryLocations(),
     getCompanySettings(),
+    getI18n(),
   ]);
   if (locations.length === 0) return null;
 
-  const message = "Hola Jereth Rent Car, quisiera coordinar la entrega de un vehículo.";
+  const message = t("delivery.coordinateInquiry");
 
   return (
     <Box id="entrega" sx={{ py: { xs: 6, md: 9 }, bgcolor: "grey.50" }}>
@@ -41,8 +43,8 @@ export default async function DeliveryLocationsSection() {
         >
           <Box sx={{ flexGrow: 1 }}>
             <SectionTitle
-              title="Lugares de entrega"
-              subtitle="Coordinamos la entrega y recogida de tu vehículo en los puntos que más te convienen."
+              title={t("delivery.sectionTitle")}
+              subtitle={t("delivery.sectionSubtitle")}
               align="left"
             />
           </Box>
@@ -77,7 +79,7 @@ export default async function DeliveryLocationsSection() {
               },
             }}
           >
-            Ver todos los lugares
+            {t("delivery.seeAll")}
             <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
           </Box>
         </Box>
@@ -88,7 +90,7 @@ export default async function DeliveryLocationsSection() {
           <WhatsAppButton
             phoneNumber={whatsappNumber}
             message={message}
-            label="Coordinar entrega por WhatsApp"
+            label={t("delivery.coordinateWhatsapp")}
             source="delivery"
             size="large"
           />

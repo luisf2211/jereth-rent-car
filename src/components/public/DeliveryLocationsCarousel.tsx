@@ -14,14 +14,16 @@ import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import type { DeliveryLocationItem } from "@/features/delivery-locations/data";
+import { useI18n } from "@/i18n/LanguageProvider";
+import type { TFunction } from "@/i18n/translate";
 
 interface Props {
   locations: DeliveryLocationItem[];
 }
 
-function formatFee(loc: DeliveryLocationItem): string {
-  if (!loc.hasFee) return "Entrega gratis";
-  return loc.deliveryFee > 0 ? `+US$${loc.deliveryFee}` : "Cargo adicional";
+function formatFee(t: TFunction, loc: DeliveryLocationItem): string {
+  if (!loc.hasFee) return t("delivery.freeDelivery");
+  return loc.deliveryFee > 0 ? `+US$${loc.deliveryFee}` : t("delivery.extraChargeShort");
 }
 
 /** Derive a URL-safe slug from a location name for deep-linking. */
@@ -35,6 +37,7 @@ function toSlug(name: string): string {
 }
 
 function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
+  const { t } = useI18n();
   const slug = toSlug(loc.name);
   const href = `/lugares-de-entrega#${slug}`;
 
@@ -42,7 +45,7 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
     <Card
       component={NextLink}
       href={href}
-      aria-label={`Ver detalles de ${loc.name}`}
+      aria-label={t("delivery.viewDetailsOf", { name: loc.name })}
       sx={{
         height: "100%",
         display: "flex",
@@ -94,7 +97,7 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
         )}
         <Chip
           size="small"
-          label={formatFee(loc)}
+          label={formatFee(t, loc)}
           sx={{
             position: "absolute",
             top: 12,
@@ -132,7 +135,7 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
             onClick={(e) => e.stopPropagation()}
             sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, mt: "auto", pt: 1.25 }}
           >
-            <PlaceRoundedIcon sx={{ fontSize: 16 }} /> Ver en el mapa
+            <PlaceRoundedIcon sx={{ fontSize: 16 }} /> {t("delivery.viewOnMap")}
           </Link>
         )}
       </Box>
@@ -150,6 +153,7 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
  * - Desktop hover: card scales up subtly (transform, no layout shift).
  */
 export default function DeliveryLocationsCarousel({ locations }: Props) {
+  const { t } = useI18n();
   const trackRef = React.useRef<HTMLDivElement>(null);
   const [paused, setPaused] = React.useState(false);
   const count = locations.length;
@@ -244,7 +248,7 @@ export default function DeliveryLocationsCarousel({ locations }: Props) {
       {count > 1 && (
         <>
           <IconButton
-            aria-label="Anterior"
+            aria-label={t("common.prev")}
             onClick={() => step(-1)}
             sx={{
               position: "absolute",
@@ -259,7 +263,7 @@ export default function DeliveryLocationsCarousel({ locations }: Props) {
             <ChevronLeftRoundedIcon />
           </IconButton>
           <IconButton
-            aria-label="Siguiente"
+            aria-label={t("common.next")}
             onClick={() => step(1)}
             sx={{
               position: "absolute",

@@ -4,9 +4,11 @@ import * as React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import { useI18n } from "@/i18n/LanguageProvider";
 
-/** Description with a "Mostrar más" toggle when the text is long. */
+/** Description with a "Show more" toggle when the text is long. */
 export default function VehicleDescription({ text }: { text: string }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = React.useState(false);
   const isLong = text.length > 320;
 
@@ -27,7 +29,7 @@ export default function VehicleDescription({ text }: { text: string }) {
       </Typography>
       {isLong && (
         <Button variant="text" onClick={() => setExpanded((v) => !v)} sx={{ px: 0, mt: 0.5 }}>
-          {expanded ? "Mostrar menos" : "Mostrar más"}
+          {expanded ? t("common.showLess") : t("common.showMore")}
         </Button>
       )}
     </Box>

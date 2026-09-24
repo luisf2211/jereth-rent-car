@@ -12,26 +12,35 @@ import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
 import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import { getCompanySettings } from "@/lib/branding";
+import { getI18n } from "@/i18n/server";
+import type { TFunction } from "@/i18n/translate";
 
-export const metadata: Metadata = {
-  title: "Lugares de entrega",
-  description:
-    "Conoce todos los puntos de entrega y recogida disponibles. Coordinamos la entrega de tu vehículo en el aeropuerto, tu hotel o donde más te convenga.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return {
+    title: t("delivery.metaTitle"),
+    description: t("delivery.metaDescription"),
+  };
+}
 
-function formatFee(hasFee: boolean, deliveryFee: number): { label: string; color: "success" | "default" } {
-  if (!hasFee) return { label: "Entrega gratis", color: "success" };
+function formatFee(
+  t: TFunction,
+  hasFee: boolean,
+  deliveryFee: number,
+): { label: string; color: "success" | "default" } {
+  if (!hasFee) return { label: t("delivery.freeDelivery"), color: "success" };
   if (deliveryFee > 0) return { label: `+US$${deliveryFee}`, color: "default" };
-  return { label: "Cargo adicional", color: "default" };
+  return { label: t("delivery.extraChargeShort"), color: "default" };
 }
 
 export default async function LugaresDeEntregaPage() {
-  const [locations, { whatsappNumber }] = await Promise.all([
+  const [locations, { whatsappNumber }, { t }] = await Promise.all([
     getDeliveryLocations(),
     getCompanySettings(),
+    getI18n(),
   ]);
 
-  const message = "Hola Jereth Rent Car, quisiera coordinar la entrega de un vehículo.";
+  const message = t("delivery.coordinateInquiry");
 
   return (
     <Box sx={{ pb: { xs: 10, md: 0 } }}>
@@ -46,25 +55,24 @@ export default async function LugaresDeEntregaPage() {
             size="small"
             sx={{ textTransform: "none", fontWeight: 500 }}
           >
-            Volver al inicio
+            {t("delivery.backToHome")}
           </Button>
         </Box>
 
         {/* Header */}
         <Box sx={{ mb: { xs: 4, md: 6 } }}>
           <Typography variant="h3" component="h1" sx={{ fontWeight: 800, mb: 1 }}>
-            Lugares de entrega
+            {t("delivery.pageTitle")}
           </Typography>
           <Typography variant="subtitle1" color="text.secondary" sx={{ maxWidth: 600 }}>
-            Coordinamos la entrega y recogida de tu vehículo en los puntos que más te convienen.
-            Sin complicaciones, sin filas.
+            {t("delivery.pageSubtitle")}
           </Typography>
         </Box>
 
         {/* Locations grid */}
         {locations.length === 0 ? (
           <Typography color="text.secondary">
-            No hay lugares de entrega configurados todavía.
+            {t("delivery.empty")}
           </Typography>
         ) : (
           <Box
@@ -79,7 +87,7 @@ export default async function LugaresDeEntregaPage() {
             }}
           >
             {locations.map((loc) => {
-              const fee = formatFee(loc.hasFee, loc.deliveryFee);
+              const fee = formatFee(t, loc.hasFee, loc.deliveryFee);
               // slug: e.g. "aeropuerto-las-americas" — used for deep-link from carousel
               const slug = loc.name
                 .toLowerCase()
@@ -146,7 +154,7 @@ export default async function LugaresDeEntregaPage() {
                     {loc.highlighted && (
                       <Chip
                         size="small"
-                        label="Destacado"
+                        label={t("delivery.highlighted")}
                         sx={{
                           position: "absolute",
                           top: 12,
@@ -196,7 +204,7 @@ export default async function LugaresDeEntregaPage() {
                           color: "primary.main",
                         }}
                       >
-                        <PlaceRoundedIcon sx={{ fontSize: 16 }} /> Ver en el mapa
+                        <PlaceRoundedIcon sx={{ fontSize: 16 }} /> {t("delivery.viewOnMap")}
                       </Link>
                     )}
                   </Box>
@@ -209,15 +217,15 @@ export default async function LugaresDeEntregaPage() {
         {/* WhatsApp CTA */}
         <Box sx={{ mt: { xs: 5, md: 7 }, textAlign: "center" }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-            ¿Necesitas entrega en otro punto?
+            {t("delivery.otherPointTitle")}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Escríbenos y coordinamos la entrega donde sea más conveniente para ti.
+            {t("delivery.otherPointSubtitle")}
           </Typography>
           <WhatsAppButton
             phoneNumber={whatsappNumber}
             message={message}
-            label="Coordinar entrega por WhatsApp"
+            label={t("delivery.coordinateWhatsapp")}
             source="delivery"
             size="large"
           />

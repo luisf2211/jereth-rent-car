@@ -17,6 +17,7 @@ import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import type { ImageFits } from "@/types/vehicle";
 import { getFit, fitToStyle } from "@/lib/image-fit";
+import { useI18n } from "@/i18n/LanguageProvider";
 
 interface Props {
   images: string[];
@@ -35,6 +36,7 @@ interface Props {
  */
 export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
   const theme = useTheme();
+  const { t } = useI18n();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [index, setIndex] = React.useState(0);
@@ -69,7 +71,7 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
         ...extraSx,
       }}
     >
-      Ver todas las fotos
+      {t("gallery.seeAll")}
     </Button>
   );
 
@@ -81,11 +83,11 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
         sx={{ bgcolor: "common.white", color: "text.primary", borderBottom: "1px solid", borderColor: "divider" }}
       >
         <Toolbar>
-          <IconButton edge="start" onClick={() => setDialogOpen(false)} aria-label="Cerrar">
+          <IconButton edge="start" onClick={() => setDialogOpen(false)} aria-label={t("common.close")}>
             <CloseRoundedIcon />
           </IconButton>
           <Typography sx={{ ml: 1 }}>
-            {index + 1} / {count}
+            {t("gallery.counter", { index: index + 1, total: count })}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -111,14 +113,14 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
           <>
             <IconButton
               onClick={() => go(-1)}
-              aria-label="Anterior"
+              aria-label={t("common.prev")}
               sx={{ position: "absolute", left: 16, bgcolor: "rgba(255,255,255,0.9)", "&:hover": { bgcolor: "common.white" } }}
             >
               <ChevronLeftRoundedIcon />
             </IconButton>
             <IconButton
               onClick={() => go(1)}
-              aria-label="Siguiente"
+              aria-label={t("common.next")}
               sx={{ position: "absolute", right: 16, bgcolor: "rgba(255,255,255,0.9)", "&:hover": { bgcolor: "common.white" } }}
             >
               <ChevronRightRoundedIcon />
@@ -176,7 +178,7 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
                 fontSize: 13,
               }}
             >
-              {index + 1} / {count}
+              {t("gallery.counter", { index: index + 1, total: count })}
             </Box>
           )}
           {/* Same "Ver todas las fotos" action as desktop; sits bottom-left so it
@@ -205,7 +207,7 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
                 key={p + i}
                 component="button"
                 type="button"
-                aria-label={`Foto ${i + 1}`}
+                aria-label={t("gallery.photoN", { n: i + 1 })}
                 onClick={() => setIndex(i)}
                 sx={{
                   p: 0,

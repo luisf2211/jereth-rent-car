@@ -11,13 +11,18 @@ import Chip from "@mui/material/Chip";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import GoogleIcon from "@mui/icons-material/Google";
 import type { ReviewItem } from "@/features/content/data";
+import { useI18n } from "@/i18n/LanguageProvider";
 
-const dateFmt = new Intl.DateTimeFormat("es-DO", { year: "numeric", month: "long" });
-
-/** Business reviews on the detail page: rating summary + first 3, "ver todas". */
+/** Business reviews on the detail page: rating summary + first 3, "see all". */
 export default function DetailReviews({ reviews }: { reviews: ReviewItem[] }) {
+  const { t } = useI18n();
   const [showAll, setShowAll] = React.useState(false);
   if (reviews.length === 0) return null;
+
+  const dateFmt = new Intl.DateTimeFormat(t("detailReviews.dateLocale"), {
+    year: "numeric",
+    month: "long",
+  });
 
   const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
   const shown = showAll ? reviews : reviews.slice(0, 3);
@@ -30,7 +35,9 @@ export default function DetailReviews({ reviews }: { reviews: ReviewItem[] }) {
           {avg.toFixed(1)}
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          · {reviews.length} {reviews.length === 1 ? "reseña" : "reseñas"}
+          · {reviews.length === 1
+            ? t("detailReviews.reviewCountOne", { n: reviews.length })
+            : t("detailReviews.reviewCountMany", { n: reviews.length })}
         </Typography>
       </Box>
 
@@ -69,7 +76,7 @@ export default function DetailReviews({ reviews }: { reviews: ReviewItem[] }) {
 
       {reviews.length > 3 && (
         <Button variant="outlined" color="secondary" onClick={() => setShowAll((v) => !v)} sx={{ mt: 2.5 }}>
-          {showAll ? "Mostrar menos" : `Ver todas las reseñas (${reviews.length})`}
+          {showAll ? t("common.showLess") : t("detailReviews.seeAll", { n: reviews.length })}
         </Button>
       )}
     </Box>

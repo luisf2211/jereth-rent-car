@@ -17,6 +17,8 @@ import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Logo from "@/components/ui/Logo";
 import { useBranding } from "@/components/branding/BrandingProvider";
+import { useI18n } from "@/i18n/LanguageProvider";
+import LanguageSwitcher from "./LanguageSwitcher";
 import { PUBLIC_NAV_LINKS } from "./nav-links";
 
 /**
@@ -26,6 +28,7 @@ import { PUBLIC_NAV_LINKS } from "./nav-links";
  */
 export default function PublicHeader() {
   const { companyName, logoUrl, navLogoScale } = useBranding();
+  const { t } = useI18n();
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -58,13 +61,18 @@ export default function PublicHeader() {
                   "&:hover": { bgcolor: "rgba(255,255,255,0.12)" },
                 }}
               >
-                {link.label}
+                {t(link.labelKey)}
               </Button>
             ))}
           </Box>
 
+          {/* Desktop language switcher, right-aligned. */}
+          <Box sx={{ display: { xs: "none", md: "inline-flex" }, ml: "auto" }}>
+            <LanguageSwitcher variant="onDark" />
+          </Box>
+
           <IconButton
-            aria-label="Abrir menú"
+            aria-label={t("nav.openMenu")}
             edge="end"
             onClick={() => setOpen(true)}
             sx={{ display: { xs: "inline-flex", md: "none" }, ml: "auto", color: "common.white" }}
@@ -78,7 +86,7 @@ export default function PublicHeader() {
         <Box sx={{ width: 300, p: 2, display: "flex", flexDirection: "column", height: "100%" }}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
             <Logo companyName={companyName} logoUrl={logoUrl} display="name" scale={navLogoScale} />
-            <IconButton aria-label="Cerrar menú" onClick={() => setOpen(false)}>
+            <IconButton aria-label={t("nav.closeMenu")} onClick={() => setOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
           </Box>
@@ -91,11 +99,25 @@ export default function PublicHeader() {
                   onClick={() => setOpen(false)}
                   sx={{ borderRadius: 2 }}
                 >
-                  <ListItemText primary={link.label} slotProps={{ primary: { sx: { fontWeight: 600 } } }} />
+                  <ListItemText primary={t(link.labelKey)} slotProps={{ primary: { sx: { fontWeight: 600 } } }} />
                 </ListItemButton>
               </ListItem>
             ))}
           </List>
+          {/* Language switcher pinned to the bottom of the mobile drawer. */}
+          <Box
+            sx={{
+              pt: 2,
+              mt: 1,
+              borderTop: "1px solid rgba(0,0,0,0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Box sx={{ fontSize: 14, fontWeight: 600, color: "text.secondary" }}>{t("nav.language")}</Box>
+            <LanguageSwitcher variant="onLight" />
+          </Box>
         </Box>
       </Drawer>
     </AppBar>

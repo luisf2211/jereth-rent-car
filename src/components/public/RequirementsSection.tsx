@@ -6,21 +6,23 @@ import Typography from "@mui/material/Typography";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getRequirements } from "@/features/content/data";
+import { getI18n } from "@/i18n/server";
 
 /**
  * Requisitos para rentar. Renders only if the owner added requirements from
- * the backoffice — we never show invented policies.
+ * the backoffice — we never show invented policies. The requirement TEXTS are
+ * owner-authored data and are shown as-is (not auto-translated).
  */
 export default async function RequirementsSection() {
-  const requirements = await getRequirements();
+  const [requirements, { t }] = await Promise.all([getRequirements(), getI18n()]);
   if (requirements.length === 0) return null;
 
   return (
     <Box id="requisitos" sx={{ py: { xs: 6, md: 9 } }}>
       <Container>
         <SectionTitle
-          title="Requisitos para rentar"
-          subtitle="Lo que necesitas para llevarte tu vehículo."
+          title={t("requirements.title")}
+          subtitle={t("requirements.subtitle")}
         />
         <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 1 }}>
           {requirements.map((r) => (

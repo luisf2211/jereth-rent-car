@@ -7,12 +7,16 @@ import ReservationForm from "@/components/public/reservation/ReservationForm";
 import ReservationTracking from "@/components/public/reservation/ReservationTracking";
 import { getReservationByToken, getReservationSettings } from "@/features/reservations/data";
 import { getDeliveryLocations } from "@/features/delivery-locations/data";
+import { getI18n } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Reserva",
-  // This flow is shared via a private link; keep it out of search engines.
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return {
+    title: t("reservationForm.metaTitle"),
+    // This flow is shared via a private link; keep it out of search engines.
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function ReservarPage({
   params,
@@ -23,6 +27,7 @@ export default async function ReservarPage({
 }) {
   const { token } = await params;
   const { corregir } = await searchParams;
+  const { t } = await getI18n();
 
   const reservation = await getReservationByToken(token);
   if (!reservation) notFound();
@@ -40,10 +45,10 @@ export default async function ReservarPage({
         <Container maxWidth="sm">
           <Box sx={{ textAlign: "center", mb: { xs: 3, md: 4 } }}>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
-              Tu reserva
+              {t("reservationForm.trackingHeading")}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-              JERETH RENT CAR
+              {t("reservationForm.trackingSubheading")}
             </Typography>
           </Box>
           <ReservationTracking reservation={reservation} />
@@ -82,10 +87,13 @@ export default async function ReservarPage({
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: { xs: 3, md: 4 } }}>
           <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
-            Completa tu reserva
+            {t("reservationForm.pageHeading")}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-            Reserva {reservation.code} · {reservation.vehicleTitle}
+            {t("reservationForm.pageSubheadingCode", {
+              code: reservation.code,
+              title: reservation.vehicleTitle,
+            })}
           </Typography>
         </Box>
         <ReservationForm

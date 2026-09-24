@@ -8,19 +8,21 @@ import Typography from "@mui/material/Typography";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getFaqs } from "@/features/content/data";
+import { getI18n } from "@/i18n/server";
 
 /**
- * Preguntas frecuentes. Renders only when FAQs exist (owner-written).
- * Uncontrolled accordions, so this stays a Server Component.
+ * Preguntas frecuentes. Renders only when FAQs exist (owner-written, shown
+ * as-is — not auto-translated). Uncontrolled accordions, so this stays a
+ * Server Component.
  */
 export default async function FaqSection() {
-  const faqs = await getFaqs();
+  const [faqs, { t }] = await Promise.all([getFaqs(), getI18n()]);
   if (faqs.length === 0) return null;
 
   return (
     <Box id="faq" sx={{ py: { xs: 6, md: 9 }, bgcolor: "grey.50" }}>
       <Container maxWidth="md">
-        <SectionTitle title="Preguntas frecuentes" align="center" />
+        <SectionTitle title={t("faq.title")} align="center" />
         <Box sx={{ mt: 4 }}>
           {faqs.map((f) => (
             <Accordion

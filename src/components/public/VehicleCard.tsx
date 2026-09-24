@@ -13,14 +13,15 @@ import Button from "@mui/material/Button";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import type { Vehicle } from "@/types/vehicle";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
+import { formatDailyPrice } from "@/features/vehicles/format";
+import { useI18n } from "@/i18n/LanguageProvider";
 import {
-  categoryLabel,
-  formatDailyPrice,
-  transmissionLabel,
-  vehicleTitle,
-  vehicleTitleWithYearSimilar,
-  vehicleWhatsAppMessage,
-} from "@/features/vehicles/format";
+  categoryLabelI18n,
+  transmissionLabelI18n,
+  vehicleTitleI18n,
+  vehicleTitleWithYearI18n,
+  vehicleWhatsAppMessageI18n,
+} from "@/i18n/vehicle-labels";
 import { getFit, fitToStyle } from "@/lib/image-fit";
 import { vehiclePath } from "@/features/vehicles/vehicle-url";
 
@@ -50,9 +51,10 @@ interface VehicleCardProps {
  */
 export default function VehicleCard({ vehicle, whatsappNumber, digitalEnabled = false }: VehicleCardProps) {
   const router = useRouter();
-  const title = vehicleTitle(vehicle);
-  const displayTitle = vehicleTitleWithYearSimilar(vehicle);
-  const message = vehicleWhatsAppMessage(vehicle);
+  const { t } = useI18n();
+  const title = vehicleTitleI18n(t, vehicle);
+  const displayTitle = vehicleTitleWithYearI18n(t, vehicle);
+  const message = vehicleWhatsAppMessageI18n(t, vehicle);
   const coverFit = getFit(vehicle.imageFits, "cover");
   const detailHref = vehiclePath(vehicle);
   const [starting, setStarting] = React.useState(false);
@@ -76,7 +78,7 @@ export default function VehicleCard({ vehicle, whatsappNumber, digitalEnabled = 
       onClick={handleCardClick}
       role="link"
       tabIndex={-1}          // keyboard users reach the WhatsApp <a> directly
-      aria-label={`Ver detalles de ${title}`}
+      aria-label={t("vehicle.viewDetails", { title })}
       sx={{
         width: "100%",
         display: "flex",
@@ -109,7 +111,7 @@ export default function VehicleCard({ vehicle, whatsappNumber, digitalEnabled = 
           style={{ display: "block", ...fitToStyle(coverFit) }}
         />
         <Chip
-          label={categoryLabel(vehicle.category)}
+          label={categoryLabelI18n(t, vehicle.category)}
           size="small"
           sx={{
             position: "absolute",
@@ -134,17 +136,17 @@ export default function VehicleCard({ vehicle, whatsappNumber, digitalEnabled = 
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <SettingsSuggestRoundedIcon fontSize="small" />
-            <Typography variant="body2">{transmissionLabel(vehicle.transmission)}</Typography>
+            <Typography variant="body2">{transmissionLabelI18n(t, vehicle.transmission)}</Typography>
           </Box>
         </Box>
 
         <Box sx={{ mt: "auto" }}>
           <Typography variant="body2" color="text.secondary" component="p">
-            Desde{" "}
+            {t("vehicle.from")}{" "}
             <Box component="span" sx={{ fontWeight: 800, fontSize: "1.15rem", color: "text.primary" }}>
               {formatDailyPrice(vehicle.dailyPrice)}
             </Box>{" "}
-            / día
+            {t("vehicle.perDay")}
           </Typography>
 
           {/*
@@ -159,7 +161,7 @@ export default function VehicleCard({ vehicle, whatsappNumber, digitalEnabled = 
             <WhatsAppButton
               phoneNumber={whatsappNumber}
               message={message}
-              label="Consultar disponibilidad"
+              label={t("vehicle.consultAvailability")}
               source="vehicle"
               context={title}
               fullWidth
@@ -172,7 +174,7 @@ export default function VehicleCard({ vehicle, whatsappNumber, digitalEnabled = 
                 onClick={handleReservar}
                 disabled={starting}
               >
-                {starting ? "Iniciando…" : "Reservar"}
+                {starting ? t("vehicle.starting") : t("vehicle.reserve")}
               </Button>
             )}
           </Box>

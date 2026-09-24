@@ -21,6 +21,7 @@ import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { formatDailyPrice } from "@/features/vehicles/format";
 import { rentalDays, meetsMinimumRental, MIN_RENTAL_DAYS } from "@/utils/rental-days";
 import { trackEvent } from "@/lib/analytics";
+import { useI18n } from "@/i18n/LanguageProvider";
 
 
 /** Delivery location option. `hasFee` marks a paid location; `deliveryFee`
@@ -67,6 +68,7 @@ function formatDate(iso: string): string {
 export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, whatsappNumber, locations, digitalEnabled }: Props) {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useI18n();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [pickupDate, setPickupDate] = React.useState("");
   const [dropoffDate, setDropoffDate] = React.useState("");
@@ -95,22 +97,31 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
   const belowMinimum = bothDatesChosen && days > 0 && !meetsMinimumRental(days);
 
   const message = React.useMemo(() => {
-    const lines = [`Hola, estoy interesado en rentar el ${vehicleTitle}.`];
-    if (pickupDate) lines.push(`Recogida: ${formatDate(pickupDate)} ${pickupTime}`);
-    if (dropoffDate) lines.push(`Devolución: ${formatDate(dropoffDate)} ${dropoffTime}`);
-    if (pickupLoc) lines.push(`Lugar de recogida: ${pickupLoc.name}`);
-    if (dropoffLoc) lines.push(`Lugar de devolución: ${dropoffLoc.name}`);
+    const lines = [t("booking.msgInterested", { title: vehicleTitle })];
+    if (pickupDate) lines.push(t("booking.msgPickup", { date: formatDate(pickupDate), time: pickupTime }));
+    if (dropoffDate) lines.push(t("booking.msgDropoff", { date: formatDate(dropoffDate), time: dropoffTime }));
+    if (pickupLoc) lines.push(t("booking.msgPickupLoc", { name: pickupLoc.name }));
+    if (dropoffLoc) lines.push(t("booking.msgDropoffLoc", { name: dropoffLoc.name }));
     if (days > 0) {
       lines.push("");
-      lines.push(`${formatDailyPrice(dailyPrice)} x ${days} ${days === 1 ? "día" : "días"} = ${formatDailyPrice(rentalSubtotal)}`);
-      if (pickupFee > 0) lines.push(`Entrega en ${pickupLoc?.name}: ${formatDailyPrice(pickupFee)}`);
-      if (dropoffFee > 0) lines.push(`Devolución en ${dropoffLoc?.name}: ${formatDailyPrice(dropoffFee)}`);
-      lines.push(`Total estimado: ${formatDailyPrice(total)}`);
+      lines.push(
+        t(days === 1 ? "booking.msgLineOne" : "booking.msgLineMany", {
+          price: formatDailyPrice(dailyPrice),
+          days,
+          subtotal: formatDailyPrice(rentalSubtotal),
+        }),
+      );
+      if (pickupFee > 0)
+        lines.push(t("booking.msgDeliveryAt", { name: pickupLoc?.name ?? "", amount: formatDailyPrice(pickupFee) }));
+      if (dropoffFee > 0)
+        lines.push(t("booking.msgDropoffAt", { name: dropoffLoc?.name ?? "", amount: formatDailyPrice(dropoffFee) }));
+      lines.push(t("booking.msgTotal", { total: formatDailyPrice(total) }));
     }
     lines.push("");
-    lines.push("¿Está disponible?");
+    lines.push(t("booking.msgAvailable"));
     return lines.join("\n");
   }, [
+    t,
     vehicleTitle,
     pickupDate,
     dropoffDate,
@@ -170,10 +181,10 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
   };
 
   const locationLabel = (l: BookingLocation) => {
-    if (!l.hasFee) return `${l.name} (gratis)`;
+    if (!l.hasFee) return t("booking.locationFree", { name: l.name });
     return l.deliveryFee > 0
-      ? `${l.name} (+${formatDailyPrice(l.deliveryFee)})`
-      : `${l.name} (cargo adicional)`;
+      ? t("booking.locationPaid", { name: l.name, amount: formatDailyPrice(l.deliveryFee) })
+      : t("booking.locationExtra", { name: l.name });
   };
 
   const fields = (
@@ -181,7 +192,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
       <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
         <TextField
           type="date"
-          label="Recogida"
+          label={t("booking.pickupShort")}
           size="small"
           value={pickupDate}
           onChange={(e) => setPickupDate(e.target.value)}
@@ -190,7 +201,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
         />
         <TextField
           type="time"
-          label="Hora"
+          label={t("booking.timeShort")}
           size="small"
           value={pickupTime}
           onChange={(e) => setPickupTime(e.target.value)}
@@ -201,7 +212,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
       <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
         <TextField
           type="date"
-          label="Devolución"
+          label={t("booking.dropoffShort")}
           size="small"
           value={dropoffDate}
           onChange={(e) => setDropoffDate(e.target.value)}
@@ -210,7 +221,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
         />
         <TextField
           type="time"
-          label="Hora"
+          label={t("booking.timeShort")}
           size="small"
           value={dropoffTime}
           onChange={(e) => setDropoffTime(e.target.value)}
@@ -222,7 +233,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
         <>
           <TextField
             select
-            label="Lugar de recogida"
+            label={t("booking.pickupLocation")}
             size="small"
             fullWidth
             value={pickupLocationId}
@@ -236,7 +247,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
           </TextField>
           <TextField
             select
-            label="Lugar de devolución"
+            label={t("booking.dropoffLocation")}
             size="small"
             fullWidth
             value={dropoffLocationId}
@@ -257,45 +268,47 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
     <>
       {belowMinimum && (
         <Alert severity="warning" sx={{ mt: 2 }}>
-          La renta mínima permitida es de {MIN_RENTAL_DAYS} días. Por favor, selecciona una fecha
-          de devolución que complete al menos {MIN_RENTAL_DAYS} días de renta.
+          {t("booking.minimumRentalFull", { days: MIN_RENTAL_DAYS })}
         </Alert>
       )}
       {days > 0 && (
         <Box sx={{ mt: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
             <Typography variant="body2" color="text.secondary">
-              {formatDailyPrice(dailyPrice)} x {days} {days === 1 ? "día" : "días"}
+              {t(days === 1 ? "booking.priceTimesDaysOne" : "booking.priceTimesDaysMany", {
+                price: formatDailyPrice(dailyPrice),
+                days,
+              })}
             </Typography>
             <Typography variant="body2">{formatDailyPrice(rentalSubtotal)}</Typography>
           </Box>
           {pickupLoc?.hasFee && (
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
               <Typography variant="body2" color="text.secondary">
-                Entrega · {pickupLoc.name}
+                {t("booking.deliveryLine", { name: pickupLoc.name })}
               </Typography>
               <Typography variant="body2">
-                {pickupFee > 0 ? formatDailyPrice(pickupFee) : "Cargo adicional"}
+                {pickupFee > 0 ? formatDailyPrice(pickupFee) : t("booking.extraCharge")}
               </Typography>
             </Box>
           )}
           {dropoffLoc?.hasFee && (
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
               <Typography variant="body2" color="text.secondary">
-                Devolución · {dropoffLoc.name}
+                {t("booking.dropoffLine", { name: dropoffLoc.name })}
               </Typography>
               <Typography variant="body2">
-                {dropoffFee > 0 ? formatDailyPrice(dropoffFee) : "Cargo adicional"}
+                {dropoffFee > 0 ? formatDailyPrice(dropoffFee) : t("booking.extraCharge")}
               </Typography>
             </Box>
           )}
           <Divider sx={{ my: 1 }} />
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography sx={{ fontWeight: 700 }}>Total estimado</Typography>
+            <Typography sx={{ fontWeight: 700 }}>{t("booking.totalEstimated")}</Typography>
             <Typography sx={{ fontWeight: 700 }}>{formatDailyPrice(total)}</Typography>
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
-            Rentas antes de las 5:00 p. m. se cobran como día completo.
+            {t("booking.beforeFivePm")}
           </Typography>
         </Box>
       )}
@@ -319,7 +332,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
       onClick={pushQuoteEvent}
       sx={{ mt: 2 }}
     >
-      Reservar por WhatsApp
+      {t("booking.reserveByWhatsapp")}
     </Button>
   );
 
@@ -338,7 +351,7 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
         onClick={startDigital}
         sx={{ mt: 2 }}
       >
-        {starting ? "Iniciando…" : "Reservar ahora"}
+        {starting ? t("common.starting") : t("booking.reserveNow")}
       </Button>
       {startError && (
         <Alert severity="error" sx={{ mt: 1.5 }}>
@@ -360,14 +373,14 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
               {formatDailyPrice(dailyPrice)}
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              / día
+              {t("common.perDay")}
             </Typography>
           </Box>
           {fields}
           {summary}
           {cta}
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5, textAlign: "center" }}>
-            No se te cobrará nada por consultar disponibilidad.
+            {t("booking.noChargeToCheck")}
           </Typography>
         </Paper>
       </Box>
@@ -403,7 +416,10 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
                 {formatDailyPrice(total)}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {days} {days === 1 ? "día" : "días"} · {formatDailyPrice(dailyPrice)}/día
+                {t(days === 1 ? "booking.dayWithPrice" : "booking.daysWithPrice", {
+                  days,
+                  price: formatDailyPrice(dailyPrice),
+                })}
               </Typography>
             </>
           ) : (
@@ -411,13 +427,13 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
               {formatDailyPrice(dailyPrice)}
               <Typography component="span" variant="body2" color="text.secondary">
                 {" "}
-                / día
+                {t("common.perDay")}
               </Typography>
             </Typography>
           )}
         </Box>
         <Button variant="contained" size="large" onClick={() => setDrawerOpen(true)} sx={{ flexShrink: 0 }}>
-          Reservar
+          {t("booking.reserve")}
         </Button>
       </Paper>
 
@@ -430,9 +446,9 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
         <Box sx={{ p: 2.5, pb: "calc(20px + env(safe-area-inset-bottom))" }}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Reservar {vehicleTitle}
+              {t("booking.reserveVehicle", { title: vehicleTitle })}
             </Typography>
-            <IconButton onClick={() => setDrawerOpen(false)} aria-label="Cerrar">
+            <IconButton onClick={() => setDrawerOpen(false)} aria-label={t("common.close")}>
               <CloseRoundedIcon />
             </IconButton>
           </Box>

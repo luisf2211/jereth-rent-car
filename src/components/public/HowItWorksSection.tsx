@@ -10,6 +10,7 @@ import LuggageRoundedIcon from "@mui/icons-material/LuggageRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getCompanySettings } from "@/lib/branding";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { getI18n } from "@/i18n/server";
 
 /**
  * "How it works" — four ordered steps shown as icon badges connected by a
@@ -20,41 +21,38 @@ import { buildWhatsAppUrl } from "@/lib/whatsapp";
  *   4 → decorative only
  */
 export default async function HowItWorksSection() {
-  const { whatsappNumber } = await getCompanySettings();
-  const waUrl = buildWhatsAppUrl(
-    whatsappNumber,
-    "Hola Jereth Rent Car, estoy interesado en rentar un vehículo."
-  );
+  const [{ whatsappNumber }, { t }] = await Promise.all([getCompanySettings(), getI18n()]);
+  const waUrl = buildWhatsAppUrl(whatsappNumber, t("howItWorks.inquiry"));
 
   const STEPS = [
     {
       icon: ChatRoundedIcon,
-      title: "Escríbenos",
-      description: "Contáctanos por WhatsApp y cuéntanos qué necesitas.",
+      title: t("howItWorks.step1Title"),
+      description: t("howItWorks.step1Desc"),
       href: waUrl,
       external: true,
-      ariaLabel: "Escríbenos por WhatsApp",
+      ariaLabel: t("howItWorks.step1Aria"),
     },
     {
       icon: DirectionsCarFilledRoundedIcon,
-      title: "Elige tu vehículo",
-      description: "Te ayudamos a elegir el vehículo ideal para tu viaje.",
+      title: t("howItWorks.step2Title"),
+      description: t("howItWorks.step2Desc"),
       href: "/vehicles",
       external: false,
-      ariaLabel: "Ver todos los vehículos disponibles",
+      ariaLabel: t("howItWorks.step2Aria"),
     },
     {
       icon: EventAvailableRoundedIcon,
-      title: "Confirma tu reserva",
-      description: "Acordamos fechas, entrega y condiciones de forma simple.",
+      title: t("howItWorks.step3Title"),
+      description: t("howItWorks.step3Desc"),
       href: "/vehicles",
       external: false,
-      ariaLabel: "Confirmar reserva — ver vehículos",
+      ariaLabel: t("howItWorks.step3Aria"),
     },
     {
       icon: LuggageRoundedIcon,
-      title: "Disfruta tu viaje",
-      description: "Recibe tu vehículo y disfruta la carretera con tranquilidad.",
+      title: t("howItWorks.step4Title"),
+      description: t("howItWorks.step4Desc"),
       href: null,
       external: false,
       ariaLabel: undefined,
@@ -65,8 +63,8 @@ export default async function HowItWorksSection() {
     <Box id="como-funciona" sx={{ py: { xs: 6, md: 9 }, bgcolor: "grey.50" }}>
       <Container>
         <SectionTitle
-          title="Cómo funciona"
-          subtitle="Rentar con nosotros es simple. En cuatro pasos estás en camino."
+          title={t("howItWorks.title")}
+          subtitle={t("howItWorks.subtitle")}
           align="center"
         />
 

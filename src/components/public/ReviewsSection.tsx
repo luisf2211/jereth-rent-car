@@ -11,21 +11,27 @@ import Chip from "@mui/material/Chip";
 import GoogleIcon from "@mui/icons-material/Google";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getReviews } from "@/features/content/data";
-
-const dateFormatter = new Intl.DateTimeFormat("es-DO", { year: "numeric", month: "long" });
+import { getI18n } from "@/i18n/server";
 
 /**
  * Reseñas de clientes. Renders only when there are real reviews (added from
- * the backoffice) — never seeded or invented.
+ * the backoffice) — never seeded or invented. Review author names + comments
+ * are owner data, shown as-is (not translated); only the section title and the
+ * date formatting follow the active locale.
  */
 export default async function ReviewsSection() {
-  const reviews = await getReviews();
+  const [reviews, { t }] = await Promise.all([getReviews(), getI18n()]);
   if (reviews.length === 0) return null;
+
+  const dateFormatter = new Intl.DateTimeFormat(t("reviews.dateLocale"), {
+    year: "numeric",
+    month: "long",
+  });
 
   return (
     <Box id="resenas" sx={{ py: { xs: 6, md: 9 } }}>
       <Container>
-        <SectionTitle title="Lo que dicen nuestros clientes" align="center" />
+        <SectionTitle title={t("reviews.title")} align="center" />
         <Grid container spacing={{ xs: 2.5, md: 3 }} sx={{ mt: 1 }}>
           {reviews.map((r) => (
             <Grid key={r.id} size={{ xs: 12, sm: 6, md: 4 }}>

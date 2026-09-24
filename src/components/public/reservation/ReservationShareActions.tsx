@@ -10,6 +10,7 @@ import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
+import { useI18n } from "@/i18n/LanguageProvider";
 
 /**
  * "Save my reservation link" actions for the customer tracking portal.
@@ -18,6 +19,7 @@ import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
  *   falls back to copying.
  */
 export default function ReservationShareActions({ code }: { code: string }) {
+  const { t } = useI18n();
   const [snack, setSnack] = React.useState<string | null>(null);
   const [canShare, setCanShare] = React.useState(false);
 
@@ -31,9 +33,9 @@ export default function ReservationShareActions({ code }: { code: string }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(currentUrl());
-      setSnack("Enlace copiado. Guárdalo para consultar tu reserva más tarde.");
+      setSnack(t("share.copied"));
     } catch {
-      setSnack("No se pudo copiar. Copia el enlace desde la barra del navegador.");
+      setSnack(t("share.copyFailed"));
     }
   };
 
@@ -41,8 +43,8 @@ export default function ReservationShareActions({ code }: { code: string }) {
     const url = currentUrl();
     try {
       await navigator.share({
-        title: `Reserva ${code} · JERETH RENT CAR`,
-        text: `Sigue el estado de tu reserva ${code}`,
+        title: t("share.shareTitle", { code }),
+        text: t("share.shareText", { code }),
         url,
       });
     } catch {
@@ -56,18 +58,18 @@ export default function ReservationShareActions({ code }: { code: string }) {
       <Card>
         <CardContent>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-            Guarda el enlace de tu reserva
+            {t("share.title")}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Guárdalo en WhatsApp, Notas o mensajes para volver a consultar el estado cuando quieras.
+            {t("share.subtitle")}
           </Typography>
           <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
             <Button variant="contained" startIcon={<ContentCopyRoundedIcon />} onClick={copy}>
-              Copiar enlace de mi reserva
+              {t("share.copy")}
             </Button>
             {canShare && (
               <Button variant="outlined" color="secondary" startIcon={<IosShareRoundedIcon />} onClick={share}>
-                Compartir
+                {t("share.share")}
               </Button>
             )}
           </Box>

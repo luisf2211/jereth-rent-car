@@ -6,11 +6,8 @@ import Typography from "@mui/material/Typography";
 import { getCompanySettings } from "@/lib/branding";
 import { getVehicles } from "@/features/vehicles/data";
 import { getReservationSettings } from "@/features/reservations/data";
+import { getI18n } from "@/i18n/server";
 import HeroCarousel from "./HeroCarousel";
-
-const DEFAULT_TITLE = "Renta tu vehículo en Santo Domingo";
-const DEFAULT_SUBTITLE =
-  "Entrega en el Aeropuerto Las Américas (SDQ) y en toda la ciudad. Elige tu vehículo y cotiza al instante por WhatsApp.";
 
 /**
  * Hero: a confident headline on the left and a vehicle carousel on the right
@@ -19,15 +16,17 @@ const DEFAULT_SUBTITLE =
  * set, the section renders on a dark, professional overlay for legibility.
  */
 export default async function HeroSection() {
-  const [settings, vehicles, reservationSettings] = await Promise.all([
+  const [settings, vehicles, reservationSettings, { t }] = await Promise.all([
     getCompanySettings(),
     getVehicles(),
     getReservationSettings(),
+    getI18n(),
   ]);
   const { whatsappNumber, heroImageUrl, heroTitle, heroSubtitle } = settings;
 
-  const title = heroTitle?.trim() || DEFAULT_TITLE;
-  const subtitle = heroSubtitle?.trim() || DEFAULT_SUBTITLE;
+  // Owner-set headline (any language) wins; otherwise a localized default.
+  const title = heroTitle?.trim() || t("hero.defaultTitle");
+  const subtitle = heroSubtitle?.trim() || t("hero.defaultSubtitle");
   const hasImage = Boolean(heroImageUrl);
 
   return (
