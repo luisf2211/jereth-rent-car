@@ -362,45 +362,57 @@ export async function submitReservation(token: string, input: unknown): Promise<
       select: { brand: true, model: true, year: true },
     });
     const vehicleTitle = vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : "—";
-    const { sendNewReservationNotification } = await import("@/lib/email/reservation-notifications");
-    await sendNewReservationNotification({
-      id: reservation.id,
-      code: reservation.code,
-      customerName: d.customerName,
-      phone: d.phone,
-      email: d.email,
-      vehicleTitle,
-      pickupDate: parseDate(d.pickupDate),
-      pickupTime: d.pickupTime,
-      dropoffDate: parseDate(d.dropoffDate),
-      dropoffTime: d.dropoffTime,
-      estimatedTotal,
-      depositPaid,
-      source: reservation.source,
-    });
+
+    // Internal JERETH notification and the customer email are sent
+    // INDEPENDENTLY: each is wrapped so a failure in one can never affect the
+    // other, and neither can affect the saved reservation.
+    try {
+      const { sendNewReservationNotification } = await import("@/lib/email/reservation-notifications");
+      await sendNewReservationNotification({
+        id: reservation.id,
+        code: reservation.code,
+        customerName: d.customerName,
+        phone: d.phone,
+        email: d.email,
+        vehicleTitle,
+        pickupDate: parseDate(d.pickupDate),
+        pickupTime: d.pickupTime,
+        dropoffDate: parseDate(d.dropoffDate),
+        dropoffTime: d.dropoffTime,
+        estimatedTotal,
+        depositPaid,
+        source: reservation.source,
+      });
+    } catch (error) {
+      console.error("internal reservation notification failed (ignored):", error);
+    }
 
     // Customer confirmation-of-receipt email ("Solicitud de reserva recibida").
     // Idempotent + non-throwing, so a resubmit or a mail hiccup never affects
     // the saved reservation.
-    const { sendCustomerRequestReceived } = await import("@/lib/email/customer-notifications");
-    await sendCustomerRequestReceived({
-      id: reservation.id,
-      code: reservation.code,
-      token: reservation.token,
-      customerName: d.customerName,
-      email: d.email,
-      vehicleTitle,
-      pickupDate: parseDate(d.pickupDate),
-      pickupTime: d.pickupTime,
-      dropoffDate: parseDate(d.dropoffDate),
-      dropoffTime: d.dropoffTime,
-      estimatedTotal,
-      depositPaid,
-      balanceDue,
-    });
+    try {
+      const { sendCustomerRequestReceived } = await import("@/lib/email/customer-notifications");
+      await sendCustomerRequestReceived({
+        id: reservation.id,
+        code: reservation.code,
+        token: reservation.token,
+        customerName: d.customerName,
+        email: d.email,
+        vehicleTitle,
+        pickupDate: parseDate(d.pickupDate),
+        pickupTime: d.pickupTime,
+        dropoffDate: parseDate(d.dropoffDate),
+        dropoffTime: d.dropoffTime,
+        estimatedTotal,
+        depositPaid,
+        balanceDue,
+      });
+    } catch (error) {
+      console.error("customer request-received email failed (ignored):", error);
+    }
   } catch (error) {
     // Extra safety net — must never break the reservation flow.
-    console.error("reservation notification failed (ignored):", error);
+    console.error("reservation notification block failed (ignored):", error);
   }
 
   revalidateReservations(token);

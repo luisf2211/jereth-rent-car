@@ -7,6 +7,7 @@ import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import VehiclesCarousel from "@/components/public/VehiclesCarousel";
 import { getVehicles } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
+import { getReservationSettings } from "@/features/reservations/data";
 
 /**
  * Featured vehicles. Editorial header row (title left, "ver todos" right on
@@ -14,9 +15,10 @@ import { getCompanySettings } from "@/lib/branding";
  * Renders nothing if there are no published vehicles.
  */
 export default async function FeaturedVehiclesSection() {
-  const [vehicles, { whatsappNumber }] = await Promise.all([
+  const [vehicles, { whatsappNumber }, reservationSettings] = await Promise.all([
     getVehicles(),
     getCompanySettings(),
+    getReservationSettings(),
   ]);
 
   if (vehicles.length === 0) return null;
@@ -52,7 +54,7 @@ export default async function FeaturedVehiclesSection() {
           </Button>
         </Box>
 
-        <VehiclesCarousel vehicles={vehicles} whatsappNumber={whatsappNumber} />
+        <VehiclesCarousel vehicles={vehicles} whatsappNumber={whatsappNumber} digitalEnabled={reservationSettings.digitalEnabled} />
       </Container>
     </Box>
   );

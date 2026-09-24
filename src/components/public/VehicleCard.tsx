@@ -9,8 +9,11 @@ import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import SettingsSuggestRoundedIcon from "@mui/icons-material/SettingsSuggestRounded";
+import Button from "@mui/material/Button";
+import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import type { Vehicle } from "@/types/vehicle";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
+import { startWebReservation } from "@/features/reservations/actions";
 import {
   categoryLabel,
   formatDailyPrice,
@@ -25,6 +28,8 @@ import { vehiclePath } from "@/features/vehicles/vehicle-url";
 interface VehicleCardProps {
   vehicle: Vehicle;
   whatsappNumber: string;
+  /** When true (Reservas Digitales ON) also show a "Reservar" digital action. */
+  digitalEnabled?: boolean;
 }
 
 /**
@@ -44,16 +49,40 @@ interface VehicleCardProps {
  * real <a> in the DOM. The card itself is not in the tab order (no href),
  * so keyboard users navigate directly to the button.
  */
-export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProps) {
+export default function VehicleCard({ vehicle, whatsappNumber, digitalEnabled = false }: VehicleCardProps) {
   const router = useRouter();
   const title = vehicleTitle(vehicle);
   const displayTitle = vehicleTitleWithYearSimilar(vehicle);
   const message = vehicleWhatsAppMessage(vehicle);
   const coverFit = getFit(vehicle.imageFits, "cover");
   const detailHref = vehiclePath(vehicle);
+  const [starting, setStarting] = React.useState(false);
 
   const handleCardClick = () => {
     router.push(detailHref);
+  };
+
+  // Digital reservation: create the reservation for THIS vehicle and go
+  // straight to the existing /reservar/<token> flow (dates/locations are
+  // chosen there). Mirrors the vehicle-detail "Reservar" behavior. The server
+  // recomputes price/fees and re-checks the digital ON/OFF switch.
+  const handleReservar = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const res = await startWebReservation({ vehicleId: vehicle.id });
+      if (res.ok) {
+        router.push(`/reservar/${res.token}`);
+        return;
+      }
+      // Digital flow unavailable/failed: fall back to the detail page so the
+      // customer can still proceed (never a dead end).
+      router.push(detailHref);
+    } catch {
+      router.push(detailHref);
+    } finally {
+      setStarting(false);
+    }
   };
 
   return (
@@ -139,7 +168,7 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
            */}
           <Box
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            sx={{ mt: 1.5 }}
+            sx={{ mt: 1.5, display: "flex", flexDirection: "column", gap: 1 }}
           >
             <WhatsAppButton
               phoneNumber={whatsappNumber}
@@ -149,6 +178,17 @@ export default function VehicleCard({ vehicle, whatsappNumber }: VehicleCardProp
               context={title}
               fullWidth
             />
+            {digitalEnabled && (
+              <Button
+                variant="contained"
+                fullWidth
+                startIcon={<EventAvailableRoundedIcon />}
+                onClick={handleReservar}
+                disabled={starting}
+              >
+                {starting ? "Iniciando…" : "Reservar"}
+              </Button>
+            )}
           </Box>
         </Box>
       </Box>

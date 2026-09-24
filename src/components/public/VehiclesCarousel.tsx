@@ -10,6 +10,7 @@ import VehicleCard from "@/components/public/VehicleCard";
 interface Props {
   vehicles: Vehicle[];
   whatsappNumber: string;
+  digitalEnabled?: boolean;
 }
 
 /** Pixels per second the track drifts left when idle. */
@@ -28,7 +29,7 @@ const SPEED = 40;
  * Drag with mouse/finger to move manually; hover or drag pauses the drift.
  * Client component.
  */
-export default function VehiclesCarousel({ vehicles, whatsappNumber }: Props) {
+export default function VehiclesCarousel({ vehicles, whatsappNumber, digitalEnabled = false }: Props) {
   const theme = useTheme();
   const isSm = useMediaQuery(theme.breakpoints.up("sm"));
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
@@ -183,7 +184,7 @@ export default function VehiclesCarousel({ vehicles, whatsappNumber }: Props) {
             key={`${vehicle.id}-${i}`}
             sx={{ flex: "0 0 auto", width: cardWidth ? `${cardWidth}px` : `${88}%`, display: "flex" }}
           >
-            <VehicleCard vehicle={vehicle} whatsappNumber={whatsappNumber} />
+            <VehicleCard vehicle={vehicle} whatsappNumber={whatsappNumber} digitalEnabled={digitalEnabled} />
           </Box>
         ))}
       </Box>

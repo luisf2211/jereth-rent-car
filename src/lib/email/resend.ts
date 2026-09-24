@@ -24,6 +24,31 @@ export function isResendConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
+/** The production public site (used for absolute links in emails). */
+const PRODUCTION_SITE_URL = "https://www.jerethrentcar.com";
+
+/**
+ * Single source of truth for the absolute base URL used to build links in ALL
+ * reservation emails ("Ver mi reserva", "Corregir información", "Descargar
+ * confirmación PDF", "Revisar reserva").
+ *
+ * Resolution order:
+ *  1. NEXT_PUBLIC_SITE_URL — explicit override (respected when set).
+ *  2. In production (Vercel prod or NODE_ENV=production) → the real domain,
+ *     so emails never leak http://localhost even if the env var is unset.
+ *  3. Local dev fallback → http://localhost:3000.
+ *
+ * Only the BASE changes; routes/tokens/params are appended by the callers and
+ * are never touched here.
+ */
+export function emailBaseUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+  const isProd = process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+  if (isProd) return PRODUCTION_SITE_URL;
+  return "http://localhost:3000";
+}
+
 // Cached singleton across hot-reloads / lambda invocations.
 const globalForResend = globalThis as unknown as { resend?: Resend };
 

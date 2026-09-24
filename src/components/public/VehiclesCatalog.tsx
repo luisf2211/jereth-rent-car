@@ -18,6 +18,7 @@ import { CATEGORY_ORDER, categoryLabel } from "@/features/vehicles/format";
 interface Props {
   vehicles: Vehicle[];
   whatsappNumber: string;
+  digitalEnabled?: boolean;
 }
 
 type SortKey = "relevance" | "price_asc" | "price_desc";
@@ -27,7 +28,7 @@ type SortKey = "relevance" | "price_asc" | "price_desc";
  * transmission / passengers / sort are selects. Everything filters client-side
  * over the already-loaded list — no extra requests, instant feedback.
  */
-export default function VehiclesCatalog({ vehicles, whatsappNumber }: Props) {
+export default function VehiclesCatalog({ vehicles, whatsappNumber, digitalEnabled = false }: Props) {
   const [category, setCategory] = React.useState<VehicleCategory | "all">("all");
   const [transmission, setTransmission] = React.useState<"all" | "automatic" | "manual">("all");
   const [minPassengers, setMinPassengers] = React.useState<number>(0);
@@ -154,7 +155,7 @@ export default function VehiclesCatalog({ vehicles, whatsappNumber }: Props) {
         <Grid container spacing={{ xs: 2.5, md: 3 }} sx={{ alignItems: "stretch" }}>
           {filtered.map((vehicle) => (
             <Grid key={vehicle.id} size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: "flex" }}>
-              <VehicleCard vehicle={vehicle} whatsappNumber={whatsappNumber} />
+              <VehicleCard vehicle={vehicle} whatsappNumber={whatsappNumber} digitalEnabled={digitalEnabled} />
             </Grid>
           ))}
         </Grid>

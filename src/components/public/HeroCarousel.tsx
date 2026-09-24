@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -9,10 +10,12 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import type { Vehicle } from "@/types/vehicle";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { startWebReservation } from "@/features/reservations/actions";
 import {
   categoryLabel,
   formatDailyPrice,
@@ -26,6 +29,8 @@ import { vehiclePath } from "@/features/vehicles/vehicle-url";
 interface Props {
   vehicles: Vehicle[];
   whatsappNumber: string;
+  /** When true (Reservas Digitales ON) also show a "Reservar" digital action. */
+  digitalEnabled?: boolean;
 }
 
 /**
@@ -34,9 +39,11 @@ interface Props {
  * price and the "Rentar" action). Autoplays, pauses on hover, supports
  * prev/next + dots. Client component.
  */
-export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
+export default function HeroCarousel({ vehicles, whatsappNumber, digitalEnabled = false }: Props) {
+  const router = useRouter();
   const [index, setIndex] = React.useState(0);
   const [paused, setPaused] = React.useState(false);
+  const [starting, setStarting] = React.useState(false);
   const count = vehicles.length;
 
   const go = React.useCallback(
@@ -62,6 +69,27 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
   const carouselFitKey = v.carouselImageUrl ? "carousel" : "cover";
   const carouselFit = getFit(v.imageFits, carouselFitKey);
   const detailHref = vehiclePath(v);
+
+  // Digital reservation for the CURRENT slide's vehicle: create the reservation
+  // and go straight to the existing /reservar/<token> flow (dates/locations are
+  // chosen there). The server recomputes price/fees and re-checks the ON/OFF
+  // switch. On any failure, fall back to the vehicle detail page.
+  const handleReservar = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const res = await startWebReservation({ vehicleId: v.id });
+      if (res.ok) {
+        router.push(`/reservar/${res.token}`);
+        return;
+      }
+      router.push(detailHref);
+    } catch {
+      router.push(detailHref);
+    } finally {
+      setStarting(false);
+    }
+  };
 
   return (
     <Box
@@ -183,20 +211,37 @@ export default function HeroCarousel({ vehicles, whatsappNumber }: Props) {
           </Typography>
         </Box>
 
-        <Button
-          component="a"
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="contained"
-          startIcon={<WhatsAppIcon />}
-          data-wa-source="hero"
-          data-wa-context={vehicleTitle(v)}
-          disabled={!href}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
           sx={{ flexShrink: 0, alignSelf: { xs: "stretch", sm: "flex-end" } }}
         >
-          Rentar
-        </Button>
+          <Button
+            component="a"
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant={digitalEnabled ? "outlined" : "contained"}
+            startIcon={<WhatsAppIcon />}
+            data-wa-source="hero"
+            data-wa-context={vehicleTitle(v)}
+            disabled={!href}
+            sx={{ flexShrink: 0 }}
+          >
+            Rentar
+          </Button>
+          {digitalEnabled && (
+            <Button
+              variant="contained"
+              startIcon={<EventAvailableRoundedIcon />}
+              onClick={handleReservar}
+              disabled={starting}
+              sx={{ flexShrink: 0 }}
+            >
+              {starting ? "Iniciando…" : "Reservar"}
+            </Button>
+          )}
+        </Stack>
       </Stack>
 
       {/* Dots */}

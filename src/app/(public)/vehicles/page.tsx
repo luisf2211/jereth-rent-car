@@ -6,6 +6,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import VehiclesCatalog from "@/components/public/VehiclesCatalog";
 import { getVehicles } from "@/features/vehicles/data";
 import { getCompanySettings } from "@/lib/branding";
+import { getReservationSettings } from "@/features/reservations/data";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,10 @@ export const metadata: Metadata = {
 };
 
 export default async function VehiclesPage() {
-  const [vehicles, { whatsappNumber }] = await Promise.all([
+  const [vehicles, { whatsappNumber }, reservationSettings] = await Promise.all([
     getVehicles(),
     getCompanySettings(),
+    getReservationSettings(),
   ]);
 
   return (
@@ -34,7 +36,7 @@ export default async function VehiclesPage() {
             description="Vuelve pronto o escríbenos por WhatsApp para más opciones."
           />
         ) : (
-          <VehiclesCatalog vehicles={vehicles} whatsappNumber={whatsappNumber} />
+          <VehiclesCatalog vehicles={vehicles} whatsappNumber={whatsappNumber} digitalEnabled={reservationSettings.digitalEnabled} />
         )}
       </Box>
     </Container>

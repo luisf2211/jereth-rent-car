@@ -1,6 +1,6 @@
 import "server-only";
 import prisma from "@/lib/prisma";
-import { getResendClient, isResendConfigured, RESEND_FROM_EMAIL } from "./resend";
+import { getResendClient, isResendConfigured, RESEND_FROM_EMAIL, emailBaseUrl } from "./resend";
 
 /**
  * CUSTOMER-facing reservation emails (Resend).
@@ -42,18 +42,9 @@ function fmtDate(d: Date | null): string {
   return d.toLocaleDateString("es-DO", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-/** Public site base URL for the customer "Ver mi reserva" links. */
-function siteBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.AUTH_URL ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
-}
-
 /** Absolute link to the customer's reservation portal. */
 export function reservationUrl(token: string): string {
-  return `${siteBaseUrl()}/reservar/${token}`;
+  return `${emailBaseUrl()}/reservar/${token}`;
 }
 /** Absolute link that opens the editable correction form. */
 export function reservationCorrectionUrl(token: string): string {

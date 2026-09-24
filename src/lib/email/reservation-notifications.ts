@@ -1,6 +1,6 @@
 import "server-only";
 import prisma from "@/lib/prisma";
-import { getResendClient, isResendConfigured, RESEND_FROM_EMAIL } from "./resend";
+import { getResendClient, isResendConfigured, RESEND_FROM_EMAIL, emailBaseUrl } from "./resend";
 import { RESERVATION_SOURCE_LABELS, type ReservationSource } from "@/lib/validations/reservation";
 
 /**
@@ -17,6 +17,14 @@ import { RESERVATION_SOURCE_LABELS, type ReservationSource } from "@/lib/validat
 
 const EMAIL_TYPE = "request_received";
 
+/**
+ * Default recipient for the internal JERETH notification when
+ * RESERVATION_NOTIFICATION_EMAIL is not set in the environment. This is the
+ * same address already configured for local dev; it guarantees JERETH is
+ * notified in production even if the Vercel env var is missing.
+ */
+const INTERNAL_NOTIFICATION_FALLBACK = "jerethrentcarsrl@gmail.com";
+
 function money(n: number): string {
   return `US$${n.toLocaleString("en-US")}`;
 }
@@ -26,14 +34,7 @@ function fmtDate(d: Date | null): string {
   return d.toLocaleDateString("es-DO", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-/** Base URL for the "Ver reserva" button (admin). Configurable via env. */
-function adminBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.AUTH_URL ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
-}
+
 
 /** Reservation shape needed to build the notification. */
 export interface NotifiableReservation {
@@ -123,9 +124,13 @@ export async function sendNewReservationNotification(
     console.error("reservation notification idempotency check failed:", e);
   }
 
-  const to = process.env.RESERVATION_NOTIFICATION_EMAIL?.trim();
+  // Recipient for the internal JERETH notification. Prefer the env var; fall
+  // back to the known JERETH inbox so the internal email is never lost in
+  // production if the Vercel var is missing (matches the address already
+  // configured for local dev). Set RESERVATION_NOTIFICATION_EMAIL to override.
+  const to = process.env.RESERVATION_NOTIFICATION_EMAIL?.trim() || INTERNAL_NOTIFICATION_FALLBACK;
   if (!to) {
-    console.error("RESERVATION_NOTIFICATION_EMAIL no está configurado; no se envía la notificación.");
+    console.error("No hay destinatario para la notificación interna; no se envía.");
     return { sent: false, reason: "no_recipient" };
   }
   if (!isResendConfigured()) {
@@ -134,7 +139,7 @@ export async function sendNewReservationNotification(
   }
 
   const subject = `🔔 Nueva solicitud de reserva – ${r.code}`;
-  const viewUrl = `${adminBaseUrl()}/admin/reservations/${r.id}`;
+  const viewUrl = `${emailBaseUrl()}/admin/reservations/${r.id}`;
 
   try {
     const resend = getResendClient();

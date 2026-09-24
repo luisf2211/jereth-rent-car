@@ -5,6 +5,7 @@ import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import { getCompanySettings } from "@/lib/branding";
 import { getVehicles } from "@/features/vehicles/data";
+import { getReservationSettings } from "@/features/reservations/data";
 import HeroCarousel from "./HeroCarousel";
 
 const DEFAULT_TITLE = "Renta tu vehículo en Santo Domingo";
@@ -18,7 +19,11 @@ const DEFAULT_SUBTITLE =
  * set, the section renders on a dark, professional overlay for legibility.
  */
 export default async function HeroSection() {
-  const [settings, vehicles] = await Promise.all([getCompanySettings(), getVehicles()]);
+  const [settings, vehicles, reservationSettings] = await Promise.all([
+    getCompanySettings(),
+    getVehicles(),
+    getReservationSettings(),
+  ]);
   const { whatsappNumber, heroImageUrl, heroTitle, heroSubtitle } = settings;
 
   const title = heroTitle?.trim() || DEFAULT_TITLE;
@@ -89,7 +94,7 @@ export default async function HeroSection() {
             </Typography>
           </Box>
 
-          <HeroCarousel vehicles={vehicles} whatsappNumber={whatsappNumber} />
+          <HeroCarousel vehicles={vehicles} whatsappNumber={whatsappNumber} digitalEnabled={reservationSettings.digitalEnabled} />
         </Box>
       </Container>
     </Box>
