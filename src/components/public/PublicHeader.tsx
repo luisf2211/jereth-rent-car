@@ -71,14 +71,30 @@ export default function PublicHeader() {
             <LanguageSwitcher variant="onDark" />
           </Box>
 
-          <IconButton
-            aria-label={t("nav.openMenu")}
-            edge="end"
-            onClick={() => setOpen(true)}
-            sx={{ display: { xs: "inline-flex", md: "none" }, ml: "auto", color: "common.white" }}
+          {/*
+            Mobile: language switcher + menu button grouped on the right so the
+            user can switch ES/EN without opening the menu. The switcher stays
+            compact and matches the dark header; the wrapper owns the right
+            alignment (ml:auto) and the gap between the two controls.
+          */}
+          <Box
+            sx={{
+              display: { xs: "inline-flex", md: "none" },
+              ml: "auto",
+              alignItems: "center",
+              gap: 1,
+            }}
           >
-            <MenuRoundedIcon />
-          </IconButton>
+            <LanguageSwitcher variant="onDark" />
+            <IconButton
+              aria-label={t("nav.openMenu")}
+              edge="end"
+              onClick={() => setOpen(true)}
+              sx={{ color: "common.white" }}
+            >
+              <MenuRoundedIcon />
+            </IconButton>
+          </Box>
         </Toolbar>
       </Container>
 
@@ -104,20 +120,6 @@ export default function PublicHeader() {
               </ListItem>
             ))}
           </List>
-          {/* Language switcher pinned to the bottom of the mobile drawer. */}
-          <Box
-            sx={{
-              pt: 2,
-              mt: 1,
-              borderTop: "1px solid rgba(0,0,0,0.08)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <Box sx={{ fontSize: 14, fontWeight: 600, color: "text.secondary" }}>{t("nav.language")}</Box>
-            <LanguageSwitcher variant="onLight" />
-          </Box>
         </Box>
       </Drawer>
     </AppBar>
