@@ -78,6 +78,24 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   otro: "Otro",
 };
 
+/**
+ * Schema for a MANUAL payment registered by the admin against a reservation.
+ * Purely administrative: it never changes the reservation status. Amount is a
+ * positive integer in USD (same unit as the rest of the pricing). The proof
+ * URL is optional (already uploaded via uploadPaymentProof) and the note is a
+ * short optional free text.
+ */
+export const registerPaymentSchema = z.object({
+  amount: z.coerce.number().int().min(1, "El monto debe ser mayor que 0").max(1_000_000),
+  method: z.enum(PAYMENT_METHODS),
+  // Payment date as a YYYY-MM-DD string (from <input type="date">).
+  paidAt: z.string().trim().min(1, "La fecha es obligatoria").max(10),
+  proofUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+  note: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export type RegisterPaymentInput = z.infer<typeof registerPaymentSchema>;
+
 const optionalStr = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
 // Date input value (YYYY-MM-DD) or empty.
 const optionalDate = z.string().trim().max(10).optional().or(z.literal(""));
@@ -140,7 +158,7 @@ export const customerReservationSchema = z.object({
   customerName: z.string().trim().min(2, "El nombre es obligatorio").max(120),
   email: z.string().trim().toLowerCase().email("Email inválido").max(160),
   phone: z.string().trim().min(5, "Teléfono/WhatsApp obligatorio").max(30),
-  country: z.string().trim().min(2, "País obligatorio").max(80),
+  country: z.string().trim().min(2, "País de donde nos visita obligatorio").max(80),
   idOrPassport: z.string().trim().min(3, "Identificación o pasaporte obligatorio").max(60),
   driverLicense: z.string().trim().min(3, "Licencia obligatoria").max(60),
   pickupDate: z.string().trim().min(1, "Fecha de recogida obligatoria").max(10),

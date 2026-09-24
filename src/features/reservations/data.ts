@@ -6,6 +6,17 @@ import type {
   PaymentMethod,
 } from "@/lib/validations/reservation";
 
+/** A single manual payment recorded by the admin (view model). */
+export interface ReservationPaymentItem {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  paidAt: string; // YYYY-MM-DD
+  proofUrl: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
 /** Flight fields shared by the admin + form/portal view models. */
 export interface FlightFields {
   hasArrivalFlight: boolean;
@@ -63,6 +74,12 @@ export interface AdminReservation {
   createdAt: string;
   updatedAt: string;
   flight: FlightFields;
+  // Manual payment history (append-only) recorded by the admin, newest first.
+  payments: ReservationPaymentItem[];
+  // Total received = initial deposit (depositPaid) + sum of manual payments.
+  totalPaid: number;
+  // Balance still owed = estimatedTotal − totalPaid (never negative).
+  outstandingBalance: number;
 }
 
 /** Data needed to render the shared digital reservation form for a token. */
@@ -243,9 +260,35 @@ type ReservationRowWithVehicle = {
   returnItineraryUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // Optional: only loaded for the detail view (getReservationById).
+  payments?: {
+    id: string;
+    amount: number;
+    method: PaymentMethod;
+    paidAt: Date;
+    proofUrl: string | null;
+    note: string | null;
+    createdAt: Date;
+  }[];
 };
 
 function toAdminReservation(r: ReservationRowWithVehicle): AdminReservation {
+  // Map + total the manual payment history when it was loaded.
+  const payments: ReservationPaymentItem[] = (r.payments ?? []).map((p) => ({
+    id: p.id,
+    amount: p.amount,
+    method: p.method,
+    paidAt: toISODate(p.paidAt) ?? "",
+    proofUrl: p.proofUrl,
+    note: p.note,
+    createdAt: p.createdAt.toISOString(),
+  }));
+  const manualPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  // Total received counts the customer's initial deposit ONCE, plus the manual
+  // payments recorded by the admin — never double-counting the same money.
+  const totalPaid = r.depositPaid + manualPaid;
+  const outstandingBalance = Math.max(r.estimatedTotal - totalPaid, 0);
+
   return {
     id: r.id,
     code: r.code,
@@ -284,6 +327,9 @@ function toAdminReservation(r: ReservationRowWithVehicle): AdminReservation {
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     flight: flightFieldsOf(r),
+    payments,
+    totalPaid,
+    outstandingBalance,
   };
 }
 
@@ -315,7 +361,11 @@ export async function listReservationsAdmin(): Promise<AdminReservation[]> {
 export async function getReservationById(id: string): Promise<AdminReservation | null> {
   const r = await prisma.reservation.findUnique({
     where: { id },
-    include: { vehicle: { select: { brand: true, model: true, year: true } } },
+    include: {
+      vehicle: { select: { brand: true, model: true, year: true } },
+      // Manual payment history, newest first, for the Pagos / Depósitos section.
+      payments: { orderBy: { paidAt: "desc" } },
+    },
   });
   return r ? toAdminReservation(r) : null;
 }

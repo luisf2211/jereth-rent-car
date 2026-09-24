@@ -7,6 +7,7 @@ import { requirePermission } from "@/lib/auth/current-user";
 import {
   createReservationLinkSchema,
   customerReservationSchema,
+  registerPaymentSchema,
   reservationSettingsSchema,
   updateStatusSchema,
   webReservationStartSchema,
@@ -608,6 +609,65 @@ export async function updateReservationStatus(
     }
   }
   return { ok: true, message: "Estado actualizado." };
+}
+
+/* --------------------- Register a manual admin payment -------------------- */
+
+/**
+ * Records a MANUAL payment against a reservation (append-only history).
+ *
+ * - Admin only (reservations.edit).
+ * - Creates a new ReservationPayment row; never overwrites previous payments
+ *   and never touches Reservation.depositPaid (the initial deposit stays as
+ *   its own amount so the same money is never counted twice — "total paid" is
+ *   computed as depositPaid + SUM(payments) wherever it's shown).
+ * - NEVER changes the reservation status (purely administrative).
+ */
+export async function registerReservationPayment(
+  reservationId: string,
+  input: unknown
+): Promise<ActionResult> {
+  try {
+    await requirePermission("reservations.edit");
+  } catch {
+    return { ok: false, message: "No tienes permiso para gestionar reservas." };
+  }
+
+  const parsed = registerPaymentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Revisa los datos del pago.", fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+  const d = parsed.data;
+
+  const reservation = await prisma.reservation.findUnique({
+    where: { id: reservationId },
+    select: { id: true },
+  });
+  if (!reservation) return { ok: false, message: "Reserva no encontrada." };
+
+  // Parse the YYYY-MM-DD date; fall back to now() if it can't be parsed.
+  const paidAt = parseDate(d.paidAt) ?? new Date();
+
+  try {
+    await prisma.reservationPayment.create({
+      data: {
+        reservationId,
+        amount: d.amount,
+        method: d.method,
+        paidAt,
+        proofUrl: d.proofUrl && d.proofUrl.length > 0 ? d.proofUrl : null,
+        note: d.note && d.note.length > 0 ? d.note : null,
+      },
+    });
+  } catch (error) {
+    console.error("registerReservationPayment failed:", error);
+    return { ok: false, message: "No se pudo registrar el pago." };
+  }
+
+  // Refresh the expediente so the new payment + updated balance show up.
+  revalidateReservations();
+  revalidatePath(`/admin/reservations/${reservationId}`);
+  return { ok: true, message: "Pago registrado." };
 }
 
 /**

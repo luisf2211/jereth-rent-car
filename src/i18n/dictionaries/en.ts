@@ -164,6 +164,16 @@ const en: Dictionary = {
     locationExtra: "Extra fee",
   },
 
+  time: {
+    am: "AM",
+    pm: "PM",
+    hour: "Hour",
+    minute: "Minute",
+    hourAria: "Hour",
+    minuteAria: "Minutes",
+    meridiemAria: "AM or PM",
+  },
+
   booking: {
     title: "Get your quote",
     pickupDate: "Pick-up date",
@@ -300,6 +310,8 @@ const en: Dictionary = {
     receivedPayment: " and the payment submitted",
     receivedTimeframe:
       "You'll get a response within 0 to 24 hours. You can reopen this same link anytime to check your reservation status.",
+    receivedEmailNotice:
+      "📧 We've sent you a confirmation email. If you don't see it in your inbox, please check your Spam or Junk folder.",
     reservationNumber: "Reservation number",
     viewStatus: "View my reservation status",
     unspecified: "Not specified",

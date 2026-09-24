@@ -165,6 +165,16 @@ const es = {
     locationExtra: "Cargo adicional",
   },
 
+  time: {
+    am: "AM",
+    pm: "PM",
+    hour: "Hora",
+    minute: "Minuto",
+    hourAria: "Hora",
+    minuteAria: "Minutos",
+    meridiemAria: "AM o PM",
+  },
+
   booking: {
     title: "Cotiza tu renta",
     pickupDate: "Fecha de recogida",
@@ -225,7 +235,7 @@ const es = {
     fullName: "Nombre completo",
     email: "Correo electrónico",
     phone: "WhatsApp / Teléfono",
-    country: "País",
+    country: "País de donde nos visita",
     idOrPassport: "Identificación o pasaporte",
     driverLicense: "Licencia de conducir",
     sectionRentalDetails: "Detalles de la renta",
@@ -301,6 +311,8 @@ const es = {
     receivedPayment: " y el pago enviado",
     receivedTimeframe:
       "Recibirás una respuesta dentro de un plazo de 0 a 24 horas. Puedes volver a abrir este mismo enlace en cualquier momento para consultar el estado de tu reserva.",
+    receivedEmailNotice:
+      "📧 Te hemos enviado un correo de confirmación. Si no lo encuentras en tu bandeja de entrada, revisa Spam o Correo no deseado.",
     reservationNumber: "Número de reserva",
     viewStatus: "Ver estado de mi reserva",
     unspecified: "Sin especificar",
@@ -315,7 +327,7 @@ const es = {
     nameRequired: "El nombre es obligatorio",
     emailInvalid: "Email inválido",
     phoneRequired: "Teléfono/WhatsApp obligatorio",
-    countryRequired: "País obligatorio",
+    countryRequired: "País de donde nos visita obligatorio",
     idRequired: "Identificación o pasaporte obligatorio",
     licenseRequired: "Licencia obligatoria",
     pickupDateRequired: "Fecha de recogida obligatoria",

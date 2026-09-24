@@ -121,6 +121,17 @@ export default async function ReservationTracking({ reservation: r }: { reservat
             {t(meta.descKey)}
           </Typography>
 
+          {/*
+            Email notice — shown right below the "pending verification" text.
+            Purely visual: it does NOT depend on Resend or RESEND_API_KEY, so it
+            always appears in DEV even when no real email is sent.
+          */}
+          {r.status === "pending" && (
+            <Alert severity="info" sx={{ mt: 2.5, textAlign: "left", maxWidth: 520, mx: "auto" }}>
+              {t("reservationForm.receivedEmailNotice")}
+            </Alert>
+          )}
+
           {/* Admin message (only if marked visible) */}
           {showMessage && (
             <Alert severity={r.status === "rejected" ? "error" : "warning"} sx={{ mt: 2.5, textAlign: "left", maxWidth: 520, mx: "auto" }}>

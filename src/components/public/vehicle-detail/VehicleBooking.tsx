@@ -22,6 +22,7 @@ import { formatDailyPrice } from "@/features/vehicles/format";
 import { rentalDays, meetsMinimumRental, MIN_RENTAL_DAYS } from "@/utils/rental-days";
 import { trackEvent } from "@/lib/analytics";
 import { useI18n } from "@/i18n/LanguageProvider";
+import TimeField12h from "@/components/public/reservation/TimeField12h";
 
 
 /** Delivery location option. `hasFee` marks a paid location; `deliveryFee`
@@ -211,15 +212,13 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
           slotProps={{ inputLabel: { shrink: true } }}
           sx={{ flex: "1 1 140px" }}
         />
-        <TextField
-          type="time"
-          label={t("booking.timeShort")}
-          size="small"
-          value={pickupTime}
-          onChange={(e) => setPickupTime(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ flex: "1 1 100px" }}
-        />
+        <Box sx={{ flex: "1 1 100%" }}>
+          <TimeField12h
+            label={t("booking.timeShort")}
+            value={pickupTime}
+            onChange={(v) => setPickupTime(v)}
+          />
+        </Box>
       </Box>
       <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
         <TextField
@@ -231,15 +230,13 @@ export default function VehicleBooking({ vehicleId, vehicleTitle, dailyPrice, wh
           slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: pickupDate || undefined } }}
           sx={{ flex: "1 1 140px" }}
         />
-        <TextField
-          type="time"
-          label={t("booking.timeShort")}
-          size="small"
-          value={dropoffTime}
-          onChange={(e) => setDropoffTime(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ flex: "1 1 100px" }}
-        />
+        <Box sx={{ flex: "1 1 100%" }}>
+          <TimeField12h
+            label={t("booking.timeShort")}
+            value={dropoffTime}
+            onChange={(v) => setDropoffTime(v)}
+          />
+        </Box>
       </Box>
       {hasLocations && (
         <>

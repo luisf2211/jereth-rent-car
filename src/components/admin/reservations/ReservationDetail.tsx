@@ -25,15 +25,22 @@ import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
-import { updateReservationStatus } from "@/features/reservations/actions";
+import {
+  updateReservationStatus,
+  registerReservationPayment,
+  uploadPaymentProof,
+} from "@/features/reservations/actions";
 import {
   RESERVATION_STATUSES,
   RESERVATION_STATUS_LABELS,
   RESERVATION_SOURCE_LABELS,
   PAYMENT_METHOD_LABELS,
+  PAYMENT_METHODS,
   type ReservationStatus,
+  type PaymentMethod,
 } from "@/lib/validations/reservation";
 import type { AdminReservation } from "@/features/reservations/data";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
 interface Props {
   reservation: AdminReservation;
@@ -135,6 +142,58 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
   const [snack, setSnack] = React.useState<{ msg: string; error?: boolean } | null>(null);
   const [proofOpen, setProofOpen] = React.useState(false);
 
+  // --- Manual payment registration (admin) ---
+  const todayIso = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const [payOpen, setPayOpen] = React.useState(false);
+  const [payAmount, setPayAmount] = React.useState("");
+  const [payMethod, setPayMethod] = React.useState<PaymentMethod>("otro");
+  const [payDate, setPayDate] = React.useState(todayIso);
+  const [payNote, setPayNote] = React.useState("");
+  const [payProofUrl, setPayProofUrl] = React.useState("");
+  const [payUploading, setPayUploading] = React.useState(false);
+  const [paySaving, setPaySaving] = React.useState(false);
+  const payFileRef = React.useRef<HTMLInputElement>(null);
+
+  const resetPayForm = () => {
+    setPayAmount("");
+    setPayMethod("otro");
+    setPayDate(todayIso);
+    setPayNote("");
+    setPayProofUrl("");
+    if (payFileRef.current) payFileRef.current.value = "";
+  };
+
+  const handlePayProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPayUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await uploadPaymentProof(fd);
+    setPayUploading(false);
+    if (payFileRef.current) payFileRef.current.value = "";
+    if (res.ok) setPayProofUrl(res.url);
+    else setSnack({ msg: res.message, error: true });
+  };
+
+  const submitPayment = async () => {
+    setPaySaving(true);
+    const res = await registerReservationPayment(r.id, {
+      amount: payAmount,
+      method: payMethod,
+      paidAt: payDate,
+      proofUrl: payProofUrl,
+      note: payNote,
+    });
+    setPaySaving(false);
+    setSnack({ msg: res.message ?? "", error: !res.ok });
+    if (res.ok) {
+      setPayOpen(false);
+      resetPayForm();
+      router.refresh();
+    }
+  };
+
   // The message + visibility apply to "rejected" and "needs_fix".
   const usesMessage = status === "rejected" || status === "needs_fix";
   const dirty =
@@ -212,7 +271,7 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
                   <Grid size={{ xs: 12, sm: 6 }}><Field label="Nombre completo" value={r.customerName} /></Grid>
                   <Grid size={{ xs: 12, sm: 6 }}><Field label="Correo electrónico" value={r.email} /></Grid>
                   <Grid size={{ xs: 12, sm: 6 }}><Field label="WhatsApp / Teléfono" value={r.phone} /></Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}><Field label="País" value={r.country} /></Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}><Field label="País de donde nos visita" value={r.country} /></Grid>
                   <Grid size={{ xs: 12, sm: 6 }}><Field label="Identificación o pasaporte" value={r.idOrPassport} /></Grid>
                   <Grid size={{ xs: 12, sm: 6 }}><Field label="Licencia de conducir" value={r.driverLicense} /></Grid>
                 </Grid>
@@ -242,29 +301,123 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
                   <Grid size={{ xs: 6, sm: 3 }}><Field label="Cargo entrega (recogida)" value={money(r.pickupFee)} /></Grid>
                   <Grid size={{ xs: 6, sm: 3 }}><Field label="Cargo entrega (devolución)" value={money(r.dropoffFee)} /></Grid>
                   <Grid size={{ xs: 6, sm: 3 }}><Field label="Total" value={money(r.estimatedTotal)} /></Grid>
-                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Monto reservado" value={money(r.depositPaid)} /></Grid>
-                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Saldo pendiente" value={money(r.balanceDue)} /></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Total pagado" value={money(r.totalPaid)} /></Grid>
+                  <Grid size={{ xs: 6, sm: 3 }}><Field label="Saldo pendiente" value={money(r.outstandingBalance)} /></Grid>
                 </Grid>
               </CardContent>
             </Card>
 
-            {/* Payment */}
+            {/* Payments / Deposits (administrative) */}
             <Card>
               <CardContent>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-                  Pago
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1, mb: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    Pagos / Depósitos
+                  </Typography>
+                  {canEdit && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<AddRoundedIcon />}
+                      onClick={() => setPayOpen(true)}
+                    >
+                      Registrar pago
+                    </Button>
+                  )}
+                </Box>
+
+                {/* Money summary: total, paid, balance */}
+                <Grid container spacing={2.5} sx={{ mb: 2 }}>
+                  <Grid size={{ xs: 4 }}><Field label="Total de la reserva" value={money(r.estimatedTotal)} /></Grid>
+                  <Grid size={{ xs: 4 }}><Field label="Total pagado" value={money(r.totalPaid)} /></Grid>
+                  <Grid size={{ xs: 4 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                      Balance pendiente
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: r.outstandingBalance > 0 ? "warning.main" : "success.main" }}>
+                      {money(r.outstandingBalance)}
+                    </Typography>
+                  </Grid>
+                </Grid>
+
+                {/* Initial customer deposit (from the digital flow), when present. */}
+                {r.depositPaid > 0 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+                    Incluye depósito inicial del cliente: {money(r.depositPaid)}
+                    {r.paymentMethod ? ` · ${PAYMENT_METHOD_LABELS[r.paymentMethod]}` : ""}
+                  </Typography>
+                )}
+
+                <Divider sx={{ my: 1.5 }} />
+
+                {/* Payment history */}
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                  Historial de pagos
                 </Typography>
+                {r.payments.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Aún no hay pagos manuales registrados.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1.5}>
+                    {r.payments.map((p) => (
+                      <Box
+                        key={p.id}
+                        sx={{
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 2,
+                          p: 1.5,
+                          display: "flex",
+                          alignItems: "flex-start",
+                          justifyContent: "space-between",
+                          gap: 2,
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {money(p.amount)} · {PAYMENT_METHOD_LABELS[p.method]}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            {p.paidAt}
+                          </Typography>
+                          {p.note && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                              {p.note}
+                            </Typography>
+                          )}
+                        </Box>
+                        {p.proofUrl && (
+                          <Button
+                            href={p.proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            size="small"
+                            color="secondary"
+                            startIcon={<OpenInNewRoundedIcon />}
+                            sx={{ flexShrink: 0 }}
+                          >
+                            Comprobante
+                          </Button>
+                        )}
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+
+                <Divider sx={{ my: 2 }} />
+
                 <Grid container spacing={2.5} sx={{ mb: proof ? 2 : 0 }}>
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <Field
-                      label="Método de pago"
+                      label="Método de pago (cliente)"
                       value={r.paymentMethod ? PAYMENT_METHOD_LABELS[r.paymentMethod] : null}
                     />
                   </Grid>
                 </Grid>
 
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-                  Comprobante de pago
+                  Comprobante de pago (cliente)
                 </Typography>
                 {!proof ? (
                   <Typography variant="body2" color="text.secondary">
@@ -494,6 +647,83 @@ export default function ReservationDetail({ reservation: r, canEdit }: Props) {
           </Box>
         </Dialog>
       )}
+
+      {/* Register manual payment dialog */}
+      <Dialog open={payOpen} onClose={() => (paySaving ? null : setPayOpen(false))} maxWidth="xs" fullWidth>
+        <Box sx={{ p: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Registrar pago
+            </Typography>
+            <IconButton onClick={() => setPayOpen(false)} aria-label="Cerrar" disabled={paySaving}>
+              <CloseRoundedIcon />
+            </IconButton>
+          </Box>
+          <Stack spacing={2}>
+            <TextField
+              label="Monto recibido (US$)"
+              type="number"
+              value={payAmount}
+              onChange={(e) => setPayAmount(e.target.value)}
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
+              fullWidth
+            />
+            <TextField
+              select
+              label="Método de pago"
+              value={payMethod}
+              onChange={(e) => setPayMethod(e.target.value as PaymentMethod)}
+              fullWidth
+            >
+              {PAYMENT_METHODS.map((m) => (
+                <MenuItem key={m} value={m}>
+                  {PAYMENT_METHOD_LABELS[m]}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Fecha del pago"
+              type="date"
+              value={payDate}
+              onChange={(e) => setPayDate(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              fullWidth
+            />
+            <Box>
+              <input
+                ref={payFileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                hidden
+                onChange={handlePayProof}
+              />
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => payFileRef.current?.click()}
+                disabled={payUploading}
+              >
+                {payUploading ? "Subiendo..." : payProofUrl ? "Comprobante cargado ✓" : "Subir comprobante (opcional)"}
+              </Button>
+            </Box>
+            <TextField
+              label="Nota (opcional)"
+              value={payNote}
+              onChange={(e) => setPayNote(e.target.value)}
+              multiline
+              minRows={2}
+              fullWidth
+            />
+            <Button
+              variant="contained"
+              onClick={submitPayment}
+              disabled={paySaving || payUploading || !payAmount}
+            >
+              {paySaving ? "Registrando..." : "Registrar pago"}
+            </Button>
+          </Stack>
+        </Box>
+      </Dialog>
 
       <Snackbar
         open={Boolean(snack)}

@@ -37,6 +37,7 @@ import {
 import { COUNTRIES } from "@/lib/countries";
 import { AIRLINES } from "@/lib/airlines";
 import type { ReservationFormData } from "@/features/reservations/data";
+import TimeField12h from "./TimeField12h";
 import { useI18n } from "@/i18n/LanguageProvider";
 import type { TFunction } from "@/i18n/translate";
 
@@ -571,9 +572,14 @@ export default function ReservationForm({
                   error={err("pickupDate")} helperText={help("pickupDate")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="time" label={t("booking.pickupTime")} value={values.pickupTime} ref={registerField("pickupTime")}
-                  onChange={(e) => setField("pickupTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
-                  error={err("pickupTime")} helperText={help("pickupTime")} />
+                <TimeField12h
+                  label={t("booking.pickupTime")}
+                  value={values.pickupTime}
+                  onChange={(v) => setField("pickupTime", v)}
+                  error={err("pickupTime")}
+                  helperText={help("pickupTime")}
+                  fieldRef={registerField("pickupTime")}
+                />
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <TextField fullWidth type="date" label={t("booking.dropoffDate")} value={values.dropoffDate} ref={registerField("dropoffDate")}
@@ -582,9 +588,14 @@ export default function ReservationForm({
                   error={err("dropoffDate")} helperText={help("dropoffDate")} />
               </Grid>
               <Grid size={{ xs: 6 }}>
-                <TextField fullWidth type="time" label={t("booking.dropoffTime")} value={values.dropoffTime} ref={registerField("dropoffTime")}
-                  onChange={(e) => setField("dropoffTime", e.target.value)} slotProps={{ inputLabel: { shrink: true } }}
-                  error={err("dropoffTime")} helperText={help("dropoffTime")} />
+                <TimeField12h
+                  label={t("booking.dropoffTime")}
+                  value={values.dropoffTime}
+                  onChange={(v) => setField("dropoffTime", v)}
+                  error={err("dropoffTime")}
+                  helperText={help("dropoffTime")}
+                  fieldRef={registerField("dropoffTime")}
+                />
               </Grid>
               {/* Locations as selects from the existing DeliveryLocation list. */}
               <Grid size={{ xs: 12, sm: 6 }}>

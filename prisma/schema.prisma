@@ -409,9 +409,39 @@ model Reservation {
   // Communication history (emails sent for this reservation).
   emailLogs          ReservationEmailLog[]
 
+  // Manual payment history recorded by the admin (multiple payments allowed).
+  payments           ReservationPayment[]
+
   @@index([status])
   @@index([vehicleId])
   @@index([createdAt])
+}
+
+// Individual payment recorded MANUALLY by the admin against a reservation.
+// This is an append-only history: each payment is its own row (never
+// overwritten), so an admin can register several partial payments over time.
+//
+// The customer's initial deposit (Reservation.depositPaid) is NOT duplicated
+// here — the app computes "total paid" as depositPaid + SUM(payments.amount)
+// and "balance due" as estimatedTotal − total paid, so the same money is never
+// counted twice. Registering a payment is purely administrative and never
+// changes the reservation status.
+model ReservationPayment {
+  id            String                   @id @default(cuid())
+  reservationId String
+  reservation   Reservation              @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  // Amount received (USD, integer — same unit as the rest of the pricing).
+  amount        Int
+  // Reuses the existing reservation payment method enum (zelle/paypal/…).
+  method        ReservationPaymentMethod
+  // Date the payment was received (admin-provided; defaults to now()).
+  paidAt        DateTime                 @default(now())
+  // Optional proof image URL (Supabase Storage) and optional free-text note.
+  proofUrl      String?
+  note          String?
+  createdAt     DateTime                 @default(now())
+
+  @@index([reservationId])
 }
 
 // Simple communication log: one row per email attempt for a reservation.
