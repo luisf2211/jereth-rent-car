@@ -14,6 +14,7 @@ import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import { getCompanySettings } from "@/lib/branding";
 import { getI18n } from "@/i18n/server";
 import type { TFunction } from "@/i18n/translate";
+import { localizeDeliveryName, localizeDeliveryDescription } from "@/i18n/content-overrides";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -34,7 +35,7 @@ function formatFee(
 }
 
 export default async function LugaresDeEntregaPage() {
-  const [locations, { whatsappNumber }, { t }] = await Promise.all([
+  const [locations, { whatsappNumber }, { t, locale }] = await Promise.all([
     getDeliveryLocations(),
     getCompanySettings(),
     getI18n(),
@@ -115,7 +116,7 @@ export default async function LugaresDeEntregaPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={loc.imageUrl}
-                        alt={loc.name}
+                        alt={localizeDeliveryName(locale, loc.name)}
                         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                       />
                     ) : (
@@ -178,13 +179,13 @@ export default async function LugaresDeEntregaPage() {
                         )}
                       </Box>
                       <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
-                        {loc.name}
+                        {localizeDeliveryName(locale, loc.name)}
                       </Typography>
                     </Stack>
 
                     {loc.description && (
                       <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 1 }}>
-                        {loc.description}
+                        {localizeDeliveryDescription(locale, loc.description)}
                       </Typography>
                     )}
 

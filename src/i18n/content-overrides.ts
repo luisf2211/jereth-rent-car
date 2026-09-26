@@ -155,6 +155,28 @@ export const FAQ_ANSWER_OVERRIDES: BilingualText[] = [
   },
 ];
 
+/** Delivery location NAMES (DeliveryLocation.name). */
+export const DELIVERY_NAME_OVERRIDES: BilingualText[] = [
+  {
+    es: "Aeropuerto Internacional Las Américas (SDQ)",
+    en: "Las Américas International Airport (SDQ)",
+  },
+  { es: "Santo Domingo", en: "Santo Domingo" },
+];
+
+/** Delivery location DESCRIPTIONS (DeliveryLocation.description). Covers both
+ *  the production copy and the demo-seed copy (kept as aliases). */
+export const DELIVERY_DESC_OVERRIDES: BilingualText[] = [
+  {
+    es: "Coordinamos la entrega y recogida de tu vehículo directamente en el aeropuerto al llegar tu vuelo. Escríbenos tu número de vuelo y hora estimada.",
+    en: "We arrange your vehicle's delivery and return right at the airport when your flight lands. Send us your flight number and estimated arrival time.",
+  },
+  {
+    es: "Entrega en tu hotel, residencia o punto acordado dentro de Santo Domingo y alrededores.",
+    en: "Delivery to your hotel, residence, or agreed point within Santo Domingo and surrounding areas.",
+  },
+];
+
 /**
  * Return `text` in the requested locale when it matches a known demo entry
  * (in either language). Unknown/custom text is returned unchanged.
@@ -191,4 +213,12 @@ export function localizeFaqQuestion(locale: Locale, text: string): string {
 }
 export function localizeFaqAnswer(locale: Locale, text: string): string {
   return localizeFrom(FAQ_ANSWER_OVERRIDES, locale, text);
+}
+export function localizeDeliveryName(locale: Locale, text: string): string {
+  return localizeFrom(DELIVERY_NAME_OVERRIDES, locale, text);
+}
+/** Descriptions can be null; returns "" for null so callers can render safely. */
+export function localizeDeliveryDescription(locale: Locale, text: string | null): string {
+  if (!text) return "";
+  return localizeFrom(DELIVERY_DESC_OVERRIDES, locale, text);
 }
