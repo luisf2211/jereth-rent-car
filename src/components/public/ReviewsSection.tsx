@@ -12,15 +12,15 @@ import GoogleIcon from "@mui/icons-material/Google";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getReviews } from "@/features/content/data";
 import { getI18n } from "@/i18n/server";
+import { localizeReview } from "@/i18n/content-overrides";
 
 /**
- * Reseñas de clientes. Renders only when there are real reviews (added from
- * the backoffice) — never seeded or invented. Review author names + comments
- * are owner data, shown as-is (not translated); only the section title and the
- * date formatting follow the active locale.
+ * Reseñas de clientes. Author names are shown as-is; the review COMMENT is
+ * shown in the active language when it matches known demo content
+ * (localizeReview). The section title and date formatting follow the locale.
  */
 export default async function ReviewsSection() {
-  const [reviews, { t }] = await Promise.all([getReviews(), getI18n()]);
+  const [reviews, { t, locale }] = await Promise.all([getReviews(), getI18n()]);
   if (reviews.length === 0) return null;
 
   const dateFormatter = new Intl.DateTimeFormat(t("reviews.dateLocale"), {
@@ -59,7 +59,7 @@ export default async function ReviewsSection() {
                   </Box>
                   <Rating value={r.rating} readOnly size="small" sx={{ mb: 1 }} />
                   <Typography variant="body2" color="text.secondary">
-                    {r.comment}
+                    {localizeReview(locale, r.comment)}
                   </Typography>
                 </CardContent>
               </Card>

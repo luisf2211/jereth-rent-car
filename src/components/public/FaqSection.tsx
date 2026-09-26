@@ -9,14 +9,16 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getFaqs } from "@/features/content/data";
 import { getI18n } from "@/i18n/server";
+import { localizeFaqQuestion, localizeFaqAnswer } from "@/i18n/content-overrides";
 
 /**
- * Preguntas frecuentes. Renders only when FAQs exist (owner-written, shown
- * as-is — not auto-translated). Uncontrolled accordions, so this stays a
- * Server Component.
+ * Preguntas frecuentes. Renders only when FAQs exist. The title follows the
+ * active locale; each question/answer is shown in the active language when it
+ * matches known demo content (localizeFaq*), otherwise as typed. Uncontrolled
+ * accordions, so this stays a Server Component.
  */
 export default async function FaqSection() {
-  const [faqs, { t }] = await Promise.all([getFaqs(), getI18n()]);
+  const [faqs, { t, locale }] = await Promise.all([getFaqs(), getI18n()]);
   if (faqs.length === 0) return null;
 
   return (
@@ -38,11 +40,11 @@ export default async function FaqSection() {
               }}
             >
               <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
-                <Typography sx={{ fontWeight: 600 }}>{f.question}</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{localizeFaqQuestion(locale, f.question)}</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-line" }}>
-                  {f.answer}
+                  {localizeFaqAnswer(locale, f.answer)}
                 </Typography>
               </AccordionDetails>
             </Accordion>

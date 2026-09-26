@@ -7,14 +7,16 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getRequirements } from "@/features/content/data";
 import { getI18n } from "@/i18n/server";
+import { localizeRequirement } from "@/i18n/content-overrides";
 
 /**
  * Requisitos para rentar. Renders only if the owner added requirements from
- * the backoffice — we never show invented policies. The requirement TEXTS are
- * owner-authored data and are shown as-is (not auto-translated).
+ * the backoffice. Titles follow the active locale; each requirement text is
+ * shown in the active language when it matches known demo content
+ * (localizeRequirement), otherwise as typed.
  */
 export default async function RequirementsSection() {
-  const [requirements, { t }] = await Promise.all([getRequirements(), getI18n()]);
+  const [requirements, { t, locale }] = await Promise.all([getRequirements(), getI18n()]);
   if (requirements.length === 0) return null;
 
   return (
@@ -29,7 +31,7 @@ export default async function RequirementsSection() {
             <Grid key={r.id} size={{ xs: 12, sm: 6 }}>
               <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
                 <CheckCircleRoundedIcon sx={{ color: "primary.main", mt: 0.2 }} />
-                <Typography variant="body1">{r.text}</Typography>
+                <Typography variant="body1">{localizeRequirement(locale, r.text)}</Typography>
               </Box>
             </Grid>
           ))}

@@ -7,6 +7,7 @@ import { getCompanySettings } from "@/lib/branding";
 import { getVehicles } from "@/features/vehicles/data";
 import { getReservationSettings } from "@/features/reservations/data";
 import { getI18n } from "@/i18n/server";
+import { localizeHero, localizeHeroSubtitle } from "@/i18n/content-overrides";
 import HeroCarousel from "./HeroCarousel";
 
 /**
@@ -16,7 +17,7 @@ import HeroCarousel from "./HeroCarousel";
  * set, the section renders on a dark, professional overlay for legibility.
  */
 export default async function HeroSection() {
-  const [settings, vehicles, reservationSettings, { t }] = await Promise.all([
+  const [settings, vehicles, reservationSettings, { t, locale }] = await Promise.all([
     getCompanySettings(),
     getVehicles(),
     getReservationSettings(),
@@ -24,9 +25,12 @@ export default async function HeroSection() {
   ]);
   const { whatsappNumber, heroImageUrl, heroTitle, heroSubtitle } = settings;
 
-  // Owner-set headline (any language) wins; otherwise a localized default.
-  const title = heroTitle?.trim() || t("hero.defaultTitle");
-  const subtitle = heroSubtitle?.trim() || t("hero.defaultSubtitle");
+  // Owner-set headline wins; when it matches the known demo content it is shown
+  // in the active language, otherwise a localized default is used.
+  const title = heroTitle?.trim() ? localizeHero(locale, heroTitle.trim()) : t("hero.defaultTitle");
+  const subtitle = heroSubtitle?.trim()
+    ? localizeHeroSubtitle(locale, heroSubtitle.trim())
+    : t("hero.defaultSubtitle");
   const hasImage = Boolean(heroImageUrl);
 
   return (
