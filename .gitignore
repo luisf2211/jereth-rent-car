@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# explicit: never commit local prod credentials (defense in depth; already covered by .env*)
+.env.production.local
+.env.*.local
+
 # vercel
 .vercel
 

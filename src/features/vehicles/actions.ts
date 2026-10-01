@@ -17,6 +17,53 @@ function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
   return out;
 }
 
+/**
+ * Derive the English (hybrid translation) persistence fields from the admin
+ * input. Per-field status rules:
+ *  - EN with content + origin "auto"  → status "auto"  (DeepL result saved
+ *    without manual edits).
+ *  - EN with content + origin "manual" (or missing hint) → status "manual".
+ *  - EN emptied → null/[], status "missing", clear updatedAt.
+ * description and features are evaluated INDEPENDENTLY, so one can be "auto"
+ * while the other is "manual".
+ *
+ * This is the ONLY place that writes the English fields, and it reads solely
+ * from the submitted EN inputs — so editing the Spanish source never alters an
+ * existing English translation.
+ */
+function resolveEnglishFields(input: {
+  descriptionEn?: string;
+  featuresEn?: string[];
+  descriptionEnOrigin?: "auto" | "manual";
+  featuresEnOrigin?: "auto" | "manual";
+}) {
+  const now = new Date();
+  const descEn = (input.descriptionEn ?? "").trim();
+  const featsEn = (input.featuresEn ?? []).map((f) => f.trim()).filter(Boolean);
+  const hasDescEn = descEn.length > 0;
+  const hasFeatsEn = featsEn.length > 0;
+  // Content present → auto only if explicitly flagged as unedited DeepL output;
+  // otherwise manual. Empty → missing.
+  const descStatus = hasDescEn
+    ? input.descriptionEnOrigin === "auto"
+      ? ("auto" as const)
+      : ("manual" as const)
+    : ("missing" as const);
+  const featStatus = hasFeatsEn
+    ? input.featuresEnOrigin === "auto"
+      ? ("auto" as const)
+      : ("manual" as const)
+    : ("missing" as const);
+  return {
+    descriptionEn: hasDescEn ? descEn : null,
+    descriptionEnStatus: descStatus,
+    descriptionEnUpdatedAt: hasDescEn ? now : null,
+    featuresEn: featsEn,
+    featuresEnStatus: featStatus,
+    featuresEnUpdatedAt: hasFeatsEn ? now : null,
+  };
+}
+
 function revalidateVehiclePaths(id?: string) {
   revalidatePath("/admin/vehicles");
   revalidatePath("/", "layout"); // public catalog + featured
@@ -40,12 +87,15 @@ export async function createVehicle(input: unknown): Promise<ActionResult> {
     return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
+  const en = resolveEnglishFields(parsed.data);
   const data = {
     ...parsed.data,
     description: parsed.data.description || null,
     whatsappMessage: parsed.data.whatsappMessage || null,
     carouselImageUrl: parsed.data.carouselImageUrl || null,
     documentImageUrl: parsed.data.documentImageUrl || null,
+    // English (hybrid translation): manual when content exists, missing when empty.
+    ...en,
     // imageFits: store as-is (Prisma Json field). Empty object means no custom framing.
     imageFits: Object.keys(parsed.data.imageFits ?? {}).length > 0
       ? (parsed.data.imageFits as Prisma.InputJsonValue)
@@ -74,12 +124,18 @@ export async function updateVehicle(id: string, input: unknown): Promise<ActionR
     return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
   }
 
+  const en = resolveEnglishFields(parsed.data);
   const data = {
     ...parsed.data,
     description: parsed.data.description || null,
     whatsappMessage: parsed.data.whatsappMessage || null,
     carouselImageUrl: parsed.data.carouselImageUrl || null,
     documentImageUrl: parsed.data.documentImageUrl || null,
+    // English (hybrid translation): manual when content exists, missing when
+    // emptied. Editing the Spanish source never touches the English fields —
+    // they are only changed by what the admin explicitly submits in the EN
+    // inputs, so manual translations are preserved.
+    ...en,
     imageFits: Object.keys(parsed.data.imageFits ?? {}).length > 0
       ? (parsed.data.imageFits as Prisma.InputJsonValue)
       : Prisma.JsonNull,

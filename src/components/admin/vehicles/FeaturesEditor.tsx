@@ -9,6 +9,12 @@ interface Props {
   onChange: (features: string[]) => void;
   /** Amenities already used across vehicles, offered as searchable options. */
   suggestions?: string[];
+  /** Field label (defaults to the Spanish "Facilidades"). */
+  label?: string;
+  /** Input placeholder. */
+  placeholder?: string;
+  /** Helper text under the field. */
+  helperText?: string;
 }
 
 const DEFAULT_SUGGESTIONS = [
@@ -32,7 +38,14 @@ const DEFAULT_SUGGESTIONS = [
  * removable chips. Options combine defaults + amenities already used across
  * the fleet, so reusing existing ones is easy and consistent.
  */
-export default function FeaturesEditor({ value, onChange, suggestions = [] }: Props) {
+export default function FeaturesEditor({
+  value,
+  onChange,
+  suggestions = [],
+  label = "Facilidades",
+  placeholder = "Busca o escribe una facilidad y presiona Enter",
+  helperText = "Escribe para buscar entre las existentes o agrega una nueva.",
+}: Props) {
   // Merge defaults + fleet-wide suggestions, de-duplicated (case-insensitive).
   const options = React.useMemo(() => {
     const seen = new Set<string>();
@@ -69,12 +82,7 @@ export default function FeaturesEditor({ value, onChange, suggestions = [] }: Pr
       onChange={(_, next) => onChange(normalize(next))}
       filterSelectedOptions
       renderInput={(params) => (
-        <TextField
-          {...params}
-          label="Facilidades"
-          placeholder="Busca o escribe una facilidad y presiona Enter"
-          helperText="Escribe para buscar entre las existentes o agrega una nueva."
-        />
+        <TextField {...params} label={label} placeholder={placeholder} helperText={helperText} />
       )}
     />
   );

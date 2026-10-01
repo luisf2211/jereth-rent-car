@@ -41,6 +41,7 @@ import {
 } from "@/features/content/data";
 import { formatDailyPrice } from "@/features/vehicles/format";
 import { getI18n } from "@/i18n/server";
+import { resolveLocalizedVehicle } from "@/i18n/localize-content";
 import {
   categoryLabelI18n,
   fuelLabelI18n,
@@ -54,15 +55,17 @@ export async function generateMetadata({
   params,
 }: PageProps<"/vehicles/[id]">): Promise<Metadata> {
   const { id: param } = await params;
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   // The route segment is "<slug>-<cuid>" (or a legacy bare cuid); resolve by
   // the embedded cuid so renames never break the lookup.
   const vehicle = await getVehicleById(extractVehicleId(param));
   if (!vehicle) return { title: t("vehicleDetail.metaFallbackTitle") };
+  // Localized description (EN when available, else Spanish fallback).
+  const { description: localizedDescription } = resolveLocalizedVehicle(vehicle, locale);
   return {
     title: vehicleTitleI18n(t, vehicle),
     description:
-      vehicle.description ??
+      localizedDescription ??
       t("vehicleDetail.metaDescription", {
         title: vehicleTitleI18n(t, vehicle),
         passengers: vehicle.passengers,
@@ -114,7 +117,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
     reviews,
     similar,
     reservationSettings,
-    { t },
+    i18n,
   ] = await Promise.all([
     getCompanySettings(),
     getRequirements(),
@@ -126,10 +129,15 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
     getReservationSettings(),
     getI18n(),
   ]);
+  const { locale } = i18n;
+  const t = i18n.t;
 
   const title = vehicleTitleI18n(t, vehicle);
   const gallery = [vehicle.imageUrl, ...vehicle.images].filter(Boolean);
   const finalMessage = vehicleWhatsAppMessageI18n(t, vehicle);
+  // Localized dynamic content (English when available, Spanish fallback).
+  const { description: localizedDescription, features: localizedFeatures } =
+    resolveLocalizedVehicle(vehicle, locale);
 
   const summary = [
     { icon: <PeopleAltRoundedIcon />, label: t("vehicleDetail.passengers", { n: vehicle.passengers }) },
@@ -217,16 +225,16 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
               ))}
             </Box>
 
-            {vehicle.description && (
+            {localizedDescription && (
               <SectionBlock title={t("vehicleDetail.aboutThis")}>
-                <VehicleDescription text={vehicle.description} />
+                <VehicleDescription text={localizedDescription} />
               </SectionBlock>
             )}
 
-            {vehicle.features.length > 0 && (
+            {localizedFeatures.length > 0 && (
               <SectionBlock title={t("vehicleDetail.features")}>
                 <Grid container spacing={1.5}>
-                  {vehicle.features.map((f) => (
+                  {localizedFeatures.map((f) => (
                     <Grid key={f} size={{ xs: 12, sm: 6 }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <CheckRoundedIcon fontSize="small" sx={{ color: "primary.main" }} />

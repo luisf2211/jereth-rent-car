@@ -8,6 +8,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -17,7 +18,14 @@ import Switch from "@mui/material/Switch";
 import Alert from "@mui/material/Alert";
 import { vehicleSchema } from "@/lib/validations/vehicle";
 import { createVehicle, updateVehicle } from "@/features/vehicles/actions";
+import { translateVehicleToEnglish } from "@/features/translation/actions";
 import type { VehicleAdminItem } from "@/features/vehicles/admin-data";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogActions from "@mui/material/DialogActions";
+import TranslateRoundedIcon from "@mui/icons-material/TranslateRounded";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import { CATEGORY_ORDER, categoryLabel } from "@/features/vehicles/format";
@@ -52,6 +60,11 @@ type FormValues = {
   imageFits: ImageFits;
   description: string;
   features: string[];
+  descriptionEn: string;
+  featuresEn: string[];
+  /** Origin of the current EN value: "auto" = unedited DeepL output. */
+  descriptionEnOrigin: "auto" | "manual";
+  featuresEnOrigin: "auto" | "manual";
   whatsappMessage: string;
   isActive: boolean;
 };
@@ -112,6 +125,11 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
       imageFits: parseImageFits(vehicle?.imageFits),
       description: vehicle?.description ?? "",
       features: vehicle?.features ?? [],
+      descriptionEn: vehicle?.descriptionEn ?? "",
+      featuresEn: vehicle?.featuresEn ?? [],
+      // Preserve a stored "auto" status on re-save; otherwise treat as manual.
+      descriptionEnOrigin: vehicle?.descriptionEnStatus === "auto" ? "auto" : "manual",
+      featuresEnOrigin: vehicle?.featuresEnStatus === "auto" ? "auto" : "manual",
       whatsappMessage: vehicle?.whatsappMessage ?? "",
       isActive: vehicle?.isActive ?? true,
     },
@@ -125,6 +143,59 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
   /** Update the ImageFit for a specific key. */
   const setFitFor = (key: string, fit: ImageFit) => {
     setValue("imageFits", { ...imageFits, [key]: fit }, { shouldDirty: true });
+  };
+
+  // ── Translation (DeepL, on-demand) ──
+  const [translating, setTranslating] = React.useState(false);
+  const [translateError, setTranslateError] = React.useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+
+  /**
+   * Run DeepL translation of the CURRENT Spanish form values and place the
+   * result into the English fields. Marks their origin as "auto" so, if saved
+   * unedited, they persist with status "auto". Never saves the vehicle.
+   */
+  const runTranslation = async () => {
+    setTranslateError(null);
+    const description = (watch("description") ?? "").trim();
+    const features = (watch("features") ?? []).filter(Boolean);
+    if (!description && features.length === 0) {
+      setTranslateError("No hay contenido en español para traducir.");
+      return;
+    }
+    setTranslating(true);
+    try {
+      const res = await translateVehicleToEnglish({ description, features });
+      if (!res.ok) {
+        // On any failure the existing English content is left untouched.
+        setTranslateError(res.message);
+        return;
+      }
+      // Place results and flag each field as unedited DeepL output ("auto").
+      setValue("descriptionEn", res.descriptionEn, { shouldDirty: true });
+      setValue("descriptionEnOrigin", "auto");
+      setValue("featuresEn", res.featuresEn, { shouldDirty: true });
+      setValue("featuresEnOrigin", "auto");
+    } catch {
+      setTranslateError("Error inesperado al traducir. El contenido no se modificó.");
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  /**
+   * Button handler. If English content already exists (auto OR manual), ask
+   * for explicit confirmation before overwriting. Otherwise translate directly.
+   */
+  const handleTranslateClick = () => {
+    const hasExistingEn =
+      (watch("descriptionEn") ?? "").trim().length > 0 ||
+      (watch("featuresEn") ?? []).filter(Boolean).length > 0;
+    if (hasExistingEn) {
+      setConfirmOpen(true);
+    } else {
+      void runTranslation();
+    }
   };
 
   const onSubmit = async (values: FormValues) => {
@@ -373,11 +444,15 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
             />
           </Grid>
 
-          {/* ── Description & features ── */}
+          {/* ── Description & features (SPANISH source) ── */}
           <Grid size={{ xs: 12 }}>
             <Divider sx={{ my: 1 }} />
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
-              Descripción y facilidades
+              Descripción y facilidades · Español
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+              Contenido original en español. Es el que se muestra en el sitio y el que se usa como
+              respaldo si falta la versión en inglés.
             </Typography>
           </Grid>
           <Grid size={{ xs: 12 }}>
@@ -387,7 +462,7 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Descripción breve (opcional)"
+                  label="Descripción breve en español (opcional)"
                   multiline
                   minRows={3}
                   error={Boolean(errors.description)}
@@ -405,6 +480,82 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
                   value={field.value}
                   onChange={field.onChange}
                   suggestions={featureSuggestions}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* ── Description & features (ENGLISH translation) ── */}
+          <Grid size={{ xs: 12 }}>
+            <Divider sx={{ my: 1 }} />
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              sx={{ alignItems: { sm: "center" }, justifyContent: "space-between", mb: 0.5 }}
+            >
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Description & features · English
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                  Versión en inglés (opcional). Si la dejas vacía, el sitio en inglés muestra
+                  automáticamente el contenido en español. Editar el español no borra el inglés.
+                </Typography>
+              </Box>
+              <Button
+                type="button"
+                variant="outlined"
+                size="small"
+                startIcon={<TranslateRoundedIcon />}
+                onClick={handleTranslateClick}
+                disabled={translating || isSubmitting}
+                sx={{ whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                {translating ? "Traduciendo..." : "Traducir al inglés"}
+              </Button>
+            </Stack>
+            {translateError && (
+              <Alert severity="error" sx={{ mt: 1 }} onClose={() => setTranslateError(null)}>
+                {translateError}
+              </Alert>
+            )}
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <Controller
+              name="descriptionEn"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Short description in English (optional)"
+                  multiline
+                  minRows={3}
+                  error={Boolean(errors.descriptionEn)}
+                  helperText={errors.descriptionEn?.message ?? "English version of the description"}
+                  onChange={(e) => {
+                    // Manual edit → mark as manual so it's never treated as auto.
+                    field.onChange(e);
+                    setValue("descriptionEnOrigin", "manual");
+                  }}
+                />
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <Controller
+              name="featuresEn"
+              control={control}
+              render={({ field }) => (
+                <FeaturesEditor
+                  value={field.value}
+                  onChange={(next) => {
+                    // Manual edit → mark as manual.
+                    field.onChange(next);
+                    setValue("featuresEnOrigin", "manual");
+                  }}
+                  label="Features (English)"
+                  placeholder="Type a feature in English and press Enter"
+                  helperText="English version of the amenities. Leave empty to fall back to Spanish."
                 />
               )}
             />
@@ -470,6 +621,32 @@ export default function VehicleForm({ vehicle, featureSuggestions = [] }: Vehicl
           </Button>
         </Stack>
       </CardContent>
+
+      {/* Confirmation before overwriting existing English content. */}
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>Reemplazar la versión en inglés</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Ya existe contenido en inglés para este vehículo. Si continúas, DeepL generará una nueva
+            traducción desde el español y reemplazará el inglés actual. Podrás revisarla antes de
+            guardar. ¿Deseas continuar?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)} color="secondary">
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              setConfirmOpen(false);
+              void runTranslation();
+            }}
+            variant="contained"
+          >
+            Reemplazar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }

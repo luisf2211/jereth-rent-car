@@ -48,6 +48,8 @@ function toVehicle(row: PrismaVehicle): Vehicle {
     imageFits: parseImageFits(row.imageFits),
     description: row.description,
     features: row.features,
+    descriptionEn: row.descriptionEn,
+    featuresEn: row.featuresEn,
     whatsappMessage: row.whatsappMessage,
     isActive: row.isActive,
   };

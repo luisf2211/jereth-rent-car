@@ -52,8 +52,17 @@ export interface Vehicle {
   documentImageUrl: string | null;
   /** Per-photo framing. null/undefined means no custom framing has been saved. */
   imageFits: ImageFits | null;
+  /** SOURCE (Spanish) description. */
   description: string | null;
+  /** SOURCE (Spanish) amenities/features list. */
   features: string[];
+  /**
+   * English description. null/empty = not translated yet; public rendering
+   * falls back to the Spanish `description` (see resolveLocalizedVehicle).
+   */
+  descriptionEn: string | null;
+  /** English amenities/features list. Empty = not translated yet (fallback to `features`). */
+  featuresEn: string[];
   whatsappMessage: string | null;
   isActive: boolean;
 }

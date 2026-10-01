@@ -53,6 +53,16 @@ export const vehicleSchema = z.object({
   imageFits: imageFitsSchema,
   description: z.string().trim().max(1000).optional().or(z.literal("")),
   features: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
+  // English (hybrid translation) — optional, manually edited from admin.
+  // Same limits as the Spanish source. Empty = no translation yet.
+  descriptionEn: z.string().trim().max(1000).optional().or(z.literal("")),
+  featuresEn: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
+  // Origin hints (form metadata, not stored as content): tell the server
+  // whether the current English value came from DeepL unedited ("auto") so it
+  // can set the right status on save. Default "manual" is the safe assumption
+  // (anything the admin typed, or anything edited after translating).
+  descriptionEnOrigin: z.enum(["auto", "manual"]).optional(),
+  featuresEnOrigin: z.enum(["auto", "manual"]).optional(),
   whatsappMessage: z.string().trim().max(400).optional().or(z.literal("")),
   isActive: z.boolean(),
 });

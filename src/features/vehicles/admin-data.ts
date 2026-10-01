@@ -24,6 +24,12 @@ export interface VehicleAdminItem {
   imageFits: unknown;
   description: string | null;
   features: string[];
+  /** English (hybrid translation) — editable from admin. */
+  descriptionEn: string | null;
+  featuresEn: string[];
+  /** Current translation status per field (missing | auto | manual). */
+  descriptionEnStatus: "missing" | "auto" | "manual";
+  featuresEnStatus: "missing" | "auto" | "manual";
   whatsappMessage: string | null;
   isActive: boolean;
 }
@@ -47,6 +53,10 @@ type VehicleRow = {
   imageFits: unknown;
   description: string | null;
   features: string[];
+  descriptionEn: string | null;
+  featuresEn: string[];
+  descriptionEnStatus: "missing" | "auto" | "manual";
+  featuresEnStatus: "missing" | "auto" | "manual";
   whatsappMessage: string | null;
   isActive: boolean;
 };
@@ -71,6 +81,10 @@ function toItem(v: VehicleRow): VehicleAdminItem {
     imageFits: v.imageFits,
     description: v.description,
     features: v.features,
+    descriptionEn: v.descriptionEn,
+    featuresEn: v.featuresEn,
+    descriptionEnStatus: v.descriptionEnStatus,
+    featuresEnStatus: v.featuresEnStatus,
     whatsappMessage: v.whatsappMessage,
     isActive: v.isActive,
   };

@@ -117,6 +117,17 @@ enum VehicleCategory {
   premium
 }
 
+// Translation state for a translatable field's English version. Shared design
+// intended for reuse across future dynamic content modules.
+//  - missing: no English version yet (public site falls back to Spanish).
+//  - auto:    English generated automatically (safe to regenerate).
+//  - manual:  English edited by hand (must NOT be auto-overwritten on ES edit).
+enum TranslationStatus {
+  missing
+  auto
+  manual
+}
+
 model Vehicle {
   id           String          @id @default(cuid())
   brand        String
@@ -135,10 +146,28 @@ model Vehicle {
   carouselImageUrl String?
   // Additional real photos for the detail gallery/carousel.
   images       String[]        @default([])
-  // Short owner-written description (optional).
+  // Short owner-written description (optional). This is the SOURCE (Spanish)
+  // text; the English version lives in descriptionEn.
   description  String?
-  // Amenities / facilities, e.g. "Aire acondicionado", "Bluetooth".
+  // Amenities / facilities, e.g. "Aire acondicionado", "Bluetooth". SOURCE
+  // (Spanish) list; the English version lives in featuresEn.
   features     String[]        @default([])
+  // --- Hybrid translation (English). Additive; existing rows default to
+  // null/empty + status "missing", so the public site keeps showing Spanish
+  // until an English version exists. Phase 1 only stores these fields; reading
+  // and admin editing come in later phases.
+  // English description (null/empty = not translated yet -> fallback to ES).
+  descriptionEn        String?
+  // English amenities/facilities list (empty = not translated yet).
+  featuresEn           String[]          @default([])
+  // Translation state for the English description.
+  descriptionEnStatus  TranslationStatus @default(missing)
+  // Translation state for the English features list.
+  featuresEnStatus     TranslationStatus @default(missing)
+  // When the English description was last generated/edited (null = never).
+  descriptionEnUpdatedAt DateTime?
+  // When the English features list was last generated/edited (null = never).
+  featuresEnUpdatedAt    DateTime?
   // Optional custom WhatsApp message for this vehicle. Supports {vehicle}
   // which is replaced by the vehicle title. Empty = use the default message.
   whatsappMessage String?
