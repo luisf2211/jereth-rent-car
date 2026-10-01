@@ -14,6 +14,7 @@ import {
 } from "@/lib/validations/reservation";
 import { rentalDays } from "@/utils/rental-days";
 import type { ActionResult } from "@/lib/actions/result";
+import { rateLimit } from "@/lib/security/rate-limit";
 
 function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
   const flat = z.flattenError(error).fieldErrors as Record<string, string[] | undefined>;
@@ -241,6 +242,12 @@ export async function startWebReservation(
  * secret token authorizes the write.
  */
 export async function submitReservation(token: string, input: unknown): Promise<ActionResult> {
+  // --- Rate limit: cap submit/correction attempts per IP (abuse guard). ---
+  const rl = await rateLimit({ bucket: "reservation:submit", limit: 10, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return { ok: false, message: "Demasiadas solicitudes. Intenta de nuevo en unos minutos." };
+  }
+
   const reservation = await prisma.reservation.findUnique({ where: { token } });
   if (!reservation) return { ok: false, message: "Reserva no encontrada." };
 
@@ -467,6 +474,12 @@ export async function submitReservation(token: string, input: unknown): Promise<
 export async function createAndSubmitWebReservation(
   input: unknown
 ): Promise<ActionResult & { token?: string; code?: string }> {
+  // --- Rate limit: cap public reservation creations per IP (abuse guard) ---
+  const rl = await rateLimit({ bucket: "reservation:create", limit: 5, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return { ok: false, message: "Demasiadas solicitudes. Intenta de nuevo en unos minutos." };
+  }
+
   // Gate: digital flow must be enabled (same source of truth as elsewhere).
   const settings = await prisma.reservationSettings.findFirst({ orderBy: { createdAt: "asc" } });
   if (!settings?.digitalEnabled) {
@@ -488,6 +501,33 @@ export async function createAndSubmitWebReservation(
   const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
   if (!vehicle) {
     return { ok: false, message: "El vehículo seleccionado no existe." };
+  }
+
+  // --- Idempotency: a double-click / retry of the SAME submission (same email
+  // + vehicle + dates) within a short window must not create duplicate rows.
+  // Return the existing reservation instead of creating another.
+  try {
+    const since = new Date(Date.now() - 2 * 60_000);
+    const dup = await prisma.reservation.findFirst({
+      where: {
+        source: "web",
+        vehicleId: vehicle.id,
+        email: d.email,
+        pickupDate: parseDate(d.pickupDate),
+        dropoffDate: parseDate(d.dropoffDate),
+        // Already submitted (left "link_created"); a fresh duplicate submit.
+        status: "pending",
+        createdAt: { gte: since },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { token: true, code: true },
+    });
+    if (dup?.token) {
+      return { ok: true, message: "Solicitud de reserva recibida.", token: dup.token, code: dup.code };
+    }
+  } catch (error) {
+    // Non-fatal: if the dedup check fails we still proceed to create normally.
+    console.error("idempotency check failed (ignored):", error);
   }
 
   // Create a minimal row (real vehicle price; days/fees/total are recomputed by
@@ -787,7 +827,7 @@ async function confirmReservationSideEffects(
       const { getCompanySettings } = await import("@/lib/branding");
       const { buildConfirmationSnapshot } = await import("@/lib/reservations/pdf/build-snapshot");
       const { renderConfirmationPdfFromTemplate, renderConfirmationPdf } = await import("@/lib/reservations/pdf/generate");
-      const { uploadBuffer, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
+      const { uploadPrivateBuffer, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
 
       const company = await getCompanySettings();
       const vehicle = (r as unknown as { vehicle: Record<string, unknown> }).vehicle;
@@ -823,7 +863,9 @@ async function confirmReservationSideEffects(
         pdfBuffer = await renderConfirmationPdf(snapshot);
       }
 
-      const up = await uploadBuffer(new Uint8Array(pdfBuffer), {
+      // Store the confirmation PDF in the PRIVATE bucket. We persist a private
+      // ref ("priv:<path>"); the portal/admin mint a signed URL on demand.
+      const up = await uploadPrivateBuffer(new Uint8Array(pdfBuffer), {
         path: `${STORAGE_FOLDERS.confirmations}/${r.code}.pdf`,
         contentType: "application/pdf",
         upsert: true,
@@ -846,10 +888,16 @@ async function confirmReservationSideEffects(
   }
 
   const { sendReservationConfirmed } = await import("@/lib/email/customer-notifications");
+  // The email carries the PDF as an attachment (buffer) AND a link. A private
+  // ref can't be opened directly, so resolve it to a longer-lived signed URL
+  // for the email (the customer may open the mail days later). The portal
+  // always mints a fresh short-lived URL on each visit, independent of this.
+  const { resolvePrivateUrl } = await import("@/lib/storage/upload");
+  const emailPdfUrl = await resolvePrivateUrl(pdfUrl, 60 * 60 * 24 * 7); // 7 days
   await sendReservationConfirmed(
     notifiable,
     pdfBuffer ? { filename: `Reserva-${r.code}.pdf`, content: pdfBuffer } : null,
-    pdfUrl
+    emailPdfUrl
   );
 }
 
@@ -930,12 +978,17 @@ export async function updateReservationSettings(input: unknown): Promise<ActionR
 export async function uploadPaymentProof(
   formData: FormData
 ): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  const rl = await rateLimit({ bucket: "upload:proof", limit: 15, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return { ok: false, message: "Demasiadas solicitudes. Intenta de nuevo en unos minutos." };
+  }
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, message: "Selecciona una imagen." };
   }
-  const { uploadImage, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
-  const res = await uploadImage(STORAGE_FOLDERS.clients, file);
+  // Payment proofs are SENSITIVE → private bucket (no permanent public URL).
+  const { uploadPrivateImage, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
+  const res = await uploadPrivateImage(STORAGE_FOLDERS.clients, file);
   if (!res.ok || !res.url) {
     return { ok: false, message: res.error ?? "No se pudo subir el comprobante." };
   }
@@ -952,12 +1005,17 @@ export async function uploadPaymentProof(
 export async function uploadFlightItinerary(
   formData: FormData
 ): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  const rl = await rateLimit({ bucket: "upload:itinerary", limit: 15, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return { ok: false, message: "Demasiadas solicitudes. Intenta de nuevo en unos minutos." };
+  }
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, message: "Selecciona un archivo." };
   }
-  const { uploadDocument, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
-  const res = await uploadDocument(STORAGE_FOLDERS.clients, file);
+  // Flight itineraries are SENSITIVE → private bucket (no permanent public URL).
+  const { uploadPrivateDocument, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
+  const res = await uploadPrivateDocument(STORAGE_FOLDERS.clients, file);
   if (!res.ok || !res.url) {
     return { ok: false, message: res.error ?? "No se pudo subir el archivo." };
   }

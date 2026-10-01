@@ -18,6 +18,27 @@ export type StorageFolder = (typeof STORAGE_FOLDERS)[keyof typeof STORAGE_FOLDER
 
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "media";
 
+/**
+ * Separate PRIVATE bucket for sensitive client documents (payment proofs,
+ * flight itineraries, reservation confirmation PDFs). Never public: objects
+ * here are served only through short-lived signed URLs minted server-side.
+ * Provisioned by the migration `*_private_client_docs_bucket`.
+ */
+const PRIVATE_BUCKET = process.env.SUPABASE_PRIVATE_BUCKET || "client-docs";
+
+/**
+ * Prefix stored in DB columns for objects that live in the PRIVATE bucket.
+ * A stored value is either:
+ *   - a legacy PUBLIC url  ("https://.../storage/v1/object/public/media/...")
+ *   - a private ref        ("priv:<path-inside-private-bucket>")
+ * This lets new uploads be private while historical public URLs keep working
+ * unchanged (backward compatible).
+ */
+export const PRIVATE_REF_PREFIX = "priv:";
+
+/** Default lifetime (seconds) for signed URLs generated for private docs. */
+export const SIGNED_URL_TTL_SECONDS = 60 * 10; // 10 minutes
+
 const ALLOWED_MIME = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
@@ -146,4 +167,125 @@ export async function uploadBuffer(
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return { ok: true, url: data.publicUrl, path };
+}
+
+
+/* ===========================================================================
+ * PRIVATE client documents (payment proofs, itineraries, confirmation PDFs)
+ * ---------------------------------------------------------------------------
+ * These live in the PRIVATE bucket and are NEVER given a permanent public URL.
+ * Uploads return a private ref ("priv:<path>") to be stored in DB. Reads go
+ * through resolvePrivateUrl(), which mints a short-lived signed URL on demand.
+ * All of this is server-only (service_role); the browser only ever receives
+ * an already-signed, expiring URL.
+ * =========================================================================== */
+
+/** True when a stored DB value points to the PRIVATE bucket (new documents). */
+export function isPrivateRef(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.startsWith(PRIVATE_REF_PREFIX);
+}
+
+/** Extract the object path inside the private bucket from a "priv:<path>" ref. */
+function privatePathOf(ref: string): string {
+  return ref.slice(PRIVATE_REF_PREFIX.length);
+}
+
+/**
+ * Uploads a sensitive IMAGE to the PRIVATE bucket. Returns a private ref
+ * ("priv:<path>") — NOT a public URL. Same validation as uploadImage.
+ */
+export async function uploadPrivateImage(folder: StorageFolder, file: File): Promise<UploadResult> {
+  if (!ALLOWED_MIME.includes(file.type)) {
+    return { ok: false, error: "Formato no permitido. Usa PNG, JPG, WEBP o GIF." };
+  }
+  if (file.size > MAX_BYTES) {
+    return { ok: false, error: "La imagen supera el máximo de 5MB." };
+  }
+  return uploadPrivateFile(folder, file, extensionFor(file.type));
+}
+
+/**
+ * Uploads a sensitive DOCUMENT (image OR PDF) to the PRIVATE bucket. Returns a
+ * private ref ("priv:<path>"). Same validation as uploadDocument.
+ */
+export async function uploadPrivateDocument(folder: StorageFolder, file: File): Promise<UploadResult> {
+  if (!ALLOWED_DOC_MIME.includes(file.type)) {
+    return { ok: false, error: "Formato no permitido. Usa PNG, JPG, WEBP, GIF o PDF." };
+  }
+  if (file.size > MAX_BYTES) {
+    return { ok: false, error: "El archivo supera el máximo de 5MB." };
+  }
+  const ext = file.type === "application/pdf" ? "pdf" : extensionFor(file.type);
+  return uploadPrivateFile(folder, file, ext);
+}
+
+/** Shared private upload: random filename, no public URL, returns "priv:<path>". */
+async function uploadPrivateFile(folder: StorageFolder, file: File, ext: string): Promise<UploadResult> {
+  const supabase = createAdminClient();
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  const path = `${folder}/${filename}`;
+  const arrayBuffer = await file.arrayBuffer();
+
+  const { error } = await supabase.storage
+    .from(PRIVATE_BUCKET)
+    .upload(path, arrayBuffer, { contentType: file.type, upsert: false });
+
+  if (error) {
+    console.error("uploadPrivateFile failed:", error);
+    return { ok: false, error: "No se pudo subir el archivo." };
+  }
+  return { ok: true, url: `${PRIVATE_REF_PREFIX}${path}`, path };
+}
+
+/**
+ * Uploads a server-generated BUFFER (e.g. the confirmation PDF) to the PRIVATE
+ * bucket at a caller-controlled path. Returns a private ref ("priv:<path>").
+ * Regeneration is idempotent (upsert overwrites the same object).
+ */
+export async function uploadPrivateBuffer(
+  bytes: Uint8Array | ArrayBuffer,
+  { path, contentType, upsert = true }: UploadBufferOptions
+): Promise<UploadResult> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.storage
+    .from(PRIVATE_BUCKET)
+    .upload(path, bytes, { contentType, upsert });
+
+  if (error) {
+    console.error("uploadPrivateBuffer failed:", error);
+    return { ok: false, error: "No se pudo guardar el archivo generado." };
+  }
+  return { ok: true, url: `${PRIVATE_REF_PREFIX}${path}`, path };
+}
+
+/**
+ * Resolves a stored document value into a URL usable by the browser:
+ *   - private ref ("priv:<path>") → a short-lived SIGNED URL (server-side).
+ *   - legacy public URL           → returned unchanged (backward compatible).
+ *   - null/empty                  → null.
+ *
+ * Signed-URL generation degrades gracefully: on any error it returns null so a
+ * missing/expired document never throws in a page render.
+ */
+export async function resolvePrivateUrl(
+  value: string | null | undefined,
+  ttlSeconds: number = SIGNED_URL_TTL_SECONDS
+): Promise<string | null> {
+  if (!value) return null;
+  if (!isPrivateRef(value)) return value; // legacy public URL — leave as-is.
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.storage
+      .from(PRIVATE_BUCKET)
+      .createSignedUrl(privatePathOf(value), ttlSeconds);
+    if (error || !data?.signedUrl) {
+      console.error("resolvePrivateUrl failed:", error);
+      return null;
+    }
+    return data.signedUrl;
+  } catch (e) {
+    console.error("resolvePrivateUrl threw:", e);
+    return null;
+  }
 }

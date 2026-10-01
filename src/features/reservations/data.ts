@@ -367,7 +367,28 @@ export async function getReservationById(id: string): Promise<AdminReservation |
       payments: { orderBy: { paidAt: "desc" } },
     },
   });
-  return r ? toAdminReservation(r) : null;
+  if (!r) return null;
+
+  const admin = toAdminReservation(r);
+
+  // Resolve SENSITIVE document references (private bucket) into short-lived
+  // signed URLs so the admin panel can open them. Legacy public URLs pass
+  // through unchanged. Done here (server-side) so service_role never reaches
+  // the browser and links can't be permalinked.
+  const { resolvePrivateUrl } = await import("@/lib/storage/upload");
+  const [paymentProofUrl, arrivalItineraryUrl, returnItineraryUrl, ...paymentProofs] = await Promise.all([
+    resolvePrivateUrl(admin.paymentProofUrl),
+    resolvePrivateUrl(admin.flight.arrivalItineraryUrl || null),
+    resolvePrivateUrl(admin.flight.returnItineraryUrl || null),
+    ...admin.payments.map((p) => resolvePrivateUrl(p.proofUrl)),
+  ]);
+
+  admin.paymentProofUrl = paymentProofUrl;
+  admin.flight.arrivalItineraryUrl = arrivalItineraryUrl ?? "";
+  admin.flight.returnItineraryUrl = returnItineraryUrl ?? "";
+  admin.payments = admin.payments.map((p, i) => ({ ...p, proofUrl: paymentProofs[i] ?? null }));
+
+  return admin;
 }
 
 /** Load a reservation by its shareable token, for the digital form/portal. */
@@ -387,6 +408,15 @@ export async function getReservationByToken(token: string): Promise<ReservationF
     ? await prisma.deliveryLocation.findMany({ where: { name: { in: names } }, select: { id: true, name: true } })
     : [];
   const idByName = new Map(locs.map((l) => [l.name, l.id]));
+
+  // The confirmation PDF lives in the PRIVATE bucket (new reservations) or is a
+  // legacy public URL (older ones). Resolve to a short-lived signed URL for the
+  // portal's download button. The raw payment-proof/itinerary refs are kept
+  // as-is below: the form only checks their PRESENCE ("cargado ✓") and must
+  // resubmit the ORIGINAL ref so the stored document persists (a signed URL
+  // would expire and be saved as a broken link).
+  const { resolvePrivateUrl } = await import("@/lib/storage/upload");
+  const confirmationPdfUrl = await resolvePrivateUrl(r.confirmationPdfUrl);
 
   return {
     code: r.code,
@@ -423,7 +453,7 @@ export async function getReservationByToken(token: string): Promise<ReservationF
     statusMessageVisible: r.statusMessageVisible,
     specialRequest: r.specialRequest,
     paymentProofUrl: r.paymentProofUrl,
-    confirmationPdfUrl: r.confirmationPdfUrl,
+    confirmationPdfUrl,
     pickupLocationId: (r.pickupLocation && idByName.get(r.pickupLocation)) || "",
     dropoffLocationId: (r.dropoffLocation && idByName.get(r.dropoffLocation)) || "",
     flight: flightFieldsOf(r),

@@ -521,3 +521,29 @@ model ReservationTemplate {
 
   @@index([status])
 }
+
+// --- Security: distributed rate limiting -----------------------------------
+
+// Persistent, cross-instance rate-limit counters. On serverless (Vercel) an
+// in-memory limiter only guards a single instance; this table is shared by all
+// instances via Postgres, so it enforces a real global limit.
+//
+// One row per (bucket, identifier, window). A window is a fixed time slice; the
+// unique key lets us upsert-and-increment atomically. Old rows are cleaned up
+// opportunistically (best-effort) and are harmless if they linger.
+model RateLimitHit {
+  id         String   @id @default(cuid())
+  // Logical action bucket, e.g. "reservation:create".
+  bucket     String
+  // Caller identifier (client IP, or "unknown").
+  identifier String
+  // Start of the fixed window (epoch ms, truncated to the window size).
+  windowStart BigInt
+  // Number of requests counted in this window.
+  count      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  // One counter row per caller per window per bucket.
+  @@unique([bucket, identifier, windowStart])
+  @@index([windowStart])
+}

@@ -78,6 +78,29 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   otro: "Otro",
 };
 
+const optionalStr = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
+
+/**
+ * Optional stored-document reference: either a normal http(s) URL (legacy
+ * public assets) OR a private-bucket ref of the form "priv:<path>" produced by
+ * the sensitive-document upload actions. Empty string means "no document".
+ * This keeps the resubmit/correction flow working now that payment proofs,
+ * itineraries and confirmation PDFs live in the PRIVATE bucket.
+ */
+const optionalDocRef = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((v) => v === "" || v.startsWith("priv:") || /^https?:\/\//i.test(v), {
+    message: "URL inválida",
+  })
+  .optional()
+  .or(z.literal(""));
+// Date input value (YYYY-MM-DD) or empty.
+const optionalDate = z.string().trim().max(10).optional().or(z.literal(""));
+// Time input value (HH:mm) or empty.
+const optionalTime = z.string().trim().max(5).optional().or(z.literal(""));
+
 /**
  * Schema for a MANUAL payment registered by the admin against a reservation.
  * Purely administrative: it never changes the reservation status. Amount is a
@@ -90,17 +113,69 @@ export const registerPaymentSchema = z.object({
   method: z.enum(PAYMENT_METHODS),
   // Payment date as a YYYY-MM-DD string (from <input type="date">).
   paidAt: z.string().trim().min(1, "La fecha es obligatoria").max(10),
-  proofUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+  proofUrl: optionalDocRef,
   note: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 
 export type RegisterPaymentInput = z.infer<typeof registerPaymentSchema>;
 
-const optionalStr = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
-// Date input value (YYYY-MM-DD) or empty.
-const optionalDate = z.string().trim().max(10).optional().or(z.literal(""));
-// Time input value (HH:mm) or empty.
-const optionalTime = z.string().trim().max(5).optional().or(z.literal(""));
+/* ---------------------------------------------------------------------------
+ * Structural field validators (server-side anti-garbage / anti-abuse).
+ *
+ * These are STRUCTURAL checks only — they reject obvious junk (URLs as names,
+ * "aguacate" as an ID, 60-digit phones, arbitrary sentences as a license) and
+ * cap length, WITHOUT trying to prove real-world authenticity and WITHOUT
+ * blocking legitimate international customers. Mirrors the visual form.
+ * ------------------------------------------------------------------------- */
+
+// A URL/markup fragment anywhere in the value → reject (used for name).
+const LOOKS_LIKE_URL = /(https?:\/\/|www\.|<[^>]+>|\bhref\b)/i;
+
+/**
+ * Full name: 2–80 chars, must contain at least one letter (any language),
+ * not be purely numeric, and not contain a URL/markup. Allows letters
+ * (incl. accents/ñ), spaces, apostrophe, hyphen and period.
+ */
+const nameField = z
+  .string()
+  .trim()
+  .min(2, "El nombre es obligatorio")
+  .max(80, "El nombre es demasiado largo")
+  .refine((v) => /\p{L}/u.test(v), { message: "Ingresa un nombre válido" })
+  .refine((v) => !/^\d+$/.test(v), { message: "Ingresa un nombre válido" })
+  .refine((v) => !LOOKS_LIKE_URL.test(v), { message: "Ingresa un nombre válido" })
+  .refine((v) => /^[\p{L}\p{M}\s.'-]+$/u.test(v), { message: "Ingresa un nombre válido" });
+
+/**
+ * Phone / WhatsApp: allows digits, spaces and + - ( ) . — must contain
+ * between 7 and 20 actual digits. Rejects letters/arbitrary strings and
+ * absurdly long numbers.
+ */
+const phoneField = z
+  .string()
+  .trim()
+  .min(7, "Teléfono/WhatsApp obligatorio")
+  .max(25, "Teléfono demasiado largo")
+  .refine((v) => /^[+()\d\s.-]+$/.test(v), { message: "Teléfono inválido" })
+  .refine((v) => {
+    const digits = v.replace(/\D/g, "").length;
+    return digits >= 7 && digits <= 20;
+  }, { message: "Teléfono inválido" });
+
+/**
+ * ID / passport and driver's license: 3–40 chars, alphanumeric with common
+ * separators (space, hyphen, period, slash). Must contain at least one
+ * alphanumeric character. Rejects arbitrary sentences/symbols but stays
+ * permissive enough for international document formats.
+ */
+const documentField = (min: number, requiredMsg: string, invalidMsg: string) =>
+  z
+    .string()
+    .trim()
+    .min(min, requiredMsg)
+    .max(40, invalidMsg)
+    .refine((v) => /^[\p{L}\p{N}][\p{L}\p{N}\s./-]*$/u.test(v), { message: invalidMsg })
+    .refine((v) => /[\p{L}\p{N}]/u.test(v), { message: invalidMsg });
 
 /**
  * Schema the admin uses to CREATE A RESERVATION LINK. Only the vehicle is
@@ -155,12 +230,12 @@ export type WebReservationStartInput = z.infer<typeof webReservationStartSchema>
  * proof are expected (validated in the server action against the settings).
  */
 export const customerReservationSchema = z.object({
-  customerName: z.string().trim().min(2, "El nombre es obligatorio").max(120),
+  customerName: nameField,
   email: z.string().trim().toLowerCase().email("Email inválido").max(160),
-  phone: z.string().trim().min(5, "Teléfono/WhatsApp obligatorio").max(30),
   country: z.string().trim().min(2, "País de donde nos visita obligatorio").max(80),
-  idOrPassport: z.string().trim().min(3, "Identificación o pasaporte obligatorio").max(60),
-  driverLicense: z.string().trim().min(3, "Licencia obligatoria").max(60),
+  phone: phoneField,
+  idOrPassport: documentField(3, "Identificación o pasaporte obligatorio", "Identificación o pasaporte inválido"),
+  driverLicense: documentField(3, "Licencia obligatoria", "Licencia inválida"),
   pickupDate: z.string().trim().min(1, "Fecha de recogida obligatoria").max(10),
   pickupTime: z.string().trim().min(1, "Hora de recogida obligatoria").max(5),
   dropoffDate: z.string().trim().min(1, "Fecha de devolución obligatoria").max(10),
@@ -171,7 +246,7 @@ export const customerReservationSchema = z.object({
   // Chosen deposit amount (0 = without deposit).
   depositChoice: z.coerce.number().int().min(0).max(100000).default(0),
   paymentMethod: z.enum(PAYMENT_METHODS).optional(),
-  paymentProofUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+  paymentProofUrl: optionalDocRef,
   // Optional special request (empty = none).
   specialRequest: z.string().trim().max(1000).optional().or(z.literal("")),
 
@@ -189,7 +264,7 @@ export const customerReservationSchema = z.object({
   arrivalAirport: optionalStr(160),
   arrivalDate: optionalDate,
   arrivalTime: optionalTime,
-  arrivalItineraryUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+  arrivalItineraryUrl: optionalDocRef,
 
   hasReturnFlight: z.boolean().default(false),
   returnAirline: optionalStr(120),
@@ -197,7 +272,7 @@ export const customerReservationSchema = z.object({
   returnAirport: optionalStr(160),
   returnDate: optionalDate,
   returnTime: optionalTime,
-  returnItineraryUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+  returnItineraryUrl: optionalDocRef,
 });
 
 export type CustomerReservationInput = z.infer<typeof customerReservationSchema>;
