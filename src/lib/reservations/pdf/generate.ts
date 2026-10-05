@@ -36,10 +36,30 @@ export async function renderConfirmationPdf(snap: ConfirmationSnapshot): Promise
 }
 
 
+import QRCode from "qrcode";
 import { localImageToDataUri } from "./images";
-import { TemplatePdfDocument, type TemplatePdfAssets } from "./TemplateDocument";
+import { TemplatePdfDocument, type TemplatePdfAssets, ARRIVAL_WHATSAPP_URL } from "./TemplateDocument";
 import { tokenValues, resolveTokens } from "@/features/reservation-template/tokens";
 import type { TemplateDocument } from "@/features/reservation-template/types";
+
+/**
+ * Builds the scannable WhatsApp QR (PNG data URI) for the "Información para tu
+ * llegada" card. Uses a high scale + quiet-zone margin + strong contrast so it
+ * stays crisp and scannable when embedded in the PDF. Returns null on failure
+ * so the card degrades gracefully (text only).
+ */
+async function buildArrivalQrDataUri(): Promise<string | null> {
+  try {
+    return await QRCode.toDataURL(ARRIVAL_WHATSAPP_URL, {
+      errorCorrectionLevel: "M",
+      margin: 2,
+      scale: 10,
+      color: { dark: "#0B0B0C", light: "#FFFFFF" },
+    });
+  } catch {
+    return null;
+  }
+}
 
 /** Official confirmation logo bundled in the project (same as the builder). */
 const OFFICIAL_LOGO_REL = "pdf/logo-oficial.png";
@@ -75,10 +95,11 @@ export async function renderConfirmationPdfFromTemplate(
   // Pre-fetch: official logo (local), vehicle photo + company logo (remote),
   // and each template image src (remote or a token that resolves to a URL).
   const srcList = Array.from(imageSrcs);
-  const [officialLogoDataUri, vehicleDataUri, companyLogoDataUri, ...srcDataUris] = await Promise.all([
+  const [officialLogoDataUri, vehicleDataUri, companyLogoDataUri, arrivalQrDataUri, ...srcDataUris] = await Promise.all([
     localImageToDataUri(OFFICIAL_LOGO_REL, "image/png"),
     remoteImageToDataUri(snap.vehicleImageUrl),
     remoteImageToDataUri(snap.company.logoUrl),
+    buildArrivalQrDataUri(),
     ...srcList.map((src) => remoteImageToDataUri(resolveTokens(src, values))),
   ]);
 
@@ -93,6 +114,7 @@ export async function renderConfirmationPdfFromTemplate(
     vehicleDataUri,
     companyLogoDataUri,
     imagesBySrc,
+    arrivalQrDataUri,
   };
 
   const el = TemplatePdfDocument(doc, snap, assets);

@@ -809,82 +809,103 @@ async function confirmReservationSideEffects(
   vehicleTitle: string,
   notifiable: ReturnType<typeof toCustomerNotifiable>
 ): Promise<void> {
-  // The published template is the definitive design of record. Requiring it to
-  // exist keeps the published template provably part of the confirmation path.
+  // The published template is the design of record WHEN it exists. It is no
+  // longer a hard requirement: a confirmation must never be left without a
+  // confirmedAt (and ideally without a PDF) just because no template has been
+  // published yet. When there's no published template we fall back to the
+  // legacy hardcoded layout.
   const { getPublishedReservationTemplate } = await import("@/features/reservation-template/data");
   const published = await getPublishedReservationTemplate();
   if (!published) {
-    console.error(`confirm ${r.code}: no published reservation template; skipping PDF.`);
+    console.warn(`confirm ${r.code}: no published reservation template; using legacy PDF layout.`);
   }
 
   const confirmedAt = (r.confirmedAt as Date | null) ?? new Date();
 
+  // STEP 1 — ALWAYS persist confirmedAt first, independently of the PDF. A
+  // reservation that is being confirmed must carry its confirmedAt even if the
+  // PDF generation/upload later fails or no template exists.
+  try {
+    await prisma.reservation.update({
+      where: { id: r.id },
+      data: { confirmedAt },
+    });
+  } catch (e) {
+    console.error(`confirm ${r.code}: failed to persist confirmedAt:`, e);
+  }
+
   let pdfBuffer: Buffer | null = null;
   let pdfUrl: string | null = (r.confirmationPdfUrl as string | null) ?? null;
 
-  if (published) {
-    try {
-      const { getCompanySettings } = await import("@/lib/branding");
-      const { buildConfirmationSnapshot } = await import("@/lib/reservations/pdf/build-snapshot");
-      const { renderConfirmationPdfFromTemplate, renderConfirmationPdf } = await import("@/lib/reservations/pdf/generate");
-      const { uploadPrivateBuffer, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
+  // STEP 2 — Generate + store the PDF. Wrapped so any failure here never blocks
+  // the confirmation email (and confirmedAt is already saved above).
+  try {
+    const { getCompanySettings } = await import("@/lib/branding");
+    const { buildConfirmationSnapshot } = await import("@/lib/reservations/pdf/build-snapshot");
+    const { renderConfirmationPdfFromTemplate, renderConfirmationPdf } = await import("@/lib/reservations/pdf/generate");
+    const { uploadPrivateBuffer, STORAGE_FOLDERS } = await import("@/lib/storage/upload");
 
-      const company = await getCompanySettings();
-      const vehicle = (r as unknown as { vehicle: Record<string, unknown> }).vehicle;
-      const snapshot = buildConfirmationSnapshot(
-        {
-          ...(r as unknown as import("@/lib/reservations/pdf/build-snapshot").SnapshotReservation),
-          // policyAccepted defaults to true if the row predates the field.
-          policyAccepted: (r.policyAccepted as boolean) ?? true,
-          policyAcceptedAt: (r.policyAcceptedAt as Date | null) ?? (r.createdAt as Date),
-        },
-        {
-          brand: vehicle.brand as string,
-          model: vehicle.model as string,
-          year: vehicle.year as number,
-          category: vehicle.category as string,
-          transmission: vehicle.transmission as string,
-          passengers: vehicle.passengers as number,
-          imageUrl: vehicle.imageUrl as string,
-          documentImageUrl: (vehicle.documentImageUrl as string | null) ?? null,
-          features: (vehicle.features as string[]) ?? [],
-        },
-        company,
-        confirmedAt
-      );
+    const company = await getCompanySettings();
+    const vehicle = (r as unknown as { vehicle: Record<string, unknown> }).vehicle;
+    const snapshot = buildConfirmationSnapshot(
+      {
+        ...(r as unknown as import("@/lib/reservations/pdf/build-snapshot").SnapshotReservation),
+        // policyAccepted defaults to true if the row predates the field.
+        policyAccepted: (r.policyAccepted as boolean) ?? true,
+        policyAcceptedAt: (r.policyAcceptedAt as Date | null) ?? (r.createdAt as Date),
+      },
+      {
+        brand: vehicle.brand as string,
+        model: vehicle.model as string,
+        year: vehicle.year as number,
+        category: vehicle.category as string,
+        transmission: vehicle.transmission as string,
+        passengers: vehicle.passengers as number,
+        imageUrl: vehicle.imageUrl as string,
+        documentImageUrl: (vehicle.documentImageUrl as string | null) ?? null,
+        features: (vehicle.features as string[]) ?? [],
+      },
+      company,
+      confirmedAt
+    );
 
-      // Render the PDF from the PUBLISHED builder template (exact design +
-      // real data). Fall back to the legacy hardcoded layout only if the
-      // template render fails for some reason, so confirmation never breaks.
+    // Render selection:
+    //  - published template   -> renderConfirmationPdfFromTemplate (exact design),
+    //    with the legacy layout as a safety net if that render throws.
+    //  - no published template -> legacy renderConfirmationPdf directly.
+    if (published) {
       try {
         pdfBuffer = await renderConfirmationPdfFromTemplate(published.document, snapshot);
       } catch (tplErr) {
         console.error(`confirm ${r.code}: template PDF render failed, using legacy layout:`, tplErr);
         pdfBuffer = await renderConfirmationPdf(snapshot);
       }
-
-      // Store the confirmation PDF in the PRIVATE bucket. We persist a private
-      // ref ("priv:<path>"); the portal/admin mint a signed URL on demand.
-      const up = await uploadPrivateBuffer(new Uint8Array(pdfBuffer), {
-        path: `${STORAGE_FOLDERS.confirmations}/${r.code}.pdf`,
-        contentType: "application/pdf",
-        upsert: true,
-      });
-      if (up.ok && up.url) pdfUrl = up.url;
-
-      // Persist the confirmation artifacts so the portal + future re-sends use
-      // the exact document generated now (immutable snapshot).
-      await prisma.reservation.update({
-        where: { id: r.id },
-        data: {
-          confirmedAt,
-          confirmationPdfUrl: pdfUrl,
-          confirmationSnapshot: snapshot as unknown as object,
-        },
-      });
-    } catch (e) {
-      console.error(`confirm ${r.code}: PDF generation/upload failed (email will still send):`, e);
+    } else {
+      pdfBuffer = await renderConfirmationPdf(snapshot);
     }
+
+    // Store the confirmation PDF in the PRIVATE bucket. We persist a private
+    // ref ("priv:<path>"); the portal/admin mint a signed URL on demand.
+    const up = await uploadPrivateBuffer(new Uint8Array(pdfBuffer), {
+      path: `${STORAGE_FOLDERS.confirmations}/${r.code}.pdf`,
+      contentType: "application/pdf",
+      upsert: true,
+    });
+    if (up.ok && up.url) pdfUrl = up.url;
+
+    // Persist the confirmation artifacts so the portal + future re-sends use
+    // the exact document generated now (immutable snapshot). confirmedAt is
+    // re-affirmed here (already saved in STEP 1) to keep a single consistent row.
+    await prisma.reservation.update({
+      where: { id: r.id },
+      data: {
+        confirmedAt,
+        confirmationPdfUrl: pdfUrl,
+        confirmationSnapshot: snapshot as unknown as object,
+      },
+    });
+  } catch (e) {
+    console.error(`confirm ${r.code}: PDF generation/upload failed (email will still send):`, e);
   }
 
   const { sendReservationConfirmed } = await import("@/lib/email/customer-notifications");

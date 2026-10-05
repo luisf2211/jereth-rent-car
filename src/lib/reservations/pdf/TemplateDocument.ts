@@ -37,6 +37,16 @@ const MUTED = "#6E6E73";
 const BLACK = "#0B0B0C";
 const WHITE = "#FFFFFF";
 
+/**
+ * WhatsApp deep link encoded by the "Información para tu llegada" QR. Fixed to
+ * the official JERETH RENT CAR number (+1 829-240-3672 → 18292403672) with a
+ * prefilled arrival message. Exported so generate.ts builds the QR data URI
+ * from the exact same URL that the card describes.
+ */
+export const ARRIVAL_WHATSAPP_URL =
+  "https://wa.me/18292403672?text=" +
+  encodeURIComponent("Hola JERETH RENT CAR, ya llegué. Tengo una reserva con ustedes.");
+
 // px (96dpi) -> pt (72dpi)
 const K = 72 / 96;
 const px = (n: number | undefined, fallback = 0): number => Math.round(((n ?? fallback) * K) * 100) / 100;
@@ -51,6 +61,8 @@ export interface TemplatePdfAssets {
   companyLogoDataUri: string | null;
   /** Any other image element src (static URL/token) resolved to data URIs. */
   imagesBySrc: Record<string, string | null>;
+  /** QR (PNG data URI) for the "Información para tu llegada" WhatsApp card. */
+  arrivalQrDataUri: string | null;
 }
 
 const SECTION_ICON: Record<string, string> = {
@@ -62,6 +74,7 @@ const SECTION_ICON: Record<string, string> = {
   specialRequest: "!",
   policyAcceptance: "P",
   reservationConditions: "i",
+  arrivalInfo: "A",
   contactFooter: "",
 };
 
@@ -421,6 +434,91 @@ function renderElement(el: TemplateElement, ctx: Ctx, key: string): ReactElement
         ),
         h(Text, { style: { fontSize: px(9), color: MUTED, fontFamily: "Helvetica-Oblique", marginTop: px(2) } }, RESERVATION_POLICY_CONTRACT_NOTE)
       );
+    case "arrivalInfo": {
+      const bullets = [
+        "Ten disponible tu licencia de conducir.",
+        "Ten disponible tu documento de identidad o pasaporte.",
+        "Avísanos por WhatsApp cuando aterrices o estés próximo al punto de entrega.",
+        "Guarda esta confirmación para tener los datos de tu reserva a mano.",
+      ];
+      return h(
+        View,
+        { key, style: base },
+        Heading(R(ctx, el.heading ?? "Información para tu llegada"), SECTION_ICON.arrivalInfo),
+        // Two columns: left = checklist + discreet note; right = WhatsApp QR card.
+        h(
+          View,
+          { style: { flexDirection: "row", alignItems: "stretch" } },
+          // LEFT column
+          h(
+            View,
+            { style: { flex: 1.35, paddingRight: px(12) } },
+            ...bullets.map((c, i) =>
+              h(
+                View,
+                { key: i, style: { flexDirection: "row", marginBottom: px(3) } },
+                h(Text, { style: { fontSize: px(10), color: MAGENTA, marginRight: px(5), fontFamily: "Helvetica-Bold" } }, "•"),
+                h(Text, { style: { fontSize: px(10), color: INK, lineHeight: 1.45, flex: 1 } }, c)
+              )
+            ),
+            h(
+              Text,
+              { style: { fontSize: px(8.5), color: MUTED, fontFamily: "Helvetica-Oblique", marginTop: px(5) } },
+              "El contrato de alquiler se completa al momento de la entrega del vehículo."
+            )
+          ),
+          // RIGHT column: WhatsApp card (black surface, fuchsia accents, QR with white quiet zone)
+          h(
+            View,
+            {
+              style: {
+                flex: 1,
+                backgroundColor: BLACK,
+                borderRadius: px(12),
+                paddingTop: px(10),
+                paddingBottom: px(10),
+                paddingLeft: px(12),
+                paddingRight: px(12),
+                flexDirection: "row",
+                alignItems: "center",
+              },
+            },
+            // Texts
+            h(
+              View,
+              { style: { flex: 1, paddingRight: px(10) } },
+              h(Text, { style: { color: MAGENTA, fontFamily: "Helvetica-Bold", fontSize: px(13), letterSpacing: 0.4 } }, "¿YA LLEGASTE?"),
+              h(
+                Text,
+                { style: { color: WHITE, fontSize: px(9), lineHeight: 1.4, marginTop: px(5) } },
+                "Escanea y avísanos por WhatsApp."
+              ),
+              h(
+                Text,
+                { style: { color: "#C4C4C8", fontSize: px(9), lineHeight: 1.4, marginTop: px(2) } },
+                "Estamos listos para recibirte."
+              )
+            ),
+            // QR with a white quiet-zone frame so it scans reliably against black.
+            ctx.assets.arrivalQrDataUri
+              ? h(
+                  View,
+                  {
+                    style: {
+                      backgroundColor: WHITE,
+                      borderRadius: px(8),
+                      padding: px(6),
+                      alignItems: "center",
+                      justifyContent: "center",
+                    },
+                  },
+                  h(Image, { src: ctx.assets.arrivalQrDataUri, style: { width: px(76), height: px(76) } })
+                )
+              : null
+          )
+        )
+      );
+    }
     case "contactFooter":
       return h(
         View,
@@ -507,6 +605,36 @@ export function TemplatePdfDocument(
   const pagePaddingX = px(doc.page.paddingX ?? 0);
   const pagePaddingY = px(doc.page.paddingY ?? 0);
 
+  // When the template's LAST row is the bottom banner/footer, push it to the
+  // bottom edge by inserting a flexible spacer before it. The page is a
+  // vertical flex column, so the spacer (flexGrow:1) absorbs the leftover
+  // vertical space and the banner rests at the bottom, instead of leaving a
+  // large white strip beneath it. Nothing is stretched or resized: each row
+  // keeps its intrinsic height; only the empty gap is distributed.
+  //
+  // Robust footer detection — do NOT assume the footer is a `contactFooter`.
+  // The real published template uses a full-width `image` as its bottom banner
+  // (ROW 5). A footer row is any LAST row whose cells contain ONLY banner-type
+  // elements (contactFooter / image / logo) — i.e. a pure banner strip with no
+  // data blocks or text. This matches both the real template (image) and the
+  // legacy one (contactFooter) without touching intrinsic sizes.
+  const BANNER_TYPES = new Set(["contactFooter", "image", "logo"]);
+  const rowsEls = doc.rows.map((row, i) => renderRow(row, ctx, `row-${i}`));
+  const lastRow = doc.rows[doc.rows.length - 1];
+  const lastRowElements = lastRow ? lastRow.cells.flat() : [];
+  const lastIsFooter = Boolean(
+    lastRow &&
+      lastRowElements.length > 0 &&
+      lastRowElements.every((el) => BANNER_TYPES.has(el.type))
+  );
+  const children = lastIsFooter
+    ? [
+        ...rowsEls.slice(0, -1),
+        h(View, { key: "__spacer", style: { flexGrow: 1, minHeight: px(8) } }),
+        rowsEls[rowsEls.length - 1],
+      ]
+    : rowsEls;
+
   return h(
     Document,
     null,
@@ -516,6 +644,7 @@ export function TemplatePdfDocument(
         size: "A4",
         style: {
           ...s.page,
+          flexDirection: "column",
           backgroundColor: doc.page.background || WHITE,
           paddingLeft: pagePaddingX,
           paddingRight: pagePaddingX,
@@ -523,7 +652,7 @@ export function TemplatePdfDocument(
           paddingBottom: pagePaddingY,
         },
       },
-      ...doc.rows.map((row, i) => renderRow(row, ctx, `row-${i}`))
+      ...children
     )
   );
 }

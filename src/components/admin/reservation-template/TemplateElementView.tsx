@@ -79,6 +79,7 @@ const SECTION_ICON: Record<string, string> = {
   specialRequest: "✎",
   policyAcceptance: "👤",
   reservationConditions: "ⓘ",
+  arrivalInfo: "✈",
   contactFooter: "",
 };
 
@@ -133,10 +134,40 @@ interface Props {
   mode: "edit" | "preview";
 }
 
+/** WhatsApp deep link encoded by the arrival QR (mirrors the PDF renderer). */
+const ARRIVAL_WHATSAPP_URL =
+  "https://wa.me/18292403672?text=" +
+  encodeURIComponent("Hola JERETH RENT CAR, ya llegué. Tengo una reserva con ustedes.");
+
 export default function TemplateElementView({ element: el, snapshot, mode }: Props) {
   const values = React.useMemo(() => tokenValues(snapshot), [snapshot]);
   const t = (s: string) => (mode === "preview" ? resolveTokens(s, values) : s);
   const style = boxSx(el.style);
+
+  // Generate the scannable WhatsApp QR as a data URI for the arrival card
+  // preview (the PDF builds its own QR server-side). Lazy-import keeps the
+  // qrcode module out of the bundle for templates without this block.
+  const [arrivalQr, setArrivalQr] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (el.type !== "arrivalInfo") return;
+    let active = true;
+    import("qrcode")
+      .then((m) =>
+        m.default.toDataURL(ARRIVAL_WHATSAPP_URL, {
+          errorCorrectionLevel: "M",
+          margin: 2,
+          scale: 6,
+          color: { dark: "#0B0B0C", light: "#FFFFFF" },
+        })
+      )
+      .then((uri) => {
+        if (active) setArrivalQr(uri);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [el.type]);
 
   switch (el.type) {
     case "title":
@@ -421,6 +452,60 @@ export default function TemplateElementView({ element: el, snapshot, mode }: Pro
           <span style={{ fontSize: 9, color: MUTED, fontStyle: "italic" }}>{RESERVATION_POLICY_CONTRACT_NOTE}</span>
         </Box>
       );
+    case "arrivalInfo": {
+      const bullets = [
+        "Ten disponible tu licencia de conducir.",
+        "Ten disponible tu documento de identidad o pasaporte.",
+        "Avísanos por WhatsApp cuando aterrices o estés próximo al punto de entrega.",
+        "Guarda esta confirmación para tener los datos de tu reserva a mano.",
+      ];
+      return (
+        <Box style={style}>
+          <Heading text={t(el.heading ?? "Información para tu llegada")} icon={SECTION_ICON.arrivalInfo} />
+          <Box sx={{ display: "flex", alignItems: "stretch", gap: 1.5 }}>
+            {/* LEFT: checklist + discreet note */}
+            <Box sx={{ flex: 1.35 }}>
+              <Box component="ul" sx={{ pl: 2, m: 0 }}>
+                {bullets.map((c, i) => (
+                  <li key={i} style={{ fontSize: 10, lineHeight: 1.45, color: INK, marginBottom: 3 }}>{c}</li>
+                ))}
+              </Box>
+              <span style={{ fontSize: 8.5, color: MUTED, fontStyle: "italic", display: "block", marginTop: 5 }}>
+                El contrato de alquiler se completa al momento de la entrega del vehículo.
+              </span>
+            </Box>
+            {/* RIGHT: WhatsApp QR card */}
+            <Box
+              sx={{
+                flex: 1,
+                bgcolor: BLACK,
+                borderRadius: 2,
+                p: 1.25,
+                display: "flex",
+                alignItems: "center",
+                gap: 1.25,
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: MAGENTA, fontWeight: 800, fontSize: 13, letterSpacing: 0.4 }}>¿YA LLEGASTE?</div>
+                <div style={{ color: WHITE, fontSize: 9, lineHeight: 1.4, marginTop: 5 }}>Escanea y avísanos por WhatsApp.</div>
+                <div style={{ color: "#C4C4C8", fontSize: 9, lineHeight: 1.4, marginTop: 2 }}>Estamos listos para recibirte.</div>
+              </Box>
+              <Box sx={{ bgcolor: WHITE, borderRadius: 1.5, p: 0.75, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {arrivalQr ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={arrivalQr} alt="QR WhatsApp" style={{ width: 76, height: 76, display: "block" }} />
+                ) : (
+                  <Box sx={{ width: 76, height: 76, display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: 8, textAlign: "center" }}>
+                    QR WhatsApp
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      );
+    }
     case "contactFooter":
       return (
         <Box

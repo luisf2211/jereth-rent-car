@@ -37,7 +37,11 @@ const SOFT = "#F6F6F7";
 const PINK_SOFT = "#FCE3F1";
 
 const s = StyleSheet.create({
-  page: { backgroundColor: WHITE, color: INK, fontSize: 8.5, fontFamily: "Helvetica" },
+  // Vertical flex column so a flexible spacer can push the footer bar down to
+  // the bottom edge (its original intended position: a full-width black bar at
+  // the base of the page), removing the big white strip. No page padding: the
+  // footer stays edge-to-edge exactly as designed.
+  page: { backgroundColor: WHITE, color: INK, fontSize: 8.5, fontFamily: "Helvetica", flexDirection: "column" },
 
   // ---- Header ----
   header: { height: 84, backgroundColor: BLACK, position: "relative" },
@@ -393,6 +397,13 @@ export function ConfirmationDocument(snap: ConfirmationSnapshot, assets: Confirm
     h(Text, { key: "slg", style: s.footerSlogan }, "Tu destino, nuestro compromiso."),
   ]);
 
+  // The page is a vertical flex column. A flexible spacer BELOW the content and
+  // ABOVE the footer absorbs the leftover vertical space, so the footer always
+  // sits near the bottom edge (professional margin via the page's paddingBottom)
+  // instead of leaving a large white strip. Nothing is stretched or resized:
+  // every section keeps its intrinsic height; only the empty gap is distributed.
+  const spacer = h(View, { key: "spacer", style: { flexGrow: 1, minHeight: 8 } });
+
   return h(Document, { title: `Confirmación de reserva ${snap.code}`, author: "JERETH RENT CAR" },
     h(Page, { size: "A4", style: s.page }, [
       header,
@@ -401,6 +412,7 @@ export function ConfirmationDocument(snap: ConfirmationSnapshot, assets: Confirm
       body,
       acceptStrip,
       conditions,
+      spacer,
       footer,
     ])
   );

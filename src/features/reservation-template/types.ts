@@ -55,6 +55,7 @@ export type TemplateElementType =
   | "specialRequest"
   | "policyAcceptance"
   | "reservationConditions"
+  | "arrivalInfo"
   | "separator"
   | "spacer"
   | "contactFooter"
@@ -109,6 +110,7 @@ export interface DataBlockElement extends BaseElement {
     | "specialRequest"
     | "policyAcceptance"
     | "reservationConditions"
+    | "arrivalInfo"
     | "contactFooter";
   /** Optional heading shown above the block (may contain tokens). */
   heading?: string;
@@ -185,6 +187,7 @@ export const ELEMENT_LABELS: Record<TemplateElementType, string> = {
   specialRequest: "Solicitud especial",
   policyAcceptance: "Aceptación de política",
   reservationConditions: "Condiciones de reserva",
+  arrivalInfo: "Información para tu llegada + QR",
   separator: "Separador",
   spacer: "Espaciador",
   contactFooter: "Datos de contacto / footer",
@@ -206,6 +209,7 @@ export const PALETTE_ORDER: TemplateElementType[] = [
   "specialRequest",
   "policyAcceptance",
   "reservationConditions",
+  "arrivalInfo",
   "statusCard",
   "separator",
   "spacer",
@@ -242,6 +246,8 @@ export function makeElement(type: TemplateElementType, id: string): TemplateElem
     case "reservationConditions":
     case "contactFooter":
       return { id, type, style: { ...style, fontSize: 10, color: "#191919" }, heading: ELEMENT_LABELS[type] };
+    case "arrivalInfo":
+      return { id, type, style: { ...style, fontSize: 10, color: "#191919" }, heading: "Información para tu llegada" };
   }
 }
 
