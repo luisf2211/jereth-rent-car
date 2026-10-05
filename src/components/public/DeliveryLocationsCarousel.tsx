@@ -261,24 +261,33 @@ export default function DeliveryLocationsCarousel({ locations }: Props) {
           px: 0.5,
         }}
       >
-        {items.map((loc, i) => (
-          <Box
-            key={`${loc.id}-${i}`}
-            data-card
-            sx={{
-              flex: {
-                xs: "0 0 82%",
-                sm: "0 0 48%",
-                md: "0 0 32%",
-                lg: "0 0 31%",
-              },
-              // overflow visible so the scale transform isn't clipped
-              overflow: "visible",
-            }}
-          >
-            <LocationCard loc={loc} />
-          </Box>
-        ))}
+        {items.map((loc, i) => {
+          // The list is duplicated for the circular feel. The second copy is a
+          // visual duplicate whose images reuse the same /_next/image URLs
+          // (served from browser cache — no extra Supabase egress). Mark the
+          // duplicates aria-hidden so screen readers don't read each location
+          // twice; appearance and behaviour are unchanged.
+          const isDuplicate = count > 1 && i >= count;
+          return (
+            <Box
+              key={`${loc.id}-${i}`}
+              data-card
+              aria-hidden={isDuplicate || undefined}
+              sx={{
+                flex: {
+                  xs: "0 0 82%",
+                  sm: "0 0 48%",
+                  md: "0 0 32%",
+                  lg: "0 0 31%",
+                },
+                // overflow visible so the scale transform isn't clipped
+                overflow: "visible",
+              }}
+            >
+              <LocationCard loc={loc} />
+            </Box>
+          );
+        })}
       </Box>
 
       {count > 1 && (

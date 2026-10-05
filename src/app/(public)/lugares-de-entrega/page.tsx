@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -113,11 +114,15 @@ export default async function LugaresDeEntregaPage() {
                   {/* Photo */}
                   <Box sx={{ position: "relative", aspectRatio: "4 / 3", bgcolor: "grey.900" }}>
                     {loc.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      // Optimized via next/image (AVIF/WebP + resize) instead
+                      // of the raw Supabase original. `fill` + object-fit cover
+                      // keeps the exact same framing inside the 4:3 box.
+                      <Image
                         src={loc.imageUrl}
                         alt={localizeDeliveryName(locale, loc.name)}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        fill
+                        sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 33vw"
+                        style={{ objectFit: "cover", display: "block" }}
                       />
                     ) : (
                       <Box

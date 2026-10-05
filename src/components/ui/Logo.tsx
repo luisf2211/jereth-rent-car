@@ -1,4 +1,5 @@
 import * as React from "react";
+import Image from "next/image";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
@@ -108,12 +109,19 @@ export default function Logo({
 
   if (display === "logo" && logoUrl) {
     const height = Math.round(baseHeight * clampedScale);
+    // next/image serves an optimized variant instead of the raw Supabase file.
+    // The intrinsic width/height are only hints for aspect ratio; the actual
+    // size is fixed by `style` (height fixed, width auto) so the layout and
+    // proportions stay EXACTLY as before. `unoptimized` fallback is not needed
+    // because the branding bucket is covered by remotePatterns.
     return (
-      <Box
-        component="img"
+      <Image
         src={logoUrl}
         alt={companyName}
-        sx={{ height, width: "auto", maxWidth: "100%", objectFit: "contain", display: "block" }}
+        height={height}
+        width={Math.round(height * 4)}
+        sizes="260px"
+        style={{ height, width: "auto", maxWidth: "100%", objectFit: "contain", display: "block" }}
       />
     );
   }
@@ -127,11 +135,23 @@ export default function Logo({
         : Object.fromEntries(
             Object.entries(navHeight).map(([bp, h]) => [bp, Math.round(h * clampedScale)])
           );
+    // Largest possible rendered height, used only as the intrinsic size hint
+    // for next/image (the on-screen size is driven by the responsive `sx`
+    // height below, exactly as before). Using `Box component={Image}` lets us
+    // keep MUI's responsive `sx` while routing the request through the Next
+    // image optimizer (AVIF/WebP + resize) instead of the raw Supabase file.
+    const maxNavHeight =
+      typeof scaledNavHeight === "number"
+        ? scaledNavHeight
+        : Math.max(...Object.values(scaledNavHeight));
     return (
       <Box
-        component="img"
+        component={Image}
         src={logoUrl}
         alt={companyName}
+        height={maxNavHeight}
+        width={Math.round(maxNavHeight * 5)}
+        sizes="260px"
         sx={{
           height: scaledNavHeight,
           width: "auto",

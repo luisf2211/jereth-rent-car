@@ -208,14 +208,24 @@ export default function VehiclesCarousel({ vehicles, whatsappNumber, digitalEnab
           visibility: cardWidth ? "visible" : "hidden",
         }}
       >
-        {loopItems.map((vehicle, i) => (
-          <Box
-            key={`${vehicle.id}-${i}`}
-            sx={{ flex: "0 0 auto", width: cardWidth ? `${cardWidth}px` : `${88}%`, display: "flex" }}
-          >
-            <VehicleCard vehicle={vehicle} whatsappNumber={whatsappNumber} digitalEnabled={digitalEnabled} />
-          </Box>
-        ))}
+        {loopItems.map((vehicle, i) => {
+          // The track renders the fleet TWICE for the seamless infinite loop.
+          // The second copy is a visual duplicate: its images share the exact
+          // same /_next/image URL as the first copy, so the browser serves
+          // them from cache (one network request per photo, reused) — no extra
+          // Supabase egress. We mark the duplicate copy aria-hidden so assistive
+          // tech doesn't announce every vehicle twice; visuals are unchanged.
+          const isDuplicate = i >= vehicles.length;
+          return (
+            <Box
+              key={`${vehicle.id}-${i}`}
+              aria-hidden={isDuplicate || undefined}
+              sx={{ flex: "0 0 auto", width: cardWidth ? `${cardWidth}px` : `${88}%`, display: "flex" }}
+            >
+              <VehicleCard vehicle={vehicle} whatsappNumber={whatsappNumber} digitalEnabled={digitalEnabled} />
+            </Box>
+          );
+        })}
       </Box>
     </Box>
   );

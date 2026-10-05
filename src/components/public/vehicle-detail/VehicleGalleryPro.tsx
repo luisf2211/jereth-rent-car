@@ -102,13 +102,30 @@ export default function VehicleGalleryPro({ images, alt, imageFits }: Props) {
           minHeight: 0,
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          key={pics[index]}
-          src={pics[index]}
-          alt={alt}
-          style={{ maxWidth: "100%", maxHeight: "88vh", objectFit: "contain", display: "block" }}
-        />
+        {/*
+         * Fullscreen photo served through next/image so the browser downloads
+         * an OPTIMIZED, resized AVIF/WebP variant from /_next/image instead of
+         * the 2–3 MB original PNG straight from Supabase. `fill` + object-fit
+         * "contain" keeps the EXACT same look (whole photo centered, letter-
+         * boxed on the dark backdrop, never cropped) on desktop and mobile.
+         * A wrapper constrains the image to the previous maxHeight (88vh) and
+         * full width so proportions are unchanged. `sizes=100vw` asks for a
+         * large, sharp variant suited to fullscreen viewing. quality=90 keeps
+         * it crisp (quality over bytes). `priority` loads the visible photo
+         * immediately (no fade-in regression vs the old <img>).
+         */}
+        <Box sx={{ position: "relative", width: "100%", height: "88vh" }}>
+          <Image
+            key={pics[index]}
+            src={pics[index]}
+            alt={alt}
+            fill
+            priority
+            sizes="100vw"
+            quality={90}
+            style={{ objectFit: "contain" }}
+          />
+        </Box>
         {count > 1 && (
           <>
             <IconButton

@@ -1,5 +1,19 @@
 import "server-only";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { optimizeImageBuffer } from "@/lib/storage/optimize-image";
+
+/**
+ * Cache-Control for PUBLIC, immutable objects. Every public upload gets a
+ * fresh random UUID filename and is never overwritten (upsert:false), so a
+ * given URL's bytes never change. That makes a 1-year immutable cache SAFE:
+ * when an admin "changes" a photo, a NEW url is produced, so the browser/CDN
+ * fetches the new object instead of serving a stale cached one.
+ *
+ * Supabase emits `cache-control: public, max-age=<cacheControl>`. We request
+ * one year (31536000s). This is the single biggest lever against the repeated
+ * "cached egress" caused by the previous 1-hour default re-downloading originals.
+ */
+const PUBLIC_IMMUTABLE_CACHE_CONTROL = "31536000";
 
 /**
  * Domain folders inside the central Storage bucket. Add new ones here as the
@@ -76,15 +90,24 @@ export async function uploadImage(folder: StorageFolder, file: File): Promise<Up
   }
 
   const supabase = createAdminClient();
-  const ext = extensionFor(file.type);
-  const filename = `${crypto.randomUUID()}.${ext}`;
-  const path = `${folder}/${filename}`;
 
-  const arrayBuffer = await file.arrayBuffer();
+  // Quality-first optimization: downscale only when huge, re-encode to
+  // high-quality WebP, preserve transparency, and fall back to the original
+  // bytes if optimization didn't help. GIFs/animated images pass through
+  // untouched. See optimize-image.ts.
+  const original = Buffer.from(await file.arrayBuffer());
+  const opt = await optimizeImageBuffer(original, file.type);
+
+  const filename = `${crypto.randomUUID()}.${opt.ext}`;
+  const path = `${folder}/${filename}`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, arrayBuffer, { contentType: file.type, upsert: false });
+    .upload(path, opt.data, {
+      contentType: opt.contentType,
+      upsert: false,
+      cacheControl: PUBLIC_IMMUTABLE_CACHE_CONTROL,
+    });
 
   if (error) {
     console.error("uploadImage failed:", error);
@@ -112,15 +135,23 @@ export async function uploadDocument(folder: StorageFolder, file: File): Promise
   }
 
   const supabase = createAdminClient();
-  const ext = file.type === "application/pdf" ? "pdf" : extensionFor(file.type);
+
+  // Images get the same quality-first optimization; PDFs pass through
+  // untouched (we only add the long cache). optimizeImageBuffer is a no-op for
+  // non-image mimes, so this is safe for PDFs.
+  const original = Buffer.from(await file.arrayBuffer());
+  const opt = await optimizeImageBuffer(original, file.type);
+  const ext = file.type === "application/pdf" ? "pdf" : opt.ext;
   const filename = `${crypto.randomUUID()}.${ext}`;
   const path = `${folder}/${filename}`;
 
-  const arrayBuffer = await file.arrayBuffer();
-
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, arrayBuffer, { contentType: file.type, upsert: false });
+    .upload(path, opt.data, {
+      contentType: opt.contentType,
+      upsert: false,
+      cacheControl: PUBLIC_IMMUTABLE_CACHE_CONTROL,
+    });
 
   if (error) {
     console.error("uploadDocument failed:", error);
