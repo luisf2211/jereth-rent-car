@@ -310,6 +310,10 @@ enum ReservationStatus {
   rejected
   // cancelled: a reservation that is cancelled afterwards (distinct from rejected).
   cancelled
+  // finished: the rental was completed and closed by the admin (terminal). The
+  // admin finalizes it manually — a reservation is NEVER auto-finished just
+  // because its dropoff date passed.
+  finished
 }
 
 // Where the reservation originated.

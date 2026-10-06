@@ -54,6 +54,7 @@ const STATUS_COLOR: Record<ReservationStatus, "default" | "info" | "warning" | "
   needs_fix: "default",
   rejected: "error",
   cancelled: "default",
+  finished: "default",
 };
 
 function money(n: number) {

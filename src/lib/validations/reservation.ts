@@ -8,6 +8,7 @@ export const RESERVATION_STATUSES = [
   "needs_fix",
   "rejected",
   "cancelled",
+  "finished",
 ] as const;
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
@@ -19,6 +20,7 @@ export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
   needs_fix: "Requiere corrección",
   rejected: "Rechazada",
   cancelled: "Cancelada",
+  finished: "Finalizada",
 };
 
 /**

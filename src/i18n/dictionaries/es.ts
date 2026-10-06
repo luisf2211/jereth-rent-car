@@ -387,6 +387,8 @@ const es = {
       "Lamentablemente no pudimos aprobar esta solicitud. Puedes contactar a JERETH RENT CAR para más información.",
     cancelled_title: "Reserva cancelada",
     cancelled_desc: "Esta reserva ha sido cancelada. Si crees que es un error, contáctanos.",
+    finished_title: "Renta finalizada",
+    finished_desc: "Esta renta se completó exitosamente. ¡Gracias por elegir JERETH RENT CAR!",
     // Admin status chips (also shown to the customer in some views).
     label_link_created: "Enlace creado",
     label_pending: "Pendiente",
@@ -394,6 +396,7 @@ const es = {
     label_needs_fix: "Requiere corrección",
     label_rejected: "Rechazada",
     label_cancelled: "Cancelada",
+    label_finished: "Finalizada",
   },
 
   delivery: {

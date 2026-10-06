@@ -922,6 +922,63 @@ async function confirmReservationSideEffects(
   );
 }
 
+/* --------------------------- Finalize reservation ------------------------- */
+
+/**
+ * Finalizes a reservation: confirmed → finished (terminal). The admin triggers
+ * this manually from the list once the rental was returned; a reservation is
+ * NEVER auto-finished just because its dropoff date passed.
+ *
+ * - Admin only (reservations.edit).
+ * - Only a CONFIRMED reservation can be finalized. Any other current status is
+ *   rejected (guards against double execution: a second click finds "finished"
+ *   and is refused with a clear message).
+ * - Does NOT touch pricing, days, deposits, payments, PDFs, emails, templates
+ *   or any customer-facing data — it only flips the status. The confirmation
+ *   PDF/snapshot already generated stay exactly as they are.
+ * - Reuses the same revalidate pattern as the other status mutations.
+ */
+export async function finalizeReservation(id: string): Promise<ActionResult> {
+  try {
+    await requirePermission("reservations.edit");
+  } catch {
+    return { ok: false, message: "No tienes permiso para gestionar reservas." };
+  }
+
+  try {
+    // Only transition from "confirmed". updateMany with a status guard makes
+    // this atomic and idempotent: a double click (already "finished") updates
+    // 0 rows and we report it without changing anything.
+    const res = await prisma.reservation.updateMany({
+      where: { id, status: "confirmed" },
+      data: { status: "finished" },
+    });
+
+    if (res.count === 0) {
+      // Distinguish "not found" from "not confirmed" for a useful message.
+      const current = await prisma.reservation.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!current) return { ok: false, message: "La reserva no existe." };
+      if (current.status === "finished") {
+        return { ok: false, message: "La reserva ya está finalizada." };
+      }
+      return {
+        ok: false,
+        message: "Solo se puede finalizar una reserva confirmada.",
+      };
+    }
+  } catch (error) {
+    console.error("finalizeReservation failed:", error);
+    return { ok: false, message: "No se pudo finalizar la reserva." };
+  }
+
+  revalidateReservations();
+  revalidatePath(`/admin/reservations/${id}`);
+  return { ok: true, message: "Reserva finalizada." };
+}
+
 /* ----------------------------- Delete ------------------------------------- */
 
 export async function deleteReservation(id: string): Promise<ActionResult> {

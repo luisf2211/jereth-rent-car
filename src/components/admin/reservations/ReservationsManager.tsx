@@ -27,11 +27,13 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import EmptyState from "@/components/ui/EmptyState";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   createReservationLink,
   deleteReservation,
+  finalizeReservation,
 } from "@/features/reservations/actions";
 import {
   RESERVATION_STATUS_LABELS,
@@ -40,6 +42,7 @@ import {
   type ReservationStatus,
 } from "@/lib/validations/reservation";
 import type { AdminReservation } from "@/features/reservations/data";
+import { computeReservationOps, humanDateTime, type ReservationOps } from "@/utils/reservation-ops";
 
 /**
  * Tabs are filters over the existing reservation list — no copies or separate
@@ -55,8 +58,8 @@ type ReservationTab = "todas" | "por_revisar" | "confirmadas" | "finalizadas" | 
 const TAB_STATUSES: Record<Exclude<ReservationTab, "todas">, ReservationStatus[]> = {
   por_revisar: ["pending", "needs_fix", "link_created"],
   confirmadas: ["confirmed"],
-  // No "finished" status exists yet; this tab is prepared for later.
-  finalizadas: [],
+  // Finished rentals (terminal). Populated once the admin finalizes a reservation.
+  finalizadas: ["finished"],
   canceladas: ["cancelled", "rejected"],
 };
 
@@ -85,6 +88,7 @@ const STATUS_COLOR: Record<ReservationStatus, "default" | "info" | "warning" | "
   needs_fix: "default",
   rejected: "error",
   cancelled: "default",
+  finished: "default",
 };
 
 function money(n: number) {
@@ -101,6 +105,21 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
     if (!error) router.refresh();
   };
 
+  const [finalizeTarget, setFinalizeTarget] = React.useState<AdminReservation | null>(null);
+
+  // ---- Operational signals (COMPUTED, never persisted) ----
+  // Each reservation gets a derived phase + badges + sort key from its stored
+  // dates and status, in the DR operational timezone (America/Santo_Domingo).
+  // We compute once per render against a single "now" so the whole list is
+  // consistent across the midnight boundary.
+  const opsById = React.useMemo(() => {
+    const now = new Date();
+    const map = new Map<string, ReservationOps>();
+    for (const r of reservations) map.set(r.id, computeReservationOps(r, now));
+    return map;
+    // Recompute when the list identity changes (after router.refresh()).
+  }, [reservations]);
+
   // ---- Tabs (filters over the existing list) ----
   const [tab, setTab] = React.useState<ReservationTab>("todas");
   const counts = React.useMemo(
@@ -113,9 +132,36 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
     }),
     [reservations]
   );
-  // The list is already sorted (deposit priority) by the data layer; filtering
-  // preserves that order.
-  const visible = reservations.filter((r) => inTab(r, tab));
+
+  // ---- Operational summary counters (computed from the derived phase) ----
+  const summary = React.useMemo(() => {
+    let needsAction = 0;
+    let pickupsToday = 0;
+    let inProgress = 0;
+    let dropoffsToday = 0;
+    for (const r of reservations) {
+      const ops = opsById.get(r.id);
+      if (!ops) continue;
+      if (ops.phase === "needs_action") needsAction += 1;
+      if (ops.phase === "in_progress") inProgress += 1;
+      // "Entregas hoy": a confirmed reservation whose pickup badge is HOY.
+      if (ops.phase === "upcoming" && ops.badges.some((b) => b.label === "HOY")) pickupsToday += 1;
+      // "Devoluciones hoy": in-progress reservations returning today.
+      if (ops.badges.some((b) => b.label === "DEVOLUCIÓN HOY")) dropoffsToday += 1;
+    }
+    return { needsAction, pickupsToday, inProgress, dropoffsToday };
+  }, [reservations, opsById]);
+
+  // Smart order: filter by tab, then sort by the computed operational sort key
+  // (needs-action first, then overdue, in-progress, upcoming by soonest pickup,
+  // closed last). Stable: ties keep the data-layer order.
+  const visible = React.useMemo(() => {
+    return reservations
+      .filter((r) => inTab(r, tab))
+      .map((r, i) => ({ r, i, key: opsById.get(r.id)?.sortKey ?? 5_000_000 }))
+      .sort((a, b) => a.key - b.key || a.i - b.i)
+      .map(({ r }) => r);
+  }, [reservations, tab, opsById]);
 
   // ---- Create link dialog ----
   const [open, setOpen] = React.useState(false);
@@ -203,6 +249,19 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
     notify(res.message ?? "", !res.ok);
   };
 
+  // Finalizing an overdue rental: confirmed → finished via the server action.
+  // The confirmation dialog gates the action; `finalizing` guards against a
+  // double click while the request is in flight.
+  const [finalizing, setFinalizing] = React.useState(false);
+  const confirmFinalize = async () => {
+    if (!finalizeTarget || finalizing) return;
+    setFinalizing(true);
+    const res = await finalizeReservation(finalizeTarget.id);
+    setFinalizing(false);
+    setFinalizeTarget(null);
+    notify(res.message ?? "", !res.ok);
+  };
+
   return (
     <>
       {canEdit && (
@@ -212,6 +271,40 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
           </Button>
         </Box>
       )}
+
+      {/* Operational summary — compact counters computed from the derived
+          phase. Each one is a quick filter: clicking jumps to the matching tab
+          (kept simple: counters map to existing tabs, no new filter state). */}
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {[
+          { label: "Requieren atención", value: summary.needsAction, color: "warning.main", tab: "por_revisar" as ReservationTab },
+          { label: "Entregas hoy", value: summary.pickupsToday, color: "info.main", tab: "confirmadas" as ReservationTab },
+          { label: "En curso", value: summary.inProgress, color: "success.main", tab: "confirmadas" as ReservationTab },
+          { label: "Devoluciones hoy", value: summary.dropoffsToday, color: "error.main", tab: "confirmadas" as ReservationTab },
+        ].map((c) => (
+          <Grid key={c.label} size={{ xs: 6, md: 3 }}>
+            <Card
+              onClick={() => setTab(c.tab)}
+              sx={{
+                cursor: "pointer",
+                transition: "box-shadow 0.15s, border-color 0.15s",
+                borderLeft: "4px solid",
+                borderLeftColor: c.color,
+                "&:hover": { boxShadow: 3 },
+              }}
+            >
+              <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+                  {c.value}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {c.label}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
       {/* Tabs / filters */}
       <Card sx={{ mb: 2 }}>
@@ -236,100 +329,144 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
         <EmptyState title="No hay reservas en esta categoría." />
       ) : (
         <Stack spacing={1.5}>
-          {visible.map((r) => (
-            <Card key={r.id}>
-              <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
-                  <Box
-                    onClick={() => router.push(`/admin/reservations/${r.id}`)}
-                    sx={{
-                      flexGrow: 1,
-                      minWidth: 220,
-                      cursor: "pointer",
-                      borderRadius: 1,
-                      transition: "background-color 0.15s",
-                      "&:hover": { bgcolor: "action.hover" },
-                    }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+          {visible.map((r) => {
+            const ops = opsById.get(r.id);
+            const customer = r.customerName?.trim() || "Sin datos del cliente todavía";
+            const hasCustomer = Boolean(r.customerName?.trim());
+            // Overdue rentals get a stronger visual priority (left accent bar).
+            const highlight = ops?.phase === "pending_finalize";
+            return (
+              <Card
+                key={r.id}
+                sx={
+                  highlight
+                    ? { borderLeft: "4px solid", borderLeftColor: "error.main" }
+                    : undefined
+                }
+              >
+                <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
+                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
+                    <Box
+                      onClick={() => router.push(`/admin/reservations/${r.id}`)}
+                      sx={{
+                        flexGrow: 1,
+                        minWidth: 220,
+                        cursor: "pointer",
+                        borderRadius: 1,
+                        transition: "background-color 0.15s",
+                        "&:hover": { bgcolor: "action.hover" },
+                      }}
+                    >
+                      {/* PRIMARY: customer name, large + bold. */}
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: 800, lineHeight: 1.2, color: hasCustomer ? "text.primary" : "text.secondary" }}
+                      >
+                        {customer}
+                      </Typography>
+
+                      {/* Badges — consistent hierarchy:
+                          1) REAL status, 2) computed operational indicators,
+                          3) the rest (origin, deposit, special request, flight). */}
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", mt: 0.75, mb: 0.5 }}>
+                        {/* 1) Current status (label only — no changing from the list). */}
+                        <Chip
+                          label={RESERVATION_STATUS_LABELS[r.status]}
+                          size="small"
+                          color={STATUS_COLOR[r.status]}
+                        />
+                        {/* 2) COMPUTED operational indicators. */}
+                        {ops?.badges.map((b) => (
+                          <Chip key={b.label} label={b.label} size="small" color={b.color} variant={b.variant} />
+                        ))}
+                        {/* 3) Origin. */}
+                        <Chip label={RESERVATION_SOURCE_LABELS[r.source]} size="small" variant="outlined" />
+                        {/* 3) Deposit indicator (money received). */}
+                        <Chip
+                          label={r.depositPaid > 0 ? `Con depósito · ${money(r.depositPaid)}` : "Sin depósito"}
+                          size="small"
+                          color={r.depositPaid > 0 ? "success" : "default"}
+                          variant={r.depositPaid > 0 ? "filled" : "outlined"}
+                        />
+                        {r.specialRequest && <Chip label="⚠ Solicitud especial" size="small" color="warning" />}
+                        {(r.flight.hasArrivalFlight || r.flight.hasReturnFlight) && (
+                          <Chip label="✈ Vuelo registrado" size="small" variant="outlined" color="info" />
+                        )}
+                      </Box>
+
+                      {/* SECONDARY: reservation code, de-emphasized. */}
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, letterSpacing: 0.3 }}>
                         {r.code}
                       </Typography>
-                      {/* Current status (label only — no changing from the list) */}
-                      <Chip
-                        label={RESERVATION_STATUS_LABELS[r.status]}
-                        size="small"
-                        color={STATUS_COLOR[r.status]}
-                      />
-                      {/* Origin — separate from deposit, both stay visible */}
-                      <Chip label={RESERVATION_SOURCE_LABELS[r.source]} size="small" variant="outlined" />
-                      {/* Deposit indicator (money received) */}
-                      <Chip
-                        label={r.depositPaid > 0 ? `Con depósito · ${money(r.depositPaid)}` : "Sin depósito"}
-                        size="small"
-                        color={r.depositPaid > 0 ? "success" : "default"}
-                        variant={r.depositPaid > 0 ? "filled" : "outlined"}
-                      />
-                      {/* Special request warning */}
-                      {r.specialRequest && (
-                        <Chip label="⚠ Solicitud especial" size="small" color="warning" />
-                      )}
-                      {/* Flight info indicator */}
-                      {(r.flight.hasArrivalFlight || r.flight.hasReturnFlight) && (
-                        <Chip label="✈ Vuelo registrado" size="small" variant="outlined" color="info" />
-                      )}
-                    </Box>
-                    <Typography variant="body2" color="text.secondary">
-                      {r.vehicleTitle}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {r.customerName ? `${r.customerName}` : "Sin datos del cliente todavía"}
-                      {r.phone ? ` · ${r.phone}` : ""}
-                    </Typography>
-                    {(r.pickupDate || r.dropoffDate) && (
-                      <Typography variant="body2" color="text.secondary">
-                        {r.pickupDate ?? "—"} {r.pickupTime ?? ""} → {r.dropoffDate ?? "—"} {r.dropoffTime ?? ""}
-                      </Typography>
-                    )}
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      {money(r.dailyPrice)}/día · {r.billedDays} días · Total {money(r.estimatedTotal)}
-                      {r.reservationDeposit > 0 ? ` · Depósito ${money(r.reservationDeposit)}` : ""}
-                    </Typography>
-                  </Box>
 
-                  <Stack spacing={1} sx={{ minWidth: 200 }}>
-                    {/* State changes happen inside "Ver reserva" (expediente),
-                        forcing a review of data + proof before deciding. */}
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<VisibilityRoundedIcon />}
-                      onClick={() => router.push(`/admin/reservations/${r.id}`)}
-                    >
-                      Ver reserva
-                    </Button>
-                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        {r.vehicleTitle}
+                        {r.phone ? ` · ${r.phone}` : ""}
+                      </Typography>
+                      {/* Human-friendly dates (presentation only): es, 12h AM/PM, RD. */}
+                      {(r.pickupDate || r.dropoffDate) && (
+                        <Box sx={{ mt: 0.25 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Recogida: {humanDateTime(r.pickupDate, r.pickupTime)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Devolución: {humanDateTime(r.dropoffDate, r.dropoffTime)}
+                          </Typography>
+                        </Box>
+                      )}
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        {money(r.dailyPrice)}/día · {r.billedDays} días · Total {money(r.estimatedTotal)}
+                        {r.reservationDeposit > 0 ? ` · Depósito ${money(r.reservationDeposit)}` : ""}
+                      </Typography>
+                    </Box>
+
+                    <Stack spacing={1} sx={{ minWidth: 200 }}>
+                      {/* Finalize (only for overdue confirmed rentals). Asks for
+                          confirmation; uses no duplicated state logic. */}
+                      {canEdit && ops?.pendingFinalize && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="error"
+                          startIcon={<TaskAltRoundedIcon />}
+                          onClick={() => setFinalizeTarget(r)}
+                        >
+                          Finalizar reserva
+                        </Button>
+                      )}
+                      {/* State changes happen inside "Ver reserva" (expediente),
+                          forcing a review of data + proof before deciding. */}
                       <Button
                         size="small"
-                        variant="outlined"
-                        color="secondary"
-                        startIcon={<ContentCopyRoundedIcon />}
-                        onClick={() => copyUrl(`${window.location.origin}/reservar/${r.token}`)}
-                        sx={{ flexGrow: 1 }}
+                        variant={ops?.pendingFinalize ? "outlined" : "contained"}
+                        startIcon={<VisibilityRoundedIcon />}
+                        onClick={() => router.push(`/admin/reservations/${r.id}`)}
                       >
-                        Copiar enlace
+                        Ver reserva
                       </Button>
-                      {canEdit && (
-                        <IconButton aria-label="Eliminar" onClick={() => setDeleteTarget(r)}>
-                          <DeleteOutlineRoundedIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Box>
-                  </Stack>
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="secondary"
+                          startIcon={<ContentCopyRoundedIcon />}
+                          onClick={() => copyUrl(`${window.location.origin}/reservar/${r.token}`)}
+                          sx={{ flexGrow: 1 }}
+                        >
+                          Copiar enlace
+                        </Button>
+                        {canEdit && (
+                          <IconButton aria-label="Eliminar" onClick={() => setDeleteTarget(r)}>
+                            <DeleteOutlineRoundedIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                      </Box>
+                    </Stack>
+                  </Box>
+                </CardContent>
+              </Card>
+            );
+          })}
         </Stack>
       )}
 
@@ -495,6 +632,20 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
         confirmColor="error"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(finalizeTarget)}
+        title="Finalizar reserva"
+        description={
+          finalizeTarget
+            ? `¿Confirmas que la renta de ${finalizeTarget.customerName?.trim() || finalizeTarget.code} (${finalizeTarget.code}) ya fue devuelta y deseas finalizarla? La reserva se mantendrá confirmada hasta que esta acción se habilite.`
+            : ""
+        }
+        confirmLabel="Finalizar"
+        confirmColor="error"
+        onConfirm={confirmFinalize}
+        onCancel={() => setFinalizeTarget(null)}
       />
 
       <Snackbar

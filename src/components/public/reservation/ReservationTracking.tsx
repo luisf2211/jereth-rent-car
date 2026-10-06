@@ -77,6 +77,13 @@ const STATUS_META: Record<
     color: "error",
     icon: <CancelRoundedIcon />,
   },
+  finished: {
+    titleKey: "status.finished_title",
+    descKey: "status.finished_desc",
+    labelKey: "status.label_finished",
+    color: "success",
+    icon: <CheckCircleRoundedIcon />,
+  },
 };
 
 /** A labelled read-only line. */

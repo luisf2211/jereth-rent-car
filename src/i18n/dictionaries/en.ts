@@ -385,12 +385,15 @@ const en: Dictionary = {
       "Unfortunately we couldn't approve this request. You can contact JERETH RENT CAR for more information.",
     cancelled_title: "Reservation cancelled",
     cancelled_desc: "This reservation has been cancelled. If you think this is a mistake, contact us.",
+    finished_title: "Rental completed",
+    finished_desc: "This rental was completed successfully. Thank you for choosing JERETH RENT CAR!",
     label_link_created: "Link created",
     label_pending: "Pending",
     label_confirmed: "Confirmed",
     label_needs_fix: "Needs correction",
     label_rejected: "Rejected",
     label_cancelled: "Cancelled",
+    label_finished: "Completed",
   },
 
   delivery: {
