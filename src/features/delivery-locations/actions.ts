@@ -69,6 +69,9 @@ export async function saveDeliveryLocation(
   const data = {
     ...parsed.data,
     description: parsed.data.description || null,
+    // Empty EN → null so the public fallback shows the Spanish source.
+    nameEn: parsed.data.nameEn?.trim() || null,
+    descriptionEn: parsed.data.descriptionEn?.trim() || null,
     imageUrl: parsed.data.imageUrl || null,
     mapUrl: parsed.data.mapUrl || null,
     // Free locations never carry an amount.

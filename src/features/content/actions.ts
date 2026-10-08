@@ -45,9 +45,11 @@ export async function saveRequirement(id: string | null, input: unknown): Promis
   const parsed = requirementSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
 
+  // Empty EN → null so the public fallback (localizedText) shows Spanish.
+  const data = { ...parsed.data, textEn: parsed.data.textEn?.trim() || null };
   try {
-    if (id) await prisma.requirement.update({ where: { id }, data: parsed.data });
-    else await prisma.requirement.create({ data: parsed.data });
+    if (id) await prisma.requirement.update({ where: { id }, data });
+    else await prisma.requirement.create({ data });
   } catch (error) {
     console.error("saveRequirement failed:", error);
     return { ok: false, message: "No se pudo guardar el requisito." };
@@ -76,9 +78,10 @@ export async function saveInclusion(id: string | null, input: unknown): Promise<
   if (denied) return denied;
   const parsed = simpleTextSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
+  const data = { ...parsed.data, textEn: parsed.data.textEn?.trim() || null };
   try {
-    if (id) await prisma.inclusion.update({ where: { id }, data: parsed.data });
-    else await prisma.inclusion.create({ data: parsed.data });
+    if (id) await prisma.inclusion.update({ where: { id }, data });
+    else await prisma.inclusion.create({ data });
   } catch (error) {
     console.error("saveInclusion failed:", error);
     return { ok: false, message: "No se pudo guardar." };
@@ -107,9 +110,10 @@ export async function savePolicy(id: string | null, input: unknown): Promise<Act
   if (denied) return denied;
   const parsed = simpleTextSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
+  const data = { ...parsed.data, textEn: parsed.data.textEn?.trim() || null };
   try {
-    if (id) await prisma.policy.update({ where: { id }, data: parsed.data });
-    else await prisma.policy.create({ data: parsed.data });
+    if (id) await prisma.policy.update({ where: { id }, data });
+    else await prisma.policy.create({ data });
   } catch (error) {
     console.error("savePolicy failed:", error);
     return { ok: false, message: "No se pudo guardar." };
@@ -140,9 +144,14 @@ export async function saveFaq(id: string | null, input: unknown): Promise<Action
   const parsed = faqSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "Revisa los campos.", fieldErrors: fieldErrorsFrom(parsed.error) };
 
+  const data = {
+    ...parsed.data,
+    questionEn: parsed.data.questionEn?.trim() || null,
+    answerEn: parsed.data.answerEn?.trim() || null,
+  };
   try {
-    if (id) await prisma.faqItem.update({ where: { id }, data: parsed.data });
-    else await prisma.faqItem.create({ data: parsed.data });
+    if (id) await prisma.faqItem.update({ where: { id }, data });
+    else await prisma.faqItem.create({ data });
   } catch (error) {
     console.error("saveFaq failed:", error);
     return { ok: false, message: "No se pudo guardar la pregunta." };
@@ -184,6 +193,7 @@ export async function saveReview(id: string | null, input: unknown): Promise<Act
     authorName: parsed.data.authorName,
     rating: parsed.data.rating,
     comment: parsed.data.comment,
+    commentEn: parsed.data.commentEn?.trim() || null,
     avatarUrl: parsed.data.avatarUrl || null,
     source: parsed.data.source,
     reviewDate,

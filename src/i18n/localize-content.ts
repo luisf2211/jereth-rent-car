@@ -74,3 +74,16 @@ export function resolveLocalizedVehicle(
     features: localizedList(locale, vehicle.features, vehicle.featuresEn),
   };
 }
+
+/**
+ * Resolve a translatable field pair (source + english) to a non-null string.
+ * Convenience wrapper over localizedText for callers that always want a string
+ * to render (empty string when both are empty). Reuses the SAME fallback rule.
+ */
+export function pickText(
+  locale: Locale,
+  source: string | null | undefined,
+  english: string | null | undefined,
+): string {
+  return localizedText(locale, source, english) ?? "";
+}

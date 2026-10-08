@@ -81,11 +81,16 @@ model CompanySettings {
   googleMapsUrl  String?
   // Short "about" text for the Nosotros section (owner-written; optional)
   aboutText      String?
+  // English version of the about text (fallback to Spanish when empty).
+  aboutTextEn    String?
   // Homepage hero: background photo + headline/subtitle (all optional; the
   // hero falls back to sensible defaults when empty).
   heroImageUrl   String?
   heroTitle      String?
   heroSubtitle   String?
+  // English versions of the hero headline/subtitle (fallback to Spanish).
+  heroTitleEn    String?
+  heroSubtitleEn String?
   // Logo display scale in the footer (1.0 = default).
   logoScale      Float    @default(1)
   // Logo display scale in the navbar (1.0 = default).
@@ -200,7 +205,11 @@ model Vehicle {
 // Requirements to rent (licencia, edad, etc.). Owner-written.
 model Requirement {
   id        String   @id @default(cuid())
+  // SOURCE (Spanish) text; the English version lives in textEn.
   text      String
+  // Hybrid translation (English). Null/empty = not translated yet -> the
+  // public site falls back to the Spanish source (localizedText rule).
+  textEn    String?
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -212,8 +221,15 @@ model Requirement {
 // Delivery / pickup locations (e.g. SDQ airport, Santo Domingo).
 model DeliveryLocation {
   id          String   @id @default(cuid())
+  // SOURCE (Spanish) name/description. English versions live in nameEn /
+  // descriptionEn. Proper nouns (e.g. airport names) can be left without an
+  // English version — the fallback keeps showing the Spanish source.
   name        String
   description String?
+  // Hybrid translation (English). Null/empty = not translated yet -> fallback
+  // to the Spanish source (localizedText rule).
+  nameEn        String?
+  descriptionEn String?
   // Real photo of the location (e.g. the airport terminal) shown in the
   // public carousel. Optional — cards fall back to an icon when empty.
   imageUrl    String?
@@ -242,7 +258,9 @@ model DeliveryLocation {
 // "Tu renta incluye" items (asistencia, vehículo revisado, etc.).
 model Inclusion {
   id        String   @id @default(cuid())
+  // SOURCE (Spanish); English version in textEn (fallback to ES when empty).
   text      String
+  textEn    String?
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -254,7 +272,9 @@ model Inclusion {
 // Vehicle rental policies (no fumar, devolver con combustible, etc.).
 model Policy {
   id        String   @id @default(cuid())
+  // SOURCE (Spanish); English version in textEn (fallback to ES when empty).
   text      String
+  textEn    String?
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -266,8 +286,12 @@ model Policy {
 // Frequently asked questions. Owner-written; easy to edit later.
 model FaqItem {
   id        String   @id @default(cuid())
+  // SOURCE (Spanish) question/answer. English versions in questionEn /
+  // answerEn (fallback to the Spanish source when empty).
   question  String
   answer    String
+  questionEn String?
+  answerEn   String?
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -281,7 +305,9 @@ model Review {
   id         String   @id @default(cuid())
   authorName String
   rating     Int // 1-5
+  // SOURCE (Spanish) comment; English version in commentEn (fallback to ES).
   comment    String
+  commentEn  String?
   reviewDate DateTime?
   avatarUrl  String?
   source     String   @default("google") // provenance label

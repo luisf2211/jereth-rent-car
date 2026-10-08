@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-/** Requisito para rentar. */
+/** Requisito para rentar. textEn es opcional (traducción al inglés). */
 export const requirementSchema = z.object({
   text: z.string().trim().min(2, "El texto es obligatorio").max(200),
+  textEn: z.string().trim().max(200).optional().or(z.literal("")),
   sortOrder: z.coerce.number().int().min(0).max(999),
   isActive: z.boolean(),
 });
@@ -10,10 +11,12 @@ export const requirementSchema = z.object({
 /** Simple text item (inclusiones / políticas) — mismo shape que requisito. */
 export const simpleTextSchema = requirementSchema;
 
-/** Pregunta frecuente. */
+/** Pregunta frecuente. questionEn/answerEn opcionales (traducción al inglés). */
 export const faqSchema = z.object({
   question: z.string().trim().min(4, "La pregunta es obligatoria").max(200),
   answer: z.string().trim().min(2, "La respuesta es obligatoria").max(1200),
+  questionEn: z.string().trim().max(200).optional().or(z.literal("")),
+  answerEn: z.string().trim().max(1200).optional().or(z.literal("")),
   sortOrder: z.coerce.number().int().min(0).max(999),
   isActive: z.boolean(),
 });
@@ -27,6 +30,7 @@ export const reviewSchema = z.object({
   authorName: z.string().trim().min(2, "El nombre es obligatorio").max(120),
   rating: z.coerce.number().int().min(1, "Mínimo 1").max(5, "Máximo 5"),
   comment: z.string().trim().min(2, "El comentario es obligatorio").max(1000),
+  commentEn: z.string().trim().max(1000).optional().or(z.literal("")),
   avatarUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
   // Origin of the review. "manual" = added from the backoffice, "google" =
   // imported from Google reviews. Restricted to known values.

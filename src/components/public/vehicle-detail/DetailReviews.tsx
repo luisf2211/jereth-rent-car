@@ -12,10 +12,11 @@ import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import GoogleIcon from "@mui/icons-material/Google";
 import type { ReviewItem } from "@/features/content/data";
 import { useI18n } from "@/i18n/LanguageProvider";
+import { pickText } from "@/i18n/localize-content";
 
 /** Business reviews on the detail page: rating summary + first 3, "see all". */
 export default function DetailReviews({ reviews }: { reviews: ReviewItem[] }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [showAll, setShowAll] = React.useState(false);
   if (reviews.length === 0) return null;
 
@@ -67,7 +68,7 @@ export default function DetailReviews({ reviews }: { reviews: ReviewItem[] }) {
               </Box>
               <Rating value={r.rating} readOnly size="small" sx={{ mb: 0.5 }} />
               <Typography variant="body2" color="text.secondary">
-                {r.comment}
+                {pickText(locale, r.comment, r.commentEn)}
               </Typography>
             </Box>
           </Grid>

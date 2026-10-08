@@ -16,7 +16,7 @@ import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import type { DeliveryLocationItem } from "@/features/delivery-locations/data";
 import { useI18n } from "@/i18n/LanguageProvider";
 import type { TFunction } from "@/i18n/translate";
-import { localizeDeliveryName, localizeDeliveryDescription } from "@/i18n/content-overrides";
+import { pickText } from "@/i18n/localize-content";
 
 interface Props {
   locations: DeliveryLocationItem[];
@@ -44,8 +44,8 @@ function LocationCard({ loc }: { loc: DeliveryLocationItem }) {
   // localized.
   const slug = toSlug(loc.name);
   const href = `/lugares-de-entrega#${slug}`;
-  const name = localizeDeliveryName(locale, loc.name);
-  const description = localizeDeliveryDescription(locale, loc.description);
+  const name = pickText(locale, loc.name, loc.nameEn);
+  const description = pickText(locale, loc.description, loc.descriptionEn);
 
   return (
     <Card

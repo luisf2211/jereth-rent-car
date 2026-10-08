@@ -46,3 +46,7 @@ next-env.d.ts
 
 # prisma generated client (Prisma 7 generates into src/)
 /src/generated
+
+# Production i18n backfill artifacts (local only — contain PROD data/ids, never commit)
+/scripts/PROD-*.json
+/scripts/prod-*.ts

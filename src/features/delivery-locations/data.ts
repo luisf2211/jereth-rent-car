@@ -10,6 +10,9 @@ export interface DeliveryLocationItem {
   id: string;
   name: string;
   description: string | null;
+  /** English name/description (null/empty = fallback to Spanish source). */
+  nameEn: string | null;
+  descriptionEn: string | null;
   imageUrl: string | null;
   hasFee: boolean;
   deliveryFee: number;
@@ -23,6 +26,8 @@ export interface AdminDeliveryLocation {
   id: string;
   name: string;
   description: string | null;
+  nameEn: string;
+  descriptionEn: string;
   imageUrl: string | null;
   hasFee: boolean;
   deliveryFee: number;
@@ -43,6 +48,8 @@ export async function getDeliveryLocations(): Promise<DeliveryLocationItem[]> {
     id: d.id,
     name: d.name,
     description: d.description,
+    nameEn: d.nameEn,
+    descriptionEn: d.descriptionEn,
     imageUrl: d.imageUrl,
     hasFee: d.hasFee,
     deliveryFee: d.deliveryFee,
@@ -59,6 +66,8 @@ export async function listDeliveryLocationsAdmin(): Promise<AdminDeliveryLocatio
     id: d.id,
     name: d.name,
     description: d.description,
+    nameEn: d.nameEn ?? "",
+    descriptionEn: d.descriptionEn ?? "",
     imageUrl: d.imageUrl,
     hasFee: d.hasFee,
     deliveryFee: d.deliveryFee,

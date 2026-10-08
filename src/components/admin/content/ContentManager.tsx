@@ -57,15 +57,21 @@ export default function ContentManager({
     if (!error) router.refresh();
   };
 
+  // Each list has a Spanish source field and an optional English field right
+  // below it (same hybrid pattern as vehicles). Empty English = the public
+  // site falls back to Spanish, so EN is never required.
   const requirementFields: FieldDef[] = [
-    { name: "text", label: "Requisito", type: "text", multiline: true },
+    { name: "text", label: "Requisito (español)", type: "text", multiline: true },
+    { name: "textEn", label: "Requisito (inglés) — opcional", type: "text", multiline: true },
     { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
     { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
   ];
 
   const faqFields: FieldDef[] = [
-    { name: "question", label: "Pregunta", type: "text" },
-    { name: "answer", label: "Respuesta", type: "text", multiline: true },
+    { name: "question", label: "Pregunta (español)", type: "text" },
+    { name: "answer", label: "Respuesta (español)", type: "text", multiline: true },
+    { name: "questionEn", label: "Pregunta (inglés) — opcional", type: "text" },
+    { name: "answerEn", label: "Respuesta (inglés) — opcional", type: "text", multiline: true },
     { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
     { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
   ];
@@ -73,7 +79,8 @@ export default function ContentManager({
   const reviewFields: FieldDef[] = [
     { name: "authorName", label: "Nombre del cliente", type: "text", half: true },
     { name: "rating", label: "Rating (1-5)", type: "number", defaultValue: 5, half: true },
-    { name: "comment", label: "Comentario", type: "text", multiline: true },
+    { name: "comment", label: "Comentario (español)", type: "text", multiline: true },
+    { name: "commentEn", label: "Comentario (inglés) — opcional", type: "text", multiline: true },
     { name: "reviewDate", label: "Fecha (opcional)", type: "date", half: true },
     {
       name: "source",
@@ -92,7 +99,8 @@ export default function ContentManager({
   ];
 
   const textFields: FieldDef[] = [
-    { name: "text", label: "Texto", type: "text", multiline: true },
+    { name: "text", label: "Texto (español)", type: "text", multiline: true },
+    { name: "textEn", label: "Texto (inglés) — opcional", type: "text", multiline: true },
     { name: "sortOrder", label: "Orden", type: "number", defaultValue: 0, half: true },
     { name: "isActive", label: "Visible en el sitio", type: "switch", defaultValue: true, half: true },
   ];

@@ -9,13 +9,13 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getFaqs } from "@/features/content/data";
 import { getI18n } from "@/i18n/server";
-import { localizeFaqQuestion, localizeFaqAnswer } from "@/i18n/content-overrides";
+import { pickText } from "@/i18n/localize-content";
 
 /**
  * Preguntas frecuentes. Renders only when FAQs exist. The title follows the
- * active locale; each question/answer is shown in the active language when it
- * matches known demo content (localizeFaq*), otherwise as typed. Uncontrolled
- * accordions, so this stays a Server Component.
+ * active locale; each question/answer is shown from its stored English columns
+ * (questionEn/answerEn) when EN is active, with a safe fallback to Spanish.
+ * Uncontrolled accordions, so this stays a Server Component.
  */
 export default async function FaqSection() {
   const [faqs, { t, locale }] = await Promise.all([getFaqs(), getI18n()]);
@@ -40,11 +40,11 @@ export default async function FaqSection() {
               }}
             >
               <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
-                <Typography sx={{ fontWeight: 600 }}>{localizeFaqQuestion(locale, f.question)}</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{pickText(locale, f.question, f.questionEn)}</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-line" }}>
-                  {localizeFaqAnswer(locale, f.answer)}
+                  {pickText(locale, f.answer, f.answerEn)}
                 </Typography>
               </AccordionDetails>
             </Accordion>

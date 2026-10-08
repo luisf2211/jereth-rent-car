@@ -7,6 +7,10 @@ import { z } from "zod";
 export const deliveryLocationSchema = z.object({
   name: z.string().trim().min(2, "El nombre es obligatorio").max(120),
   description: z.string().trim().max(400).optional().or(z.literal("")),
+  // English versions (optional). Proper-noun names can be left empty; the
+  // public site falls back to the Spanish source.
+  nameEn: z.string().trim().max(120).optional().or(z.literal("")),
+  descriptionEn: z.string().trim().max(400).optional().or(z.literal("")),
   imageUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
   hasFee: z.boolean().default(false),
   deliveryFee: z.coerce.number().int().min(0, "No puede ser negativo").max(100000).default(0),

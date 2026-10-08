@@ -41,7 +41,7 @@ import {
 } from "@/features/content/data";
 import { formatDailyPrice } from "@/features/vehicles/format";
 import { getI18n } from "@/i18n/server";
-import { resolveLocalizedVehicle } from "@/i18n/localize-content";
+import { resolveLocalizedVehicle, pickText } from "@/i18n/localize-content";
 import {
   categoryLabelI18n,
   fuelLabelI18n,
@@ -253,7 +253,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                     <Grid key={i.id} size={{ xs: 12, sm: 6 }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <CheckRoundedIcon fontSize="small" sx={{ color: "primary.main" }} />
-                        <Typography variant="body2">{i.text}</Typography>
+                        <Typography variant="body2">{pickText(locale, i.text, i.textEn)}</Typography>
                       </Box>
                     </Grid>
                   ))}
@@ -267,7 +267,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                   {requirements.map((r) => (
                     <Box key={r.id} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <CheckRoundedIcon fontSize="small" sx={{ color: "primary.main" }} />
-                      <Typography variant="body2">{r.text}</Typography>
+                      <Typography variant="body2">{pickText(locale, r.text, r.textEn)}</Typography>
                     </Box>
                   ))}
                 </Stack>
@@ -285,7 +285,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                       <Box sx={{ minWidth: 0 }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {loc.name}
+                            {pickText(locale, loc.name, loc.nameEn)}
                           </Typography>
                           <Chip
                             size="small"
@@ -302,7 +302,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                         </Box>
                         {loc.description && (
                           <Typography variant="body2" color="text.secondary">
-                            {loc.description}
+                            {pickText(locale, loc.description, loc.descriptionEn)}
                           </Typography>
                         )}
                         {loc.mapUrl && (
@@ -338,7 +338,7 @@ export default async function VehicleDetailPage({ params }: PageProps<"/vehicles
                     <Stack spacing={1}>
                       {policies.map((p) => (
                         <Typography key={p.id} variant="body2" color="text.secondary">
-                          • {p.text}
+                          • {pickText(locale, p.text, p.textEn)}
                         </Typography>
                       ))}
                     </Stack>

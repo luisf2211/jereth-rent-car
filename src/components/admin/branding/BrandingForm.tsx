@@ -33,9 +33,12 @@ type FormValues = {
   googleMapsUrl: string;
   address: string;
   aboutText: string;
+  aboutTextEn: string;
   heroImageUrl: string;
   heroTitle: string;
   heroSubtitle: string;
+  heroTitleEn: string;
+  heroSubtitleEn: string;
   primaryColor: string;
   logoScale: number;
   navLogoScale: number;
@@ -232,10 +235,25 @@ export default function BrandingForm({
                       render={({ field }) => (
                         <TextField
                           {...field}
-                          label="Título de la portada (opcional)"
+                          label="Título de la portada (español, opcional)"
                           placeholder="Renta tu vehículo en Santo Domingo"
                           error={Boolean(errors.heroTitle)}
                           helperText={errors.heroTitle?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Controller
+                      name="heroTitleEn"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Título de la portada (inglés, opcional)"
+                          placeholder="Rent your vehicle in Santo Domingo"
+                          error={Boolean(errors.heroTitleEn)}
+                          helperText={errors.heroTitleEn?.message ?? "Si lo dejas vacío, se muestra el título en español."}
                         />
                       )}
                     />
@@ -247,12 +265,29 @@ export default function BrandingForm({
                       render={({ field }) => (
                         <TextField
                           {...field}
-                          label="Subtítulo de la portada (opcional)"
+                          label="Subtítulo de la portada (español, opcional)"
                           placeholder="Entrega en el Aeropuerto Las Américas (SDQ) y en toda la ciudad."
                           multiline
                           minRows={3}
                           error={Boolean(errors.heroSubtitle)}
                           helperText={errors.heroSubtitle?.message}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Controller
+                      name="heroSubtitleEn"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          label="Subtítulo de la portada (inglés, opcional)"
+                          placeholder="Delivery at Las Américas Airport (SDQ) and across the city."
+                          multiline
+                          minRows={3}
+                          error={Boolean(errors.heroSubtitleEn)}
+                          helperText={errors.heroSubtitleEn?.message ?? "Si lo dejas vacío, se muestra el subtítulo en español."}
                         />
                       )}
                     />
@@ -444,7 +479,7 @@ export default function BrandingForm({
         {/* Nosotros */}
         <Card>
           <CardContent>
-            <SectionHeading title="Nosotros" hint="Texto corto que aparece en la sección Nosotros del sitio." />
+            <SectionHeading title="Nosotros" hint="Texto corto que aparece en la sección Nosotros del sitio. El inglés es opcional: si lo dejas vacío, el sitio muestra el español." />
             <Grid container spacing={3} sx={{ mt: 0.5 }}>
               <Grid size={{ xs: 12 }}>
                 <Controller
@@ -453,11 +488,27 @@ export default function BrandingForm({
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Sobre la empresa (opcional)"
+                      label="Sobre la empresa (español, opcional)"
                       multiline
                       minRows={3}
                       error={Boolean(errors.aboutText)}
                       helperText={errors.aboutText?.message ?? "Texto corto para la sección Nosotros"}
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Controller
+                  name="aboutTextEn"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Sobre la empresa (inglés, opcional)"
+                      multiline
+                      minRows={3}
+                      error={Boolean(errors.aboutTextEn)}
+                      helperText={errors.aboutTextEn?.message ?? "Versión en inglés de la sección Nosotros"}
                     />
                   )}
                 />

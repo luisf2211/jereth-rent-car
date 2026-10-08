@@ -5,21 +5,21 @@ import Typography from "@mui/material/Typography";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getCompanySettings } from "@/lib/branding";
 import { getI18n } from "@/i18n/server";
-import { localizeAbout } from "@/i18n/content-overrides";
+import { pickText } from "@/i18n/localize-content";
 
 /**
  * Nosotros. Renders only when the owner has written an about text from the
  * backoffice. The section title follows the active locale; the about TEXT is
- * shown in the active language when it matches the known demo content
- * (localizeAbout), otherwise as typed by the owner.
+ * shown from its stored English column (aboutTextEn) when the EN locale is
+ * active, with a safe fallback to the Spanish source.
  */
 export default async function AboutSection() {
-  const [{ companyName, aboutText }, { t, locale }] = await Promise.all([
+  const [{ companyName, aboutText, aboutTextEn }, { t, locale }] = await Promise.all([
     getCompanySettings(),
     getI18n(),
   ]);
   if (!aboutText) return null;
-  const aboutLocalized = localizeAbout(locale, aboutText);
+  const aboutLocalized = pickText(locale, aboutText, aboutTextEn);
 
   return (
     <Box id="nosotros" sx={{ py: { xs: 6, md: 9 } }}>

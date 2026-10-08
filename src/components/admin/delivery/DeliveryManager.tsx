@@ -31,8 +31,12 @@ export default function DeliveryManager({ locations }: Props) {
   };
 
   const fields: FieldDef[] = [
-    { name: "name", label: "Nombre del lugar", type: "text" },
-    { name: "description", label: "Descripción (opcional)", type: "text", multiline: true },
+    { name: "name", label: "Nombre del lugar (español)", type: "text" },
+    // Proper nouns (airport names) can be left blank; the site falls back to
+    // the Spanish name. Fill it only when the English wording differs.
+    { name: "nameEn", label: "Nombre del lugar (inglés) — opcional", type: "text" },
+    { name: "description", label: "Descripción (español, opcional)", type: "text", multiline: true },
+    { name: "descriptionEn", label: "Descripción (inglés) — opcional", type: "text", multiline: true },
     { name: "imageUrl", label: "Foto del lugar (opcional)", type: "image" },
     // UI-only selector: free vs paid delivery. Not stored directly; it drives
     // whether the amount field shows and whether deliveryFee is forced to 0.

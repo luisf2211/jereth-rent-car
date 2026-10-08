@@ -12,9 +12,12 @@ export interface BrandingFormData {
   googleMapsUrl: string;
   address: string;
   aboutText: string;
+  aboutTextEn: string;
   heroImageUrl: string;
   heroTitle: string;
   heroSubtitle: string;
+  heroTitleEn: string;
+  heroSubtitleEn: string;
   primaryColor: string;
   logoScale: number;
   navLogoScale: number;
@@ -32,9 +35,12 @@ const EMPTY: BrandingFormData = {
   googleMapsUrl: "",
   address: "",
   aboutText: "",
+  aboutTextEn: "",
   heroImageUrl: "",
   heroTitle: "",
   heroSubtitle: "",
+  heroTitleEn: "",
+  heroSubtitleEn: "",
   primaryColor: "",
   logoScale: 1,
   navLogoScale: 1,
@@ -56,9 +62,12 @@ export async function getBrandingFormData(): Promise<BrandingFormData> {
     googleMapsUrl: row.googleMapsUrl ?? "",
     address: row.address ?? "",
     aboutText: row.aboutText ?? "",
+    aboutTextEn: row.aboutTextEn ?? "",
     heroImageUrl: row.heroImageUrl ?? "",
     heroTitle: row.heroTitle ?? "",
     heroSubtitle: row.heroSubtitle ?? "",
+    heroTitleEn: row.heroTitleEn ?? "",
+    heroSubtitleEn: row.heroSubtitleEn ?? "",
     primaryColor: row.primaryColor ?? "",
     logoScale: row.logoScale ?? 1,
     navLogoScale: row.navLogoScale ?? 1,

@@ -7,7 +7,7 @@ import { getCompanySettings } from "@/lib/branding";
 import { getVehicles } from "@/features/vehicles/data";
 import { getReservationSettings } from "@/features/reservations/data";
 import { getI18n } from "@/i18n/server";
-import { localizeHero, localizeHeroSubtitle } from "@/i18n/content-overrides";
+import { localizedText } from "@/i18n/localize-content";
 import HeroCarousel from "./HeroCarousel";
 
 /**
@@ -23,13 +23,17 @@ export default async function HeroSection() {
     getReservationSettings(),
     getI18n(),
   ]);
-  const { whatsappNumber, heroImageUrl, heroTitle, heroSubtitle } = settings;
+  const { whatsappNumber, heroImageUrl, heroTitle, heroSubtitle, heroTitleEn, heroSubtitleEn } =
+    settings;
 
-  // Owner-set headline wins; when it matches the known demo content it is shown
-  // in the active language, otherwise a localized default is used.
-  const title = heroTitle?.trim() ? localizeHero(locale, heroTitle.trim()) : t("hero.defaultTitle");
+  // Owner-set headline wins; the English version is used when present (EN
+  // locale), otherwise the Spanish source. When the owner set no headline at
+  // all, a localized default from the dictionary is used.
+  const title = heroTitle?.trim()
+    ? localizedText(locale, heroTitle, heroTitleEn) ?? t("hero.defaultTitle")
+    : t("hero.defaultTitle");
   const subtitle = heroSubtitle?.trim()
-    ? localizeHeroSubtitle(locale, heroSubtitle.trim())
+    ? localizedText(locale, heroSubtitle, heroSubtitleEn) ?? t("hero.defaultSubtitle")
     : t("hero.defaultSubtitle");
   const hasImage = Boolean(heroImageUrl);
 

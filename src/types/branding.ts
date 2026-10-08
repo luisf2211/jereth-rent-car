@@ -15,9 +15,14 @@ export interface CompanySettings {
   address: string | null;
   googleMapsUrl: string | null;
   aboutText: string | null;
+  /** English version of aboutText (fallback to Spanish when empty). */
+  aboutTextEn: string | null;
   heroImageUrl: string | null;
   heroTitle: string | null;
   heroSubtitle: string | null;
+  /** English versions of the hero headline/subtitle (fallback to Spanish). */
+  heroTitleEn: string | null;
+  heroSubtitleEn: string | null;
   logoScale: number;
   navLogoScale: number;
   socialLinks: {

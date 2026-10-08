@@ -15,7 +15,7 @@ import { getDeliveryLocations } from "@/features/delivery-locations/data";
 import { getCompanySettings } from "@/lib/branding";
 import { getI18n } from "@/i18n/server";
 import type { TFunction } from "@/i18n/translate";
-import { localizeDeliveryName, localizeDeliveryDescription } from "@/i18n/content-overrides";
+import { pickText } from "@/i18n/localize-content";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -119,7 +119,7 @@ export default async function LugaresDeEntregaPage() {
                       // keeps the exact same framing inside the 4:3 box.
                       <Image
                         src={loc.imageUrl}
-                        alt={localizeDeliveryName(locale, loc.name)}
+                        alt={pickText(locale, loc.name, loc.nameEn)}
                         fill
                         sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 33vw"
                         style={{ objectFit: "cover", display: "block" }}
@@ -184,13 +184,13 @@ export default async function LugaresDeEntregaPage() {
                         )}
                       </Box>
                       <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
-                        {localizeDeliveryName(locale, loc.name)}
+                        {pickText(locale, loc.name, loc.nameEn)}
                       </Typography>
                     </Stack>
 
                     {loc.description && (
                       <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 1 }}>
-                        {localizeDeliveryDescription(locale, loc.description)}
+                        {pickText(locale, loc.description, loc.descriptionEn)}
                       </Typography>
                     )}
 
