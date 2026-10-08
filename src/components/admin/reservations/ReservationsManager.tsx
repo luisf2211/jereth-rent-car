@@ -133,35 +133,61 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
     [reservations]
   );
 
-  // ---- Operational summary counters (computed from the derived phase) ----
-  const summary = React.useMemo(() => {
-    let needsAction = 0;
-    let pickupsToday = 0;
-    let inProgress = 0;
-    let dropoffsToday = 0;
-    for (const r of reservations) {
-      const ops = opsById.get(r.id);
-      if (!ops) continue;
-      if (ops.phase === "needs_action") needsAction += 1;
-      if (ops.phase === "in_progress") inProgress += 1;
+  // ---- Quick-filter predicates (SINGLE SOURCE OF TRUTH) ----
+  // These are the EXACT per-reservation conditions behind each summary counter.
+  // Both the counters and the clickable quick-filter reuse the same predicates,
+  // so the number on a card always matches the filtered list.
+  type QuickFilter = "needsAction" | "pickupsToday" | "inProgress" | "dropoffsToday";
+  const quickPredicates: Record<QuickFilter, (r: AdminReservation) => boolean> = React.useMemo(
+    () => ({
+      needsAction: (r) => opsById.get(r.id)?.phase === "needs_action",
+      inProgress: (r) => opsById.get(r.id)?.phase === "in_progress",
       // "Entregas hoy": a confirmed reservation whose pickup badge is HOY.
-      if (ops.phase === "upcoming" && ops.badges.some((b) => b.label === "HOY")) pickupsToday += 1;
-      // "Devoluciones hoy": in-progress reservations returning today.
-      if (ops.badges.some((b) => b.label === "DEVOLUCIÓN HOY")) dropoffsToday += 1;
-    }
-    return { needsAction, pickupsToday, inProgress, dropoffsToday };
-  }, [reservations, opsById]);
+      pickupsToday: (r) => {
+        const ops = opsById.get(r.id);
+        return ops?.phase === "upcoming" && ops.badges.some((b) => b.label === "HOY");
+      },
+      // "Devoluciones hoy": reservations returning today.
+      dropoffsToday: (r) => Boolean(opsById.get(r.id)?.badges.some((b) => b.label === "DEVOLUCIÓN HOY")),
+    }),
+    [opsById],
+  );
 
-  // Smart order: filter by tab, then sort by the computed operational sort key
-  // (needs-action first, then overdue, in-progress, upcoming by soonest pickup,
-  // closed last). Stable: ties keep the data-layer order.
+  // ---- Operational summary counters (computed from the SAME predicates) ----
+  const summary = React.useMemo(
+    () => ({
+      needsAction: reservations.filter(quickPredicates.needsAction).length,
+      pickupsToday: reservations.filter(quickPredicates.pickupsToday).length,
+      inProgress: reservations.filter(quickPredicates.inProgress).length,
+      dropoffsToday: reservations.filter(quickPredicates.dropoffsToday).length,
+    }),
+    [reservations, quickPredicates],
+  );
+
+  // Active quick filter (null = none). Clicking a card toggles it; clicking the
+  // active card again clears it. It is independent from the tabs: tabs keep
+  // working as before, and the quick filter refines the current view.
+  const [quickFilter, setQuickFilter] = React.useState<QuickFilter | null>(null);
+  const toggleQuickFilter = (q: QuickFilter) => setQuickFilter((cur) => (cur === q ? null : q));
+
+  // Smart order + filtering:
+  //  - When a quick filter is ACTIVE, the list shows EXACTLY the reservations
+  //    behind that counter (same predicate, applied over all reservations), so
+  //    the card number always matches the rows shown.
+  //  - When NO quick filter is active, the list is filtered by the active tab
+  //    (unchanged tab behaviour).
+  // Then sort by the computed operational sort key (needs-action first, then
+  // overdue, in-progress, upcoming by soonest pickup, closed last). Stable:
+  // ties keep the data-layer order.
   const visible = React.useMemo(() => {
-    return reservations
-      .filter((r) => inTab(r, tab))
+    const base = quickFilter
+      ? reservations.filter(quickPredicates[quickFilter])
+      : reservations.filter((r) => inTab(r, tab));
+    return base
       .map((r, i) => ({ r, i, key: opsById.get(r.id)?.sortKey ?? 5_000_000 }))
       .sort((a, b) => a.key - b.key || a.i - b.i)
       .map(({ r }) => r);
-  }, [reservations, tab, opsById]);
+  }, [reservations, tab, opsById, quickFilter, quickPredicates]);
 
   // ---- Create link dialog ----
   const [open, setOpen] = React.useState(false);
@@ -273,44 +299,60 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
       )}
 
       {/* Operational summary — compact counters computed from the derived
-          phase. Each one is a quick filter: clicking jumps to the matching tab
-          (kept simple: counters map to existing tabs, no new filter state). */}
+          phase. Each card is a QUICK FILTER: clicking it shows exactly the
+          reservations behind that counter (same predicate), and clicking the
+          active card again clears the filter. The active card gets a discreet
+          "filtro activo" visual state. */}
       <Grid container spacing={1.5} sx={{ mb: 2 }}>
         {[
-          { label: "Requieren atención", value: summary.needsAction, color: "warning.main", tab: "por_revisar" as ReservationTab },
-          { label: "Entregas hoy", value: summary.pickupsToday, color: "info.main", tab: "confirmadas" as ReservationTab },
-          { label: "En curso", value: summary.inProgress, color: "success.main", tab: "confirmadas" as ReservationTab },
-          { label: "Devoluciones hoy", value: summary.dropoffsToday, color: "error.main", tab: "confirmadas" as ReservationTab },
-        ].map((c) => (
-          <Grid key={c.label} size={{ xs: 6, md: 3 }}>
-            <Card
-              onClick={() => setTab(c.tab)}
-              sx={{
-                cursor: "pointer",
-                transition: "box-shadow 0.15s, border-color 0.15s",
-                borderLeft: "4px solid",
-                borderLeftColor: c.color,
-                "&:hover": { boxShadow: 3 },
-              }}
-            >
-              <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-                <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-                  {c.value}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {c.label}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+          { key: "needsAction" as QuickFilter, label: "Requieren atención", value: summary.needsAction, color: "warning.main" },
+          { key: "pickupsToday" as QuickFilter, label: "Entregas hoy", value: summary.pickupsToday, color: "info.main" },
+          { key: "inProgress" as QuickFilter, label: "En curso", value: summary.inProgress, color: "success.main" },
+          { key: "dropoffsToday" as QuickFilter, label: "Devoluciones hoy", value: summary.dropoffsToday, color: "error.main" },
+        ].map((c) => {
+          const active = quickFilter === c.key;
+          return (
+            <Grid key={c.label} size={{ xs: 6, md: 3 }}>
+              <Card
+                onClick={() => toggleQuickFilter(c.key)}
+                role="button"
+                aria-pressed={active}
+                sx={{
+                  cursor: "pointer",
+                  transition: "box-shadow 0.15s, border-color 0.15s, background-color 0.15s",
+                  borderLeft: "4px solid",
+                  borderLeftColor: c.color,
+                  // Discreet active state: subtle outline + tint, same layout.
+                  outline: active ? "2px solid" : "none",
+                  outlineColor: active ? c.color : "transparent",
+                  bgcolor: active ? "action.selected" : "background.paper",
+                  "&:hover": { boxShadow: 3 },
+                }}
+              >
+                <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+                    {c.value}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {c.label}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
 
       {/* Tabs / filters */}
       <Card sx={{ mb: 2 }}>
         <Tabs
           value={tab}
-          onChange={(_, v) => setTab(v as ReservationTab)}
+          onChange={(_, v) => {
+            // Switching tab clears the quick filter so the two don't conflict;
+            // tab behaviour itself is unchanged.
+            setQuickFilter(null);
+            setTab(v as ReservationTab);
+          }}
           variant="scrollable"
           scrollButtons="auto"
           sx={{ px: 1, "& .MuiTab-root": { minHeight: 56 } }}
@@ -326,7 +368,7 @@ export default function ReservationsManager({ reservations, vehicles, defaultDep
       {reservations.length === 0 ? (
         <EmptyState title="Aún no hay reservas. Crea un enlace para enviar a un cliente." />
       ) : visible.length === 0 ? (
-        <EmptyState title="No hay reservas en esta categoría." />
+        <EmptyState title={quickFilter ? "No hay reservas en este filtro rápido." : "No hay reservas en esta categoría."} />
       ) : (
         <Stack spacing={1.5}>
           {visible.map((r) => {
